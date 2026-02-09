@@ -12,7 +12,7 @@ import {
   Zap,
   CheckCircle2,
   FileText,
-  Sparkles // Ícone para itens opcionais
+  Sparkles
 } from 'lucide-react';
 
 /**
@@ -319,6 +319,15 @@ const parseCSV = (text) => {
   return result;
 };
 
+// Pega o nome do mês atual em Português
+const getCurrentMonthName = () => {
+    const monthNames = [
+        "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
+        "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"
+    ];
+    return monthNames[new Date().getMonth()];
+};
+
 // Componente de Card de Exercício
 const ExerciseCard = ({ data, onSaveLog, history }) => {
   const [weight, setWeight] = useState('');
@@ -330,14 +339,12 @@ const ExerciseCard = ({ data, onSaveLog, history }) => {
   const rawExerciseName = data['Exercício'] || "";
   const isOptional = rawExerciseName.trim().toUpperCase().startsWith("OPCIONAL");
   
-  // Nome limpo para exibição (Remove o "OPCIONAL" do título)
   const displayTitle = isOptional 
     ? rawExerciseName.replace(/^OPCIONAL\s*/i, '') 
     : rawExerciseName;
 
   const handleSave = () => {
     if (!weight) return;
-    // Salva com o nome original (com ou sem OPCIONAL) para garantir integridade dos dados
     onSaveLog(rawExerciseName, weight, reps);
     setWeight('');
     setReps('');
@@ -347,7 +354,6 @@ const ExerciseCard = ({ data, onSaveLog, history }) => {
 
   const lastLog = history && history.length > 0 ? history[0] : null;
 
-  // Estilos Condicionais
   const cardStyles = isOptional
     ? "bg-purple-50/80 dark:bg-purple-900/10 border-purple-300 dark:border-purple-800 border-dashed"
     : "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 shadow-sm";
@@ -359,7 +365,7 @@ const ExerciseCard = ({ data, onSaveLog, history }) => {
   return (
     <div className={`rounded-xl border overflow-hidden mb-4 transition-all hover:shadow-md ${cardStyles}`}>
       
-      {/* Cabeçalho do Card */}
+      {/* Cabeçalho */}
       <div className={`p-4 border-b flex justify-between items-start ${headerStyles}`}>
         <div className="flex-1">
           <div className="flex items-center gap-2 mb-1">
@@ -386,7 +392,7 @@ const ExerciseCard = ({ data, onSaveLog, history }) => {
         )}
       </div>
 
-      {/* Detalhes Técnicos */}
+      {/* Detalhes */}
       <div className="p-4 grid grid-cols-2 gap-4 text-sm">
         <div className="flex items-start gap-2">
           <TrendingUp className={`w-4 h-4 mt-0.5 ${isOptional ? 'text-purple-400' : 'text-slate-400'}`} />
@@ -413,7 +419,7 @@ const ExerciseCard = ({ data, onSaveLog, history }) => {
         )}
       </div>
 
-      {/* Modo de Execução & Obs */}
+      {/* Execução */}
       <div className="px-4 pb-4 text-sm text-slate-600 dark:text-slate-300 space-y-2">
         <p><span className="font-semibold text-slate-700 dark:text-slate-200">Execução:</span> {data['Modo de execução']}</p>
         {data['Observação'] && (
@@ -421,13 +427,15 @@ const ExerciseCard = ({ data, onSaveLog, history }) => {
         )}
       </div>
 
-      {/* Área de Registro de Carga */}
+      {/* Registro */}
       <div className={`p-4 border-t ${isOptional ? 'bg-purple-50/50 dark:bg-purple-900/20 border-purple-200 dark:border-purple-800' : 'bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-700'}`}>
         <div className="flex items-end gap-3">
             <div className="flex-1">
                 <label className="text-xs text-slate-500 dark:text-slate-400 mb-1 block">Carga (kg)</label>
+                {/* inputMode='decimal' força teclado numérico no mobile */}
                 <input 
                     type="number" 
+                    inputMode="decimal"
                     placeholder="ex: 20"
                     value={weight}
                     onChange={(e) => setWeight(e.target.value)}
@@ -436,8 +444,10 @@ const ExerciseCard = ({ data, onSaveLog, history }) => {
             </div>
             <div className="w-20">
                 <label className="text-xs text-slate-500 dark:text-slate-400 mb-1 block">Reps</label>
+                {/* inputMode='numeric' para números inteiros */}
                 <input 
                     type="number" 
+                    inputMode="numeric"
                     placeholder={data['Séries/Reps'].split('x')[1] || "12"}
                     value={reps}
                     onChange={(e) => setReps(e.target.value)}
@@ -495,13 +505,26 @@ const ExerciseCard = ({ data, onSaveLog, history }) => {
 export default function App() {
   const [rawData, setRawData] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [selectedMonth, setSelectedMonth] = useState('Janeiro');
+  
+  // INICIALIZAÇÃO INTELIGENTE: Tenta pegar o mês atual.
+  const [selectedMonth, setSelectedMonth] = useState(getCurrentMonthName());
   const [selectedWorkout, setSelectedWorkout] = useState('A');
   
   const [workoutLogs, setWorkoutLogs] = useState(() => {
     const saved = localStorage.getItem('gym_tracker_logs');
     return saved ? JSON.parse(saved) : {};
   });
+
+  // EFEITO DE FUNDO: Pinta o body de preto/slate-950 para evitar overscroll branco
+  useEffect(() => {
+    // Cor 'slate-950' do Tailwind é aproximadamente #020617
+    document.body.style.backgroundColor = '#020617';
+    
+    // Limpeza ao desmontar (opcional, mas boa prática)
+    return () => {
+      document.body.style.backgroundColor = '';
+    };
+  }, []);
 
   useEffect(() => {
     const loadData = async () => {
@@ -534,6 +557,7 @@ export default function App() {
   }, [rawData]);
 
   useEffect(() => {
+    // Só troca o mês se o mês atual (detectado no início) NÃO existir nos dados.
     if (availableMonths.length > 0 && !availableMonths.includes(selectedMonth)) {
         setSelectedMonth(availableMonths[0]);
     }
