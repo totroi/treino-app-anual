@@ -11,12 +11,30 @@ import {
   Clock,
   Zap,
   CheckCircle2,
-  AlertCircle
+  FileText // <--- Ícone novo importado
 } from 'lucide-react';
 
 /**
+ * LINKS DOS DOCUMENTOS MENSAIS
+ * Mapeamento de Mês -> URL do Google Docs
+ */
+const MONTHLY_DOCS = {
+  "Janeiro": "https://docs.google.com/document/d/1Rk8MvsPW_Es8weZ6yNiPvLK2IF1ZSc9KuwvRcQNMk0g/edit?usp=sharing",
+  "Fevereiro": "https://docs.google.com/document/d/1KNjq9QURk1pzOzyA3TQ5dRaEY--NCSVuSrUHFeS0QDE/edit?usp=sharing",
+  "Março": "https://docs.google.com/document/d/1YVTyj-h4feR2bnJvVTBVWnWIZ8pHkLsbyZESM-0Wnhs/edit?usp=sharing",
+  "Abril": "https://docs.google.com/document/d/1o9iy8_NCTCRqgqqUouBNst73NQb3OW2ueKNx_dIM--M/edit?usp=sharing",
+  "Maio": "https://docs.google.com/document/d/1_XfwEkvWvjLlfQ4ZcJdBIvZms7oK8XPIkMUECpefvDM/edit?usp=sharing",
+  "Junho": "https://docs.google.com/document/d/1tBsZ71SC0evH-dYJmTzY4ri-TkGL2fsiAcX2QYyRsPs/edit?usp=sharing",
+  "Julho": "https://docs.google.com/document/d/1_0BYS5HXXacYImF4Jod4RaYHP037uem5iqJN_om4zC0/edit?usp=sharing",
+  "Agosto": "https://docs.google.com/document/d/1ElFv93J8FlCfp2hVWUStZDxhZTymIawPcSWgsS20YqU/edit?usp=sharing",
+  "Setembro": "https://docs.google.com/document/d/1aGe-gluyurse9bjSenC7qhm6R_W4wVgTFmbEfiHz-wo/edit?usp=sharing",
+  "Outubro": "https://docs.google.com/document/d/1YqeM3g5DoDof-w0VEDpcbaiiHMbxtU7geDVlXcWG1R4/edit?usp=sharing",
+  "Novembro": "https://docs.google.com/document/d/1jDvZX8JuHVzrr72b85On6OP1gMobn0tBmQEYGg3ieaU/edit?usp=sharing",
+  "Dezembro": "https://docs.google.com/document/d/1DB7OcpfK0iHNC2tq9DVEczigXBCTYpL7J6_xf-JcjpM/edit?usp=sharing"
+};
+
+/**
  * DADOS INICIAIS (Extraídos do anexo para garantir funcionamento offline/imediato)
- * Isso serve como fallback caso a conexão com a planilha ao vivo falhe por CORS.
  */
 const INITIAL_CSV_DATA = `Mês,Grupo muscular,Especificação do grupo muscular,Treino,Exercício,Séries/Reps,Cadência,Técnica Avançada,Modo de execução,Observação
 Fevereiro,Peitoral,Massa Geral e Tríceps,A,Bench Press (Supino Reto),4-5 x 5-12,2-2,Repetições Parciais / Até a falha,"Executar movimentos de três quartos, tirando a barra do peito mas não subindo até o bloqueio total para manter tensão constante. Controle a excêntrica e exploda na concêntrica.",Inspirado na técnica de Sergio Oliva. Progredir 2-5kg por semana.
@@ -260,29 +278,22 @@ Janeiro,Tríceps,Cabeça Longa,C,Tríceps Testa,4 x 10,Lenta e deliberada,Alonga
 Janeiro,Pescoço,Densidade Cervical,C,Flexão/Extensão de Pescoço,3 x 15-20,2-2,Até a falha,Uso de anilha na testa ou nuca com proteção.,A dor tardia pode assemelhar-se a dor de garganta.
 Janeiro,Abdômen,Linha de Cintura,A/B/C,Vacuum (Vácuo Abdominal),4 x 30 seg.,Estática,Isometria Máxima,Exalar todo o ar e encolher o abdômen ao máximo.,Reduz a cintura e melhora o controle muscular.`;
 
-// URL pública para exportação CSV (Pode sofrer bloqueio de CORS dependendo do browser/rede, por isso o fallback acima)
 const SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/1_2aqsSQMa8PdCsNQcTkdBj1hepqruyeaobwVD4OXZL0/export?format=csv";
 
 // --- Utilitários ---
 
-// Função simples para parsear CSV lidando com aspas
 const parseCSV = (text) => {
   const lines = text.trim().split('\n');
   const headers = lines[0].split(',').map(h => h.trim());
-  
   const result = [];
   
   for (let i = 1; i < lines.length; i++) {
     const obj = {};
     let currentLine = lines[i];
     
-    // Regex complexo para lidar com vírgulas dentro de aspas
     const matches = currentLine.match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g);
-    
-    // Fallback simples se o regex falhar ou a linha for simples
     let values = [];
     if (currentLine.includes('"')) {
-        // Lógica manual básica para split ignorando vírgula entre aspas
         let inQuote = false;
         let buffer = '';
         for(let char of currentLine) {
@@ -297,12 +308,10 @@ const parseCSV = (text) => {
 
     headers.forEach((header, index) => {
       let val = values[index] ? values[index].trim() : '';
-      // Remove aspas extras se existirem
       if (val.startsWith('"') && val.endsWith('"')) val = val.slice(1, -1);
       obj[header] = val;
     });
     
-    // Filtra linhas vazias
     if (obj['Exercício']) {
         result.push(obj);
     }
@@ -375,7 +384,7 @@ const ExerciseCard = ({ data, onSaveLog, history }) => {
         )}
       </div>
 
-      {/* Modo de Execução & Obs (Expansível ou visível) */}
+      {/* Modo de Execução & Obs */}
       <div className="px-4 pb-4 text-sm text-slate-600 dark:text-slate-300 space-y-2">
         <p><span className="font-semibold text-slate-700 dark:text-slate-200">Execução:</span> {data['Modo de execução']}</p>
         {data['Observação'] && (
@@ -429,7 +438,6 @@ const ExerciseCard = ({ data, onSaveLog, history }) => {
             </button>
         </div>
 
-        {/* Histórico Expansível */}
         {showHistory && (
             <div className="mt-4 pt-3 border-t border-slate-200 dark:border-slate-700 animate-in slide-in-from-top-2">
                 <h4 className="text-xs font-bold text-slate-500 uppercase mb-2">Histórico Recente</h4>
@@ -456,29 +464,20 @@ const ExerciseCard = ({ data, onSaveLog, history }) => {
 };
 
 export default function App() {
-  // --- Estados ---
   const [rawData, setRawData] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  
-  // Filtros
   const [selectedMonth, setSelectedMonth] = useState('Janeiro');
   const [selectedWorkout, setSelectedWorkout] = useState('A');
   
-  // Persistência (Logs de carga)
   const [workoutLogs, setWorkoutLogs] = useState(() => {
     const saved = localStorage.getItem('gym_tracker_logs');
     return saved ? JSON.parse(saved) : {};
   });
 
-  // --- Efeitos ---
-
   useEffect(() => {
-    // Tenta carregar dados. Primeiro tenta fetch, se falhar usa o estático.
     const loadData = async () => {
       setLoading(true);
       try {
-        // Tenta buscar online primeiro
         const response = await fetch(SHEET_CSV_URL);
         if (!response.ok) throw new Error('Falha na rede');
         const text = await response.text();
@@ -487,30 +486,24 @@ export default function App() {
         else throw new Error('CSV Vazio');
       } catch (err) {
         console.log("Usando dados de backup offline devido a:", err);
-        // Fallback para dados estáticos
         const parsed = parseCSV(INITIAL_CSV_DATA);
         setRawData(parsed);
       } finally {
         setLoading(false);
       }
     };
-
     loadData();
   }, []);
 
-  // Salvar logs no LocalStorage sempre que mudar
   useEffect(() => {
     localStorage.setItem('gym_tracker_logs', JSON.stringify(workoutLogs));
   }, [workoutLogs]);
-
-  // --- Lógica de Negócio ---
 
   const availableMonths = useMemo(() => {
     const months = new Set(rawData.map(d => d['Mês']));
     return Array.from(months);
   }, [rawData]);
 
-  // Garante que o mês selecionado existe na lista, senão pega o primeiro
   useEffect(() => {
     if (availableMonths.length > 0 && !availableMonths.includes(selectedMonth)) {
         setSelectedMonth(availableMonths[0]);
@@ -519,12 +512,10 @@ export default function App() {
 
   const filteredExercises = useMemo(() => {
     return rawData.filter(item => {
-        // Normalização simples para evitar problemas de case/espaço
         const itemMonth = item['Mês']?.trim();
-        const itemWorkout = item['Treino']?.trim(); // O CSV pode ter "A", "A/B", "C"
+        const itemWorkout = item['Treino']?.trim();
         
         const isMonthMatch = itemMonth === selectedMonth;
-        // Lógica para treinos híbridos (ex: se o treino é "A/B", deve aparecer tanto na aba A quanto na B)
         const isWorkoutMatch = itemWorkout && (itemWorkout === selectedWorkout || itemWorkout.includes(selectedWorkout));
 
         return isMonthMatch && isWorkoutMatch;
@@ -537,14 +528,9 @@ export default function App() {
         weight: weight,
         reps: reps
     };
-
     setWorkoutLogs(prev => {
         const currentLogs = prev[exerciseName] || [];
-        // Adiciona no início (mais recente primeiro)
-        return {
-            ...prev,
-            [exerciseName]: [newLog, ...currentLogs]
-        };
+        return { ...prev, [exerciseName]: [newLog, ...currentLogs] };
     });
   };
 
@@ -560,15 +546,16 @@ export default function App() {
         const text = await response.text();
         const parsed = parseCSV(text);
         setRawData(parsed);
-        alert("Dados sincronizados com a planilha do Google!");
+        alert("Dados sincronizados!");
       } catch (e) {
-        alert("Não foi possível sincronizar automaticamente (provavelmente bloqueio do Google). Usando dados locais.");
+        alert("Não foi possível sincronizar automaticamente. Usando dados locais.");
       } finally {
         setLoading(false);
       }
   };
 
-  // --- Renderização ---
+  // Identifica o link do mês atual
+  const currentDocLink = MONTHLY_DOCS[selectedMonth];
 
   if (loading && rawData.length === 0) {
     return (
@@ -601,9 +588,9 @@ export default function App() {
             </button>
         </div>
 
-        {/* Month Selector */}
+        {/* Month Selector & Doc Link */}
         <div className="max-w-md mx-auto px-4 py-2 border-t border-slate-100 dark:border-slate-800">
-            <div className="relative">
+            <div className="relative mb-2">
                 <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                 <select 
                     value={selectedMonth} 
@@ -616,13 +603,26 @@ export default function App() {
                 </select>
                 <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
             </div>
+
+            {/* BOTÃO NOVO: Link para o Docs */}
+            {currentDocLink && (
+              <a
+                href={currentDocLink}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-center gap-2 w-full p-2 bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 border border-blue-100 dark:border-blue-900/50 rounded-lg text-sm font-medium hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors"
+              >
+                <FileText className="w-4 h-4" />
+                Ler Guia de {selectedMonth}
+              </a>
+            )}
         </div>
       </header>
 
       {/* Main Content */}
       <main className="max-w-md mx-auto px-4 pt-4">
         
-        {/* Workout Tabs (A, B, C) */}
+        {/* Workout Tabs */}
         <div className="flex p-1 bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 mb-6">
             {['A', 'B', 'C'].map((workout) => (
                 <button
@@ -663,10 +663,9 @@ export default function App() {
             )}
         </div>
 
-        {/* Footer info */}
-        <div className="mt-8 text-center">
+        <div className="mt-8 text-center pb-8">
             <p className="text-xs text-slate-400 mb-2">
-                Os dados de carga são salvos automaticamente neste dispositivo.
+                Os dados de carga são salvos automaticamente.
             </p>
         </div>
       </main>
