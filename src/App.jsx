@@ -432,7 +432,6 @@ const ExerciseCard = ({ data, onSaveLog, history }) => {
         <div className="flex items-end gap-3">
             <div className="flex-1">
                 <label className="text-xs text-slate-500 dark:text-slate-400 mb-1 block">Carga (kg)</label>
-                {/* inputMode='decimal' força teclado numérico no mobile */}
                 <input 
                     type="number" 
                     inputMode="decimal"
@@ -444,7 +443,6 @@ const ExerciseCard = ({ data, onSaveLog, history }) => {
             </div>
             <div className="w-20">
                 <label className="text-xs text-slate-500 dark:text-slate-400 mb-1 block">Reps</label>
-                {/* inputMode='numeric' para números inteiros */}
                 <input 
                     type="number" 
                     inputMode="numeric"
@@ -506,7 +504,6 @@ export default function App() {
   const [rawData, setRawData] = useState([]);
   const [loading, setLoading] = useState(true);
   
-  // INICIALIZAÇÃO INTELIGENTE: Tenta pegar o mês atual.
   const [selectedMonth, setSelectedMonth] = useState(getCurrentMonthName());
   const [selectedWorkout, setSelectedWorkout] = useState('A');
   
@@ -515,12 +512,9 @@ export default function App() {
     return saved ? JSON.parse(saved) : {};
   });
 
-  // EFEITO DE FUNDO: Pinta o body de preto/slate-950 para evitar overscroll branco
+  // EFEITO DE FUNDO: Pinta o body de preto/slate-950
   useEffect(() => {
-    // Cor 'slate-950' do Tailwind é aproximadamente #020617
     document.body.style.backgroundColor = '#020617';
-    
-    // Limpeza ao desmontar (opcional, mas boa prática)
     return () => {
       document.body.style.backgroundColor = '';
     };
@@ -557,14 +551,15 @@ export default function App() {
   }, [rawData]);
 
   useEffect(() => {
-    // Só troca o mês se o mês atual (detectado no início) NÃO existir nos dados.
     if (availableMonths.length > 0 && !availableMonths.includes(selectedMonth)) {
         setSelectedMonth(availableMonths[0]);
     }
   }, [availableMonths, selectedMonth]);
 
+  // Lógica de Filtro e ORDENAÇÃO
   const filteredExercises = useMemo(() => {
-    return rawData.filter(item => {
+    // 1. Filtrar
+    const filtered = rawData.filter(item => {
         const itemMonth = item['Mês']?.trim();
         const itemWorkout = item['Treino']?.trim();
         
@@ -573,6 +568,24 @@ export default function App() {
 
         return isMonthMatch && isWorkoutMatch;
     });
+
+    // 2. Ordenar
+    return filtered.sort((a, b) => {
+        // Critério 1: Grupo Muscular (A-Z)
+        const groupA = (a['Grupo muscular'] || '').trim();
+        const groupB = (b['Grupo muscular'] || '').trim();
+        const compareGroup = groupA.localeCompare(groupB, 'pt-BR');
+        
+        if (compareGroup !== 0) return compareGroup;
+
+        // Critério 2: Nome do Exercício (A-Z)
+        // Remove "OPCIONAL" para garantir que "Agachamento" e "OPCIONAL Agachamento" fiquem juntos
+        const nameA = (a['Exercício'] || '').replace(/^OPCIONAL\s*/i, '').trim();
+        const nameB = (b['Exercício'] || '').replace(/^OPCIONAL\s*/i, '').trim();
+        
+        return nameA.localeCompare(nameB, 'pt-BR');
+    });
+
   }, [rawData, selectedMonth, selectedWorkout]);
 
   const handleSaveLog = (exerciseName, weight, reps) => {
