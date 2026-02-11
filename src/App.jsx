@@ -12,7 +12,9 @@ import {
   Zap,
   CheckCircle2,
   FileText,
-  Sparkles
+  Sparkles,
+  RotateCcw, // Ícone para resetar o treino
+  Check // Ícone de check simples
 } from 'lucide-react';
 
 /**
@@ -329,7 +331,7 @@ const getCurrentMonthName = () => {
 };
 
 // Componente de Card de Exercício
-const ExerciseCard = ({ data, onSaveLog, history }) => {
+const ExerciseCard = ({ data, onSaveLog, history, isCompleted }) => {
   const [weight, setWeight] = useState('');
   const [reps, setReps] = useState('');
   const [showHistory, setShowHistory] = useState(false);
@@ -353,6 +355,36 @@ const ExerciseCard = ({ data, onSaveLog, history }) => {
   };
 
   const lastLog = history && history.length > 0 ? history[0] : null;
+
+  // --- MODO COMPACTO (EXERCÍCIO CONCLUÍDO) ---
+  if (isCompleted) {
+    return (
+        <div className="bg-emerald-100 dark:bg-emerald-900/30 border border-emerald-300 dark:border-emerald-800 rounded-xl p-3 mb-2 flex items-center justify-between shadow-sm opacity-80 animate-in slide-in-from-right-2">
+            <div className="flex items-center gap-3 overflow-hidden">
+                <div className="bg-emerald-200 dark:bg-emerald-800 p-1.5 rounded-full flex-shrink-0">
+                    <Check className="w-4 h-4 text-emerald-700 dark:text-emerald-100" />
+                </div>
+                <div className="min-w-0">
+                    <div className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400 uppercase tracking-wider truncate">
+                        {data['Grupo muscular']}
+                    </div>
+                    <h3 className="text-sm font-bold text-emerald-900 dark:text-emerald-100 truncate">
+                        {displayTitle}
+                    </h3>
+                </div>
+            </div>
+            {lastLog && (
+                <div className="text-right flex-shrink-0 pl-2">
+                    <span className="text-xs font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-200/50 dark:bg-emerald-800 px-2 py-1 rounded-md">
+                        {lastLog.weight}kg • {lastLog.reps || data['Séries/Reps'].split('x')[0]} reps
+                    </span>
+                </div>
+            )}
+        </div>
+    );
+  }
+
+  // --- MODO EXPANDIDO (NORMAL) ---
 
   const cardStyles = isOptional
     ? "bg-purple-50/80 dark:bg-purple-900/10 border-purple-300 dark:border-purple-800 border-dashed"
@@ -507,12 +539,19 @@ export default function App() {
   const [selectedMonth, setSelectedMonth] = useState(getCurrentMonthName());
   const [selectedWorkout, setSelectedWorkout] = useState('A');
   
+  // Histórico Geral (Persistência Longa)
   const [workoutLogs, setWorkoutLogs] = useState(() => {
     const saved = localStorage.getItem('gym_tracker_logs');
     return saved ? JSON.parse(saved) : {};
   });
 
-  // EFEITO DE FUNDO: Pinta o body de preto/slate-950
+  // Estado da Sessão Atual (Exercícios marcados como feitos hoje)
+  const [completedExercises, setCompletedExercises] = useState(() => {
+    const saved = localStorage.getItem('gym_tracker_session_completed');
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  // EFEITO DE FUNDO
   useEffect(() => {
     document.body.style.backgroundColor = '#020617';
     return () => {
@@ -541,9 +580,14 @@ export default function App() {
     loadData();
   }, []);
 
+  // Persistência
   useEffect(() => {
     localStorage.setItem('gym_tracker_logs', JSON.stringify(workoutLogs));
   }, [workoutLogs]);
+
+  useEffect(() => {
+    localStorage.setItem('gym_tracker_session_completed', JSON.stringify(completedExercises));
+  }, [completedExercises]);
 
   const availableMonths = useMemo(() => {
     const months = new Set(rawData.map(d => d['Mês']));
@@ -556,9 +600,8 @@ export default function App() {
     }
   }, [availableMonths, selectedMonth]);
 
-  // Lógica de Filtro e ORDENAÇÃO
+  // --- LÓGICA DE FILTRO E ORDENAÇÃO ---
   const filteredExercises = useMemo(() => {
-    // 1. Filtrar
     const filtered = rawData.filter(item => {
         const itemMonth = item['Mês']?.trim();
         const itemWorkout = item['Treino']?.trim();
@@ -569,8 +612,18 @@ export default function App() {
         return isMonthMatch && isWorkoutMatch;
     });
 
-    // 2. Ordenar
     return filtered.sort((a, b) => {
+        const nameA = a['Exercício'] || '';
+        const nameB = b['Exercício'] || '';
+
+        // Critério 0: Concluídos vão para o final
+        const isCompletedA = completedExercises.includes(nameA);
+        const isCompletedB = completedExercises.includes(nameB);
+
+        if (isCompletedA !== isCompletedB) {
+            return isCompletedA ? 1 : -1; // Se A está completo, ele vai para baixo (1)
+        }
+
         // Critério 1: Grupo Muscular (A-Z)
         const groupA = (a['Grupo muscular'] || '').trim();
         const groupB = (b['Grupo muscular'] || '').trim();
@@ -579,14 +632,13 @@ export default function App() {
         if (compareGroup !== 0) return compareGroup;
 
         // Critério 2: Nome do Exercício (A-Z)
-        // Remove "OPCIONAL" para garantir que "Agachamento" e "OPCIONAL Agachamento" fiquem juntos
-        const nameA = (a['Exercício'] || '').replace(/^OPCIONAL\s*/i, '').trim();
-        const nameB = (b['Exercício'] || '').replace(/^OPCIONAL\s*/i, '').trim();
+        const cleanNameA = nameA.replace(/^OPCIONAL\s*/i, '').trim();
+        const cleanNameB = nameB.replace(/^OPCIONAL\s*/i, '').trim();
         
-        return nameA.localeCompare(nameB, 'pt-BR');
+        return cleanNameA.localeCompare(cleanNameB, 'pt-BR');
     });
 
-  }, [rawData, selectedMonth, selectedWorkout]);
+  }, [rawData, selectedMonth, selectedWorkout, completedExercises]);
 
   const handleSaveLog = (exerciseName, weight, reps) => {
     const newLog = {
@@ -594,10 +646,26 @@ export default function App() {
         weight: weight,
         reps: reps
     };
+    
+    // 1. Salva no histórico
     setWorkoutLogs(prev => {
         const currentLogs = prev[exerciseName] || [];
         return { ...prev, [exerciseName]: [newLog, ...currentLogs] };
     });
+
+    // 2. Marca como concluído na sessão (Para encolher o card)
+    setCompletedExercises(prev => {
+        if (!prev.includes(exerciseName)) {
+            return [...prev, exerciseName];
+        }
+        return prev;
+    });
+  };
+
+  const handleResetSession = () => {
+    if(window.confirm("Deseja iniciar uma nova sessão? Isso restaurará todos os exercícios.")) {
+        setCompletedExercises([]);
+    }
   };
 
   const getExerciseHistory = (exerciseName) => {
@@ -648,9 +716,20 @@ export default function App() {
                     <p className="text-[10px] text-slate-500 font-medium uppercase tracking-wider">Hipertrofia Anual</p>
                 </div>
             </div>
-            <button onClick={syncData} className="p-2 text-slate-400 hover:text-blue-600 transition-colors" title="Sincronizar Planilha">
-                <RefreshCw className="w-5 h-5" />
-            </button>
+            
+            <div className="flex gap-2">
+                {/* Botão Resetar Sessão */}
+                <button 
+                    onClick={handleResetSession}
+                    className="p-2 text-slate-400 hover:text-red-500 transition-colors" 
+                    title="Nova Sessão (Resetar Cards)"
+                >
+                    <RotateCcw className="w-5 h-5" />
+                </button>
+                <button onClick={syncData} className="p-2 text-slate-400 hover:text-blue-600 transition-colors" title="Sincronizar Planilha">
+                    <RefreshCw className="w-5 h-5" />
+                </button>
+            </div>
         </div>
 
         {/* Month Selector & Doc Link */}
@@ -712,6 +791,7 @@ export default function App() {
                         data={exercise} 
                         onSaveLog={handleSaveLog}
                         history={getExerciseHistory(exercise['Exercício'])}
+                        isCompleted={completedExercises.includes(exercise['Exercício'])}
                     />
                 ))
             ) : (
@@ -729,7 +809,7 @@ export default function App() {
 
         <div className="mt-8 text-center pb-8">
             <p className="text-xs text-slate-400 mb-2">
-                Os dados de carga são salvos automaticamente.
+                Progresso salvo automaticamente neste dispositivo.
             </p>
         </div>
       </main>
