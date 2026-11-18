@@ -1,0 +1,487 @@
+import React, { useState, useEffect, useRef } from 'react';
+import {
+  X,
+  Flame,
+  Zap,
+  RefreshCw,
+  Utensils,
+  Sparkles,
+  AlertTriangle,
+  ArrowUpCircle,
+  ArrowDownCircle,
+  Target,
+  CheckCircle2,
+  BookOpen
+} from 'lucide-react';
+
+const PUMPER_EXAMPLES = [
+  {
+    group: 'Peitoral',
+    deficit: 'Peito murcho / sem preenchimento',
+    examples: [
+      {
+        name: 'Paralelas (Dips) Curtíssimas lá embaixo',
+        desc: 'Desça até o alongamento máximo do peitoral e suba apenas alguns centímetros (1/4 inferior do movimento), bombeando sem jamais estender os cotovelos.'
+      },
+      {
+        name: 'Flexões de Braço Curtas no Fundo',
+        desc: 'Com o peito quase tocando o chão, execute micro-pulsos contínuos apenas na faixa inferior do movimento, mantendo pouquíssima extensão até a falha.'
+      }
+    ]
+  },
+  {
+    group: 'Costas',
+    deficit: 'Falta de expansão lateral (V-Taper curto)',
+    examples: [
+      {
+        name: 'Puxada Alta / Barra Fixa no Terço Inicial',
+        desc: 'Com os braços quase estendidos no topo, puxe apenas o primeiro terço do movimento focando em abrir e deprimir as dorsais no alongamento máximo.'
+      },
+      {
+        name: 'Pullover Curto na Zona de Alongamento',
+        desc: 'Na polia ou com halter, bombeie apenas na metade superior (atrás da cabeça), mantendo o grande dorsal esticado sem trazer o peso até o quadril.'
+      }
+    ]
+  },
+  {
+    group: 'Ombros',
+    deficit: 'Ombro caído / sem aspecto arredondado 3D',
+    examples: [
+      {
+        name: 'Elevação Lateral Parcial (Zona de Tensão / Burns)',
+        desc: 'Movimente os halteres apenas no arco médio-alto (entre 45° e 90°), sem nunca encostar nas coxas para impedir qualquer alívio de tensão no deltoide lateral.'
+      },
+      {
+        name: 'Crucifixo Inverso Curto (Posterior)',
+        desc: 'No Pec Deck inverso ou com halteres, execute pulsos curtos apenas no terço final de abertura para saturar de sangue a cabeça posterior do deltoide.'
+      }
+    ]
+  },
+  {
+    group: 'Bíceps',
+    deficit: 'Braço fino / falta de volume frontal',
+    examples: [
+      {
+        name: 'Rosca Scott ou Direta no Arco Médio-Baixo',
+        desc: 'Execute pulsos curtos entre quase a extensão total e 90° de flexão, evitando o descanso no topo e mantendo o ventre do bíceps sob tração contínua.'
+      },
+      {
+        name: 'Rosca Inclinada 45° (Pulsos no Alongamento)',
+        desc: 'Sentado com os braços pendentes para trás da linha do tronco, bombeie apenas o terço inferior onde a cabeça longa do bíceps está em estiramento máximo.'
+      }
+    ]
+  },
+  {
+    group: 'Tríceps',
+    deficit: 'Tríceps raso / sem a "ferradura" lateral',
+    examples: [
+      {
+        name: 'Tríceps Pulley Curto no Terço Final',
+        desc: 'Trabalhe apenas na metade inferior da extensão na polia, esmagando a cabeça lateral e medial sem deixar o antebraço subir acima da linha de 90°.'
+      },
+      {
+        name: 'Tríceps Testa / Francês Curto lá embaixo',
+        desc: 'Realize micro-repetições na base do movimento (atrás da cabeça), mantendo a cabeça longa esticada sob tensão mecânica ininterrupta.'
+      }
+    ]
+  },
+  {
+    group: 'Pernas',
+    deficit: 'Coxa fina / sem curvatura externa (Sweep)',
+    examples: [
+      {
+        name: 'Agachamento Hack ou Livre no Terço Inferior',
+        desc: 'Desça abaixo da paralela e pulse apenas no 1/3 mais baixo do movimento (estilo Tom Platz), sem subir até o topo para não aliviar a pressão nos quadríceps.'
+      },
+      {
+        name: 'Cadeira Extensora ou Mesa Flexora em Pulsos',
+        desc: 'Na Extensora, bombeie apenas no terço final de contração máxima; na Mesa Flexora, bombeie no terço inicial de alongamento profundo dos isquiotibiais.'
+      }
+    ]
+  },
+  {
+    group: 'Panturrilhas',
+    deficit: 'Canela fina / gastrocnêmio alto e teimoso',
+    examples: [
+      {
+        name: 'Gêmeos em Pé (Pulsos no Alongamento Profundo)',
+        desc: 'Com os calcanhares abaixo do nível do degrau, bombeie curtíssimo da base máxima até a linha neutra, forçando a expansão da fáscia sob estiramento.'
+      },
+      {
+        name: 'Gêmeos no Pico de Contração (Burns Superiores)',
+        desc: 'Na ponta dos pés, execute micro-repetições contínuas apenas no terço superior do movimento, mantendo o gastrocnêmio esmagado sem descer o calcanhar.'
+      }
+    ]
+  }
+];
+
+export default function PrinciplesModal({ isOpen, onClose }) {
+  const [selectedPumperGroup, setSelectedPumperGroup] = useState('Peitoral');
+  const scrollContainerRef = useRef(null);
+
+  // Bloqueia o scroll da página de fundo e fecha com ESC
+  useEffect(() => {
+    if (!isOpen) return;
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isOpen, onClose]);
+
+  if (!isOpen) return null;
+
+  const scrollToSection = (id) => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
+
+  const activePumper = PUMPER_EXAMPLES.find((p) => p.group === selectedPumperGroup) || PUMPER_EXAMPLES[0];
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-slate-950/85 backdrop-blur-sm p-0 sm:p-4 animate-in fade-in"
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-lg max-h-[92vh] sm:max-h-[88vh] bg-slate-900 border-t sm:border border-slate-700/80 rounded-t-3xl sm:rounded-2xl shadow-2xl flex flex-col overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Cabeçalho Fixo do Modal */}
+        <div className="px-5 pt-4 pb-3 border-b border-slate-800 bg-slate-900/95 sticky top-0 z-10">
+          {/* Puxador mobile */}
+          <div className="w-10 h-1 bg-slate-700 rounded-full mx-auto mb-3 sm:hidden" />
+
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="bg-gradient-to-br from-amber-500 to-orange-600 p-2.5 rounded-xl shadow-lg shadow-amber-600/20 flex-shrink-0">
+                <BookOpen className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <h2 className="text-base sm:text-lg font-extrabold text-white leading-tight">
+                  Princípios Básicos da Hipertrofia
+                </h2>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  As 5 diretrizes fundamentais para extrair 100% da periodização
+                </p>
+              </div>
+            </div>
+
+            <button
+              onClick={onClose}
+              className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white transition-colors cursor-pointer"
+              title="Fechar (Esc)"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+
+          {/* Pílulas de Navegação Rápida */}
+          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar mt-3 pt-1">
+            {[
+              { id: 'principio-1', label: '1. Até a Falha', color: 'text-rose-400 border-rose-800/60 bg-rose-950/40' },
+              { id: 'principio-2', label: '2. Tensão Contínua', color: 'text-amber-400 border-amber-800/60 bg-amber-950/40' },
+              { id: 'principio-3', label: '3. Descanso ABC', color: 'text-blue-400 border-blue-800/60 bg-blue-950/40' },
+              { id: 'principio-4', label: '4. Alimentação', color: 'text-emerald-400 border-emerald-800/60 bg-emerald-950/40' },
+              { id: 'principio-5', label: '5. Pumpers', color: 'text-purple-400 border-purple-800/60 bg-purple-950/40' }
+            ].map((nav) => (
+              <button
+                key={nav.id}
+                onClick={() => scrollToSection(nav.id)}
+                className={`px-2.5 py-1 rounded-full text-[11px] font-bold whitespace-nowrap border transition-transform active:scale-95 cursor-pointer ${nav.color}`}
+              >
+                {nav.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Corpo com Scroll dos 5 Princípios */}
+        <div
+          ref={scrollContainerRef}
+          className="flex-1 overflow-y-auto px-5 py-4 space-y-5 text-sm text-slate-300"
+        >
+          {/* PRINCÍPIO 1: ATÉ A FALHA */}
+          <section
+            id="principio-1"
+            className="bg-slate-950/70 border border-rose-900/50 rounded-2xl p-4 space-y-3 scroll-mt-4"
+          >
+            <div className="flex items-center gap-2.5">
+              <div className="bg-rose-950 border border-rose-800/70 p-2 rounded-xl text-rose-400">
+                <Flame className="w-5 h-5" />
+              </div>
+              <div>
+                <span className="text-[10px] font-extrabold uppercase tracking-widest text-rose-400">
+                  Princípio 01
+                </span>
+                <h3 className="text-base font-bold text-white leading-tight">
+                  Até a Falha: Repetições são Régua, Não Limite
+                </h3>
+              </div>
+            </div>
+
+            <p className="text-xs sm:text-sm leading-relaxed text-slate-300">
+              Nós contamos repetições apenas para <strong className="text-white">registro histórico e calibração de carga</strong> — nunca como um freio para interromper a série. Se você atingiu o número de repetições-alvo prescrito na planilha e ainda consegue fazer mais, <strong className="text-rose-300">você não para só porque bateu a meta numérica</strong>: continue executando até falhar de verdade.
+            </p>
+
+            {/* Régua Visual de Ajuste de Carga */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1">
+              <div className="bg-emerald-950/30 border border-emerald-800/50 rounded-xl p-2.5">
+                <div className="flex items-center gap-1.5 text-emerald-400 font-bold text-xs mb-1">
+                  <ArrowUpCircle className="w-4 h-4 flex-shrink-0" />
+                  <span>Passou do Teto?</span>
+                </div>
+                <p className="text-[11px] text-slate-300 leading-snug">
+                  Fez mais que o limite superior das reps-alvo antes de falhar? <strong className="text-emerald-300">Suba a carga</strong> no próximo treino/série.
+                </p>
+              </div>
+
+              <div className="bg-blue-950/30 border border-blue-800/50 rounded-xl p-2.5">
+                <div className="flex items-center gap-1.5 text-blue-400 font-bold text-xs mb-1">
+                  <Target className="w-4 h-4 flex-shrink-0" />
+                  <span>Na Faixa-Alvo?</span>
+                </div>
+                <p className="text-[11px] text-slate-300 leading-snug">
+                  A carga está calibrada. Mas lembre-se: <strong className="text-blue-300">vá até a falha real</strong>, mesmo que passe 1 ou 2 reps.
+                </p>
+              </div>
+
+              <div className="bg-amber-950/30 border border-amber-800/50 rounded-xl p-2.5">
+                <div className="flex items-center gap-1.5 text-amber-400 font-bold text-xs mb-1">
+                  <ArrowDownCircle className="w-4 h-4 flex-shrink-0" />
+                  <span>Menos de 3 Reps?</span>
+                </div>
+                <p className="text-[11px] text-slate-300 leading-snug">
+                  Fez menos que 3 repetições bem-feitas? O ego passou da conta: <strong className="text-amber-300">desça a carga</strong> imediatamente.
+                </p>
+              </div>
+            </div>
+          </section>
+
+          {/* PRINCÍPIO 2: TENSÃO CONTÍNUA */}
+          <section
+            id="principio-2"
+            className="bg-slate-950/70 border border-amber-900/50 rounded-2xl p-4 space-y-3 scroll-mt-4"
+          >
+            <div className="flex items-center gap-2.5">
+              <div className="bg-amber-950 border border-amber-800/70 p-2 rounded-xl text-amber-400">
+                <Zap className="w-5 h-5" />
+              </div>
+              <div>
+                <span className="text-[10px] font-extrabold uppercase tracking-widest text-amber-400">
+                  Princípio 02
+                </span>
+                <h3 className="text-base font-bold text-white leading-tight">
+                  Tensão Contínua: Sem Pausa ou "Ginga" nos Picos
+                </h3>
+              </div>
+            </div>
+
+            <p className="text-xs sm:text-sm leading-relaxed text-slate-300">
+              Especialmente nas transições de <strong className="text-white">pico concêntrico</strong> (topo da contração, onde muitos travam a articulação para descansar o músculo nos ossos) e de <strong className="text-white">pico excêntrico</strong> (fundo do alongamento, onde surge a tentação de relaxar, quicar o peso ou "gingar" o tronco), seu instinto vai querer aliviar o sofrimento.
+            </p>
+
+            <div className="bg-amber-950/25 border border-amber-800/40 rounded-xl p-3 text-xs text-amber-100/90 space-y-1.5">
+              <p className="font-bold text-amber-300">
+                Regra de Execução Ininterrupta:
+              </p>
+              <p className="leading-relaxed">
+                Nunca pause para descansar nas extremidades e nunca "gingue" o corpo, <strong className="text-white">a não ser que a descrição específica do exercício na planilha permita expressamente</strong> esse comportamento (como em técnicas de <em>Rest-Pause</em>, <em>Breathing Squats</em>, <em>Contração Estática</em> ou <em>Cheating planejado</em>). A tensão mecânica não zera só porque você contou uma repetição — ela é um fluxo único do início ao fim da série.
+              </p>
+            </div>
+          </section>
+
+          {/* PRINCÍPIO 3: DESCANSO ADEQUADO */}
+          <section
+            id="principio-3"
+            className="bg-slate-950/70 border border-blue-900/50 rounded-2xl p-4 space-y-3 scroll-mt-4"
+          >
+            <div className="flex items-center gap-2.5">
+              <div className="bg-blue-950 border border-blue-800/70 p-2 rounded-xl text-blue-400">
+                <RefreshCw className="w-5 h-5" />
+              </div>
+              <div>
+                <span className="text-[10px] font-extrabold uppercase tracking-widest text-blue-400">
+                  Princípio 03
+                </span>
+                <h3 className="text-base font-bold text-white leading-tight">
+                  Descanso Adequado & Rotação de Foco (ABC / CAB / BCA)
+                </h3>
+              </div>
+            </div>
+
+            <p className="text-xs sm:text-sm leading-relaxed text-slate-300">
+              O treino destrói microfibras; o músculo <strong className="text-white">cresce durante a recuperação</strong>. A arquitetura em três divisões (<strong className="text-blue-300">ABC / CAB / BCA</strong>) existe exatamente para permitir intensidade brutal no dia do estímulo e janela biológica completa de reconstrução nos dias seguintes.
+            </p>
+
+            <p className="text-xs sm:text-sm leading-relaxed text-slate-300">
+              Ao longo dos 12 meses, a periodização é viva: <strong className="text-white">damos foco maior e mais agressivo em determinados grupos musculares em alguns meses</strong> para forçar adaptação, mas nos meses seguintes <strong className="text-blue-300">esse foco muda ou cessa estrategicamente</strong>. Respeite essa ondulação para consolidar os ganhos e blindar tendões, articulações e sistema nervoso central.
+            </p>
+          </section>
+
+          {/* PRINCÍPIO 4: ALIMENTAÇÃO CONTEXTUALIZADA */}
+          <section
+            id="principio-4"
+            className="bg-slate-950/70 border border-emerald-900/50 rounded-2xl p-4 space-y-3 scroll-mt-4"
+          >
+            <div className="flex items-center gap-2.5">
+              <div className="bg-emerald-950 border border-emerald-800/70 p-2 rounded-xl text-emerald-400">
+                <Utensils className="w-5 h-5" />
+              </div>
+              <div>
+                <span className="text-[10px] font-extrabold uppercase tracking-widest text-emerald-400">
+                  Princípio 04
+                </span>
+                <h3 className="text-base font-bold text-white leading-tight">
+                  Alimentação Contextualizada: A Base Anabólica
+                </h3>
+              </div>
+            </div>
+
+            <p className="text-xs sm:text-sm leading-relaxed text-slate-300">
+              O aspecto nutricional completo é individual e complexo, mas nenhum treino sobrevive sem matéria-prima. Via de regra, siga estas <strong className="text-white">3 diretrizes inegociáveis</strong> todos os dias:
+            </p>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              <div className="bg-slate-900 border border-emerald-800/40 rounded-xl p-3">
+                <div className="text-lg font-extrabold text-emerald-400">2g / kg</div>
+                <div className="text-[11px] font-bold text-white mt-0.5">Proteína Diária Total</div>
+                <p className="text-[11px] text-slate-400 mt-1 leading-snug">
+                  Consuma cerca de 2g de proteína por quilo corporal ao dia (ex.: 80kg = ~160g/dia) para manter o balanço nitrogenado positivo.
+                </p>
+              </div>
+
+              <div className="bg-slate-900 border border-emerald-800/40 rounded-xl p-3">
+                <div className="text-lg font-extrabold text-emerald-400">~20 min</div>
+                <div className="text-[11px] font-bold text-white mt-0.5">Carbos Amplos Pós-Treino</div>
+                <p className="text-[11px] text-slate-400 mt-1 leading-snug">
+                  Ingira carboidratos amplos cerca de 20 min após o treino para frear o cortisol, gerar pico de insulina e repor o glicogênio muscular.
+                </p>
+              </div>
+
+              <div className="bg-slate-900 border border-emerald-800/40 rounded-xl p-3">
+                <div className="text-lg font-extrabold text-emerald-400">Mín. 25g</div>
+                <div className="text-[11px] font-bold text-white mt-0.5">Proteína até 1h Depois</div>
+                <p className="text-[11px] text-slate-400 mt-1 leading-snug">
+                  Garanta ao menos 25g de proteína de alta absorção em até 1 hora após o término do treino para disparar a síntese proteica miofibrilar.
+                </p>
+              </div>
+            </div>
+          </section>
+
+          {/* PRINCÍPIO 5: PUMPERS (PARA AVANÇADOS) */}
+          <section
+            id="principio-5"
+            className="bg-slate-950/70 border border-purple-900/60 rounded-2xl p-4 space-y-3 scroll-mt-4"
+          >
+            <div className="flex items-center gap-2.5">
+              <div className="bg-purple-950 border border-purple-800/70 p-2 rounded-xl text-purple-400">
+                <Sparkles className="w-5 h-5" />
+              </div>
+              <div>
+                <span className="text-[10px] font-extrabold uppercase tracking-widest text-purple-400">
+                  Princípio 05 • Avançados
+                </span>
+                <h3 className="text-base font-bold text-white leading-tight">
+                  PUMPERS: Correção de Pontos Fracos por Saturação Diária
+                </h3>
+              </div>
+            </div>
+
+            {/* Aviso importante */}
+            <div className="bg-purple-950/35 border border-purple-700/50 rounded-xl p-3 flex items-start gap-2.5">
+              <AlertTriangle className="w-4 h-4 text-purple-300 flex-shrink-0 mt-0.5" />
+              <p className="text-xs text-purple-100 leading-relaxed">
+                <strong className="text-purple-300 uppercase">Filtro de Maturidade:</strong> Esta técnica serve apenas para quem já possui um físico sólido e está com <strong className="text-white">déficit de volume específico</strong> em um grupo isolado comparado ao cenário total (ex.: peito murcho ou braço fino perto do resto do tronco). <em>Se você ainda é iniciante ("frango" no geral), não pense nisso — seu foco é ganhar massa global nos básicos.</em>
+              </p>
+            </div>
+
+            <div className="bg-slate-900 border border-slate-800 rounded-xl p-3 text-xs space-y-1">
+              <div className="font-bold text-white flex items-center gap-1.5">
+                <CheckCircle2 className="w-4 h-4 text-purple-400" />
+                Protocolo Diário: 4 séries × Máximas Repetições (Todos os Dias)
+              </div>
+              <p className="text-slate-300 leading-relaxed">
+                Ao final do seu treino diário, escolha <strong className="text-purple-300">1 exercício bem isolado</strong> para o grupo em déficit e faça <strong className="text-white">4 séries até a exaustão com repetições curtas (parciais na zona de maior tensão/alongamento)</strong>, sem bloqueio articular, apenas para hiper-irrigar a musculatura e expandir a fáscia.
+              </p>
+            </div>
+
+            {/* Seletor de Grupo Muscular para ver os 2 exemplos de Pumper */}
+            <div>
+              <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">
+                Selecione o Grupo Muscular (2 exemplos de Pumpers Curtos):
+              </div>
+
+              <div className="flex flex-wrap gap-1.5 mb-3">
+                {PUMPER_EXAMPLES.map((item) => (
+                  <button
+                    key={item.group}
+                    type="button"
+                    onClick={() => setSelectedPumperGroup(item.group)}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-bold border transition-all cursor-pointer ${
+                      selectedPumperGroup === item.group
+                        ? 'bg-purple-600 text-white border-purple-400 shadow-md shadow-purple-600/20'
+                        : 'bg-slate-900 text-slate-400 border-slate-800 hover:border-slate-700 hover:text-slate-200'
+                    }`}
+                  >
+                    {item.group}
+                  </button>
+                ))}
+              </div>
+
+              {/* Card com os 2 exemplos do grupo selecionado */}
+              <div className="bg-slate-900/90 border border-purple-800/40 rounded-xl p-3.5 space-y-2.5">
+                <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+                  <span className="text-xs font-extrabold text-purple-300 uppercase tracking-wider">
+                    Pumpers para {activePumper.group}
+                  </span>
+                  <span className="text-[11px] text-slate-400 italic">
+                    Alvo: {activePumper.deficit}
+                  </span>
+                </div>
+
+                <div className="space-y-2.5">
+                  {activePumper.examples.map((ex, idx) => (
+                    <div
+                      key={idx}
+                      className="bg-slate-950/80 border border-slate-800/80 rounded-xl p-2.5"
+                    >
+                      <div className="text-xs font-bold text-white mb-1 flex items-center gap-1.5">
+                        <span className="bg-purple-900/70 text-purple-200 text-[10px] font-extrabold w-4 h-4 rounded-full flex items-center justify-center flex-shrink-0">
+                          {idx + 1}
+                        </span>
+                        {ex.name}
+                      </div>
+                      <p className="text-xs text-slate-300 leading-relaxed pl-5">
+                        {ex.desc}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </section>
+        </div>
+
+        {/* Rodapé Fixo de Fechamento */}
+        <div className="p-4 border-t border-slate-800 bg-slate-900/95">
+          <button
+            onClick={onClose}
+            className="w-full py-2.5 px-4 rounded-xl bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white font-bold text-sm shadow-lg shadow-blue-600/20 transition-all cursor-pointer"
+          >
+            Entendi • Voltar ao Treino
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}

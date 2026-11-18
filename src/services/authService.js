@@ -1,0 +1,63 @@
+const SESSION_KEY = "irontracker_auth_session";
+
+export function getCurrentSession() {
+  try {
+    const raw = localStorage.getItem(SESSION_KEY) || sessionStorage.getItem(SESSION_KEY);
+    if (!raw) return null;
+    const session = JSON.parse(raw);
+    if (!session || !session.user || !session.user.username) return null;
+
+    if (session.token) {
+      const [payloadB64] = session.token.split('.');
+      if (payloadB64) {
+        const payloadJson = atob(payloadB64.replace(/-/g, '+').replace(/_/g, '/'));
+        const payload = JSON.parse(payloadJson);
+        if (payload.exp && Date.now() > payload.exp) {
+          logoutUser();
+          return null;
+        }
+      }
+    }
+    return session;
+  } catch {
+    return null;
+  }
+}
+
+export async function loginUser(username, password, rememberMe = true) {
+  try {
+    const response = await fetch('/api/auth', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password })
+    });
+
+    const data = await response.json();
+    if (!response.ok || !data.ok) {
+      return {
+        ok: false,
+        error: data.error || "Não foi possível autenticar. Verifique usuário e senha."
+      };
+    }
+
+    const sessionData = {
+      user: data.user,
+      token: data.token,
+      loggedInAt: new Date().toISOString()
+    };
+
+    const targetStorage = rememberMe ? localStorage : sessionStorage;
+    targetStorage.setItem(SESSION_KEY, JSON.stringify(sessionData));
+    return { ok: true, user: data.user };
+  } catch {
+    return {
+      ok: false,
+      error: "Erro de conexão com o servidor. Verifique sua internet."
+    };
+  }
+}
+
+export function logoutUser() {
+  localStorage.removeItem(SESSION_KEY);
+  sessionStorage.removeItem(SESSION_KEY);
+}

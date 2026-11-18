@@ -1,16 +1,45 @@
-# React + Vite
+# IronTracker — Hipertrofia Anual
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Aplicativo web mobile-first para acompanhamento de treinos de musculação periodizados ao longo dos **12 meses do ano** (divisão **A / B / C**), integrado ao **Google Sheets** e hospedado na **Vercel**.
 
-Currently, two official plugins are available:
+---
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## Principais Funcionalidades
 
-## React Compiler
+- **Autenticação via Google Sheets (`POST /api/auth`):**
+  - Controle de acesso gerenciado diretamente na aba **`Usuarios`** da planilha do Google Sheets.
+  - Validação realizada no servidor (Vercel Serverless Function) sem expor a lista de usuários e senhas no navegador.
+  - Suporta senhas em texto simples ou hash SHA-256 (`sha256:<hash>`), além de ativação/desativação instantânea (`ativo = SIM` ou `NAO`).
+- **Sincronização Inteligente com Cache de Borda (`GET /api/workouts`):**
+  - Cache CDN de 5 minutos (`s-maxage=300, stale-while-revalidate=600`), suportando facilmente **100+ usuários diários sem custo** no plano gratuito da Vercel e dentro dos limites do Google Sheets.
+  - Fallback completo offline (`src/data/fallbackWorkouts.js`) sincronizado com os 240 exercícios da planilha.
+- **Histórico de Cargas Unificado entre Meses:**
+  - Normalizador inteligente (`getCanonicalExerciseKey`) que unifica o histórico do mesmo exercício mesmo quando há variações de nome ou prefixo `OPCIONAL` entre meses diferentes.
+  - Migração transparente dos dados anteriores do `localStorage` (`gym_tracker_logs`) para o perfil do usuário logado.
+  - Indicador de progressão de carga (`+2kg`), preenchimento rápido da última carga com 1 toque, exclusão de lançamentos individuais e **Exportação/Importação de Backup JSON**.
+- **UX de Academia:**
+  - Barra de progresso da sessão atual (obrigatórios e total).
+  - Possibilidade de **reabrir/desmarcar** qualquer exercício concluído individualmente.
+  - Chips de filtro rápido por **Grupo Muscular** e botão para **Ocultar/Mostrar Opcionais**.
+  - **Cronômetro de Descanso Flutuante** com presets (`15s` Rest-Pause, `30s`, `60s`, `90s`, `120s`, `+15s`) e alerta sonoro via Web Audio API.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+---
 
-## Expanding the ESLint configuration
+## Estrutura da Planilha Google Sheets
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+A planilha base possui 3 abas:
+1. **`Table 1` (`gid: 190965404`):** Base dos 240 exercícios nos 12 meses.
+2. **`Usuarios` (`gid: 416797079`):** Controle de acesso ao aplicativo com as colunas:
+   - `usuario` | `senha` | `nome` | `ativo` (`SIM`/`NAO`) | `perfil` (`admin`/`user`) | `observacao`
+3. **`Source References` (`gid: 201829341`):** Referências bibliográficas da periodização.
+
+---
+
+## Como Executar Localmente
+
+```bash
+npm install
+npm run dev
+```
+
+O servidor local do Vite já inclui middleware integrado para responder às rotas `/api/auth` e `/api/workouts`.
