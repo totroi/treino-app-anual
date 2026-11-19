@@ -63,6 +63,95 @@ export const normalizeMuscleGroup = (rawGroup) => {
   return MUSCLE_GROUP_MAP[trimmed] || trimmed;
 };
 
+const PURE_FAILURE_SET = new Set([
+  "até a falha",
+  "ate a falha",
+  "até a falha positiva",
+  "ate a falha positiva",
+  "até a falha absoluta",
+  "ate a falha absoluta",
+  "falha total",
+  "exaustão total",
+  "exaustao total",
+  "falha positiva"
+]);
+
+export const cleanAdvancedTechnique = (rawTech) => {
+  if (!rawTech) return "";
+  let t = rawTech.trim();
+  if (!t) return "";
+  if (PURE_FAILURE_SET.has(t.toLowerCase())) return "";
+
+  // Remove combinações redundantes com "Até a falha"
+  t = t
+    .replace(/\s*\/\s*At[eé]\s+a\s+falha/gi, "")
+    .replace(/At[eé]\s+a\s+falha\s*\/\s*/gi, "")
+    .replace(/\s+ou\s+At[eé]\s+a\s+falha/gi, "")
+    .replace(/^At[eé]\s+a\s+falha\s*\((.+)\)$/i, "$1")
+    .trim();
+
+  if (PURE_FAILURE_SET.has(t.toLowerCase())) return "";
+  return t;
+};
+
+/**
+ * Extrai um placeholder limpo e amigável para o campo Reps a partir de 'Séries/Reps'
+ */
+export const getRepsPlaceholder = (seriesRepsText) => {
+  if (!seriesRepsText) return "10";
+  const s = seriesRepsText.trim();
+
+  // Pega o trecho logo após o primeiro 'x' (se existir)
+  const afterX = /\bx\b/i.test(s) ? s.split(/\bx\b/i)[1].trim() : s;
+
+  // Corta antes de ' ou ', '/', '+' para não colar números de fórmulas alternativas
+  const firstClause = afterX.split(/\s+ou\s+|\/|\+/i)[0].trim();
+
+  // Se for tempo em segundos (ex: '30 seg.', '20-30 seg.', '30s')
+  if (/(seg|segundos|\d+s\b)/i.test(firstClause)) {
+    const mSec = firstClause.match(/\d+(?:\s*-\s*\d+)?/);
+    return mSec ? `${mSec[0].replace(/\s+/g, "")}s` : "30s";
+  }
+
+  // Se for '5 a 8' -> '5-8'
+  const mA = firstClause.match(/(\d+)\s+a\s+(\d+)/i);
+  if (mA) {
+    return `${mA[1]}-${mA[2]}`;
+  }
+
+  // Faixa '8-12' ou número simples '10'
+  const mNum = firstClause.match(/\d+(?:\s*-\s*\d+)?/);
+  if (mNum) {
+    return mNum[0].replace(/\s+/g, "");
+  }
+
+  if (/m[aá]x|falha/i.test(firstClause)) {
+    return "máx";
+  }
+
+  return "10";
+};
+
+/**
+ * Extrai o tempo de descanso recomendado (em segundos) a partir da coluna 'Descanso'
+ * ou do contexto do exercício para acionar o cronômetro com 1 clique.
+ */
+export const parseRestSeconds = (descansoText = "", tecnicaText = "", groupText = "") => {
+  const d = (descansoText || "").toLowerCase();
+  const tech = (tecnicaText || "").toLowerCase();
+  const group = (groupText || "").toLowerCase();
+
+  if (d.includes("15s") || tech.includes("rest-pause")) return 15;
+  if (d.includes("120s")) return 120;
+  if (d.includes("90-120s") || d.includes("90s")) return 90;
+  if (d.includes("75-90s") || d.includes("75s") || d.includes("60-90s")) return 75;
+  if (d.includes("30-45s") || d.includes("30s") || group.includes("panturrilha") || group.includes("abdômen")) return 30;
+  if (d.includes("45-60s") || d.includes("45s")) return 45;
+  if (d.includes("60s") || d.includes("60-75s")) return 60;
+
+  return 60;
+};
+
 export const isOptionalExercise = (rawName) => {
   if (!rawName) return false;
   return rawName.trim().toUpperCase().startsWith("OPCIONAL");
@@ -265,6 +354,7 @@ export const parseCSV = (text) => {
 
     if (obj['Exercício']) {
       obj['Grupo muscular'] = normalizeMuscleGroup(obj['Grupo muscular']);
+      obj['Técnica Avançada'] = cleanAdvancedTechnique(obj['Técnica Avançada']);
       result.push(obj);
     }
   }

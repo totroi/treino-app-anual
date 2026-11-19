@@ -15,8 +15,12 @@ import {
 import {
   isOptionalExercise,
   getDisplayExerciseName,
-  getCanonicalExerciseKey
+  getCanonicalExerciseKey,
+  getRepsPlaceholder,
+  parseRestSeconds,
+  cleanAdvancedTechnique
 } from '../utils/exerciseNormalizer';
+import { unlockTimerAudio } from '../utils/timerAudio';
 
 export default function ExerciseCard({
   data,
@@ -38,16 +42,10 @@ export default function ExerciseCard({
   const canonicalKey = getCanonicalExerciseKey(rawExerciseName);
 
   const lastLog = history && history.length > 0 ? history[0] : null;
-
-  // Detecta sugestão inteligente de descanso pela técnica/grupo
-  const suggestedRestSeconds = (() => {
-    const tech = (data['Técnica Avançada'] || '').toLowerCase();
-    const obs = (data['Observação'] || '').toLowerCase();
-    const group = (data['Grupo muscular'] || '').toLowerCase();
-    if (tech.includes('rest-pause') || obs.includes('15s')) return 15;
-    if (group.includes('panturrilha') || obs.includes('30s') || obs.includes('30 seg')) return 30;
-    return 60;
-  })();
+  const advancedTechnique = cleanAdvancedTechnique(data['Técnica Avançada']);
+  const restDescription = (data['Descanso'] || '').trim() || '60-75s (Hipertrofia controlada)';
+  const restSeconds = parseRestSeconds(restDescription, advancedTechnique, data['Grupo muscular']);
+  const defaultRepsPlaceholder = getRepsPlaceholder(data['Séries/Reps']);
 
   const handleSave = () => {
     if (!weight && weight !== '0') return;
@@ -64,7 +62,7 @@ export default function ExerciseCard({
     if (lastLog.reps) setReps(String(lastLog.reps));
   };
 
-  // --- MODO COMPACTO (EXERCÍCIO CONCLUÍDO) ---
+  // --- MODO COMPACTO (EXERCÍCIO CONCLUÍCIO) ---
   if (isCompleted) {
     return (
       <div className="bg-emerald-950/40 border border-emerald-800/80 rounded-xl p-3 mb-2 flex items-center justify-between gap-2 shadow-sm transition-all">
@@ -115,12 +113,6 @@ export default function ExerciseCard({
   const headerStyles = isOptional
     ? "bg-purple-950/30 border-purple-800/60"
     : "bg-slate-900/80 border-slate-800";
-
-  const defaultRepsPlaceholder = (() => {
-    const sr = data['Séries/Reps'] || '';
-    const parts = sr.split('x');
-    return parts[1] ? parts[1].trim().replace(/[^0-9-]/g, '') || '10' : '10';
-  })();
 
   return (
     <div className={`rounded-xl border overflow-hidden mb-4 transition-all hover:border-slate-700 ${cardStyles}`}>
@@ -174,8 +166,8 @@ export default function ExerciseCard({
         </div>
       </div>
 
-      {/* Detalhes: Séries/Reps, Cadência, Técnica Avançada */}
-      <div className="p-4 grid grid-cols-2 gap-3 text-sm">
+      {/* Detalhes: Séries/Reps, Cadência, Descanso e Técnica Avançada (se houver) */}
+      <div className="p-4 grid grid-cols-2 gap-2.5 text-sm">
         <div className="flex items-start gap-2 bg-slate-950/40 p-2.5 rounded-lg border border-slate-800/60">
           <TrendingUp className={`w-4 h-4 mt-0.5 flex-shrink-0 ${isOptional ? 'text-purple-400' : 'text-blue-400'}`} />
           <div className="min-w-0">
@@ -192,29 +184,44 @@ export default function ExerciseCard({
           </div>
         </div>
 
-        {data['Técnica Avançada'] && (
-          <div className="col-span-2 flex items-center justify-between gap-2 bg-amber-950/25 p-2.5 rounded-lg border border-amber-800/40">
-            <div className="flex items-start gap-2">
-              <Zap className="w-4 h-4 text-amber-400 mt-0.5 flex-shrink-0" />
-              <div>
-                <span className="block text-amber-400 text-[10px] font-bold uppercase tracking-wider">
-                  Técnica Avançada
-                </span>
-                <span className="text-amber-200 text-xs font-medium">{data['Técnica Avançada']}</span>
-              </div>
+        {/* Linha de Descanso Contextualizado + Botão Rápido do Cronômetro */}
+        <div className="col-span-2 flex items-center justify-between gap-2 bg-slate-950/40 p-2.5 rounded-lg border border-slate-800/60">
+          <div className="flex items-start gap-2 min-w-0">
+            <Timer className={`w-4 h-4 mt-0.5 flex-shrink-0 ${isOptional ? 'text-purple-400' : 'text-blue-400'}`} />
+            <div className="min-w-0">
+              <span className="block text-slate-400 text-[10px] font-bold uppercase tracking-wider">
+                Descanso Recomendado
+              </span>
+              <span className="text-slate-200 text-xs font-medium">{restDescription}</span>
             </div>
+          </div>
 
-            {onTriggerTimer && (
-              <button
-                type="button"
-                onClick={() => onTriggerTimer(suggestedRestSeconds)}
-                className="flex items-center gap-1 px-2 py-1 rounded-md bg-amber-900/40 hover:bg-amber-800/60 border border-amber-700/50 text-amber-200 text-[11px] font-bold flex-shrink-0 transition-colors cursor-pointer"
-                title={`Iniciar descanso de ${suggestedRestSeconds}s`}
-              >
-                <Timer className="w-3.5 h-3.5" />
-                {suggestedRestSeconds}s
-              </button>
-            )}
+          {onTriggerTimer && (
+            <button
+              type="button"
+              onClick={() => {
+                unlockTimerAudio();
+                onTriggerTimer(restSeconds);
+              }}
+              className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-blue-950/70 hover:bg-blue-900/80 border border-blue-700/60 text-blue-300 hover:text-white text-xs font-bold flex-shrink-0 transition-colors cursor-pointer"
+              title={`Iniciar cronômetro de ${restSeconds}s`}
+            >
+              <Timer className="w-3.5 h-3.5" />
+              Iniciar {restSeconds}s
+            </button>
+          )}
+        </div>
+
+        {/* Técnica Avançada: exibida APENAS se não estiver em branco na planilha */}
+        {advancedTechnique && (
+          <div className="col-span-2 flex items-start gap-2 bg-amber-950/25 p-2.5 rounded-lg border border-amber-800/40">
+            <Zap className="w-4 h-4 text-amber-400 mt-0.5 flex-shrink-0" />
+            <div>
+              <span className="block text-amber-400 text-[10px] font-bold uppercase tracking-wider">
+                Técnica Avançada
+              </span>
+              <span className="text-amber-200 text-xs font-medium">{advancedTechnique}</span>
+            </div>
           </div>
         )}
       </div>
@@ -247,12 +254,12 @@ export default function ExerciseCard({
               className="w-full p-2 rounded-lg border border-slate-700 bg-slate-900 text-white text-sm focus:ring-2 focus:ring-blue-500 outline-none"
             />
           </div>
-          <div className="w-20">
+          <div className="w-24">
             <label className="text-xs text-slate-400 mb-1 block font-medium">Reps</label>
             <input
               type="number"
               inputMode="numeric"
-              placeholder={defaultRepsPlaceholder}
+              placeholder={`ex: ${defaultRepsPlaceholder}`}
               value={reps}
               onChange={(e) => setReps(e.target.value)}
               onKeyDown={(e) => { if (e.key === 'Enter') handleSave(); }}

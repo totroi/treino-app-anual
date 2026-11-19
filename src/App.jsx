@@ -13,7 +13,9 @@ import {
   Sparkles,
   CheckCircle2,
   User,
-  BookOpen
+  BookOpen,
+  Trash2,
+  AlertTriangle
 } from 'lucide-react';
 import { INITIAL_CSV_DATA } from './data/fallbackWorkouts';
 import {
@@ -32,7 +34,8 @@ import {
   loadUserCompletedSession,
   saveUserCompletedSession,
   exportUserBackup,
-  parseImportedBackup
+  parseImportedBackup,
+  resetAllUserProgress
 } from './services/storageService';
 import LoginScreen from './components/LoginScreen';
 import ExerciseCard from './components/ExerciseCard';
@@ -56,6 +59,7 @@ export default function App() {
   const [hideOptionals, setHideOptionals] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showPrinciplesModal, setShowPrinciplesModal] = useState(false);
+  const [showResetConfirmModal, setShowResetConfirmModal] = useState(false);
 
   // Histórico e Sessão por usuário logado
   const [workoutLogs, setWorkoutLogs] = useState({});
@@ -264,6 +268,15 @@ export default function App() {
     setShowUserMenu(false);
   };
 
+  const handleConfirmFullReset = () => {
+    if (!currentUser) return;
+    resetAllUserProgress(currentUser.username);
+    setWorkoutLogs({});
+    setCompletedExercises([]);
+    setShowResetConfirmModal(false);
+    showToast('Todo o progresso foi resetado!');
+  };
+
   const handleImportFile = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -405,6 +418,17 @@ export default function App() {
                 />
 
                 <div className="border-t border-slate-800 my-1" />
+
+                <button
+                  onClick={() => {
+                    setShowUserMenu(false);
+                    setShowResetConfirmModal(true);
+                  }}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-amber-400 hover:bg-amber-950/40 rounded-lg transition-colors cursor-pointer"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  Resetar Todo o Progresso
+                </button>
 
                 <button
                   onClick={handleLogout}
@@ -587,6 +611,66 @@ export default function App() {
           </p>
         </div>
       </main>
+
+      {/* Modal de Confirmação de Reset de Todo o Progresso */}
+      {showResetConfirmModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/85 backdrop-blur-sm p-4 animate-in fade-in"
+          onClick={() => setShowResetConfirmModal(false)}
+        >
+          <div
+            className="w-full max-w-sm bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl p-5 text-slate-100"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center gap-3 mb-3">
+              <div className="bg-red-950 border border-red-800/70 p-2.5 rounded-xl text-red-400 flex-shrink-0">
+                <AlertTriangle className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="text-base font-extrabold text-white leading-tight">
+                  Resetar Todo o Progresso?
+                </h3>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Conta: @{currentUser.username}
+                </p>
+              </div>
+            </div>
+
+            <p className="text-xs text-slate-300 leading-relaxed mb-4">
+              Esta ação apagará <strong className="text-red-300">todo o histórico de cargas registradas</strong> e os exercícios concluídos neste dispositivo. Essa operação não pode ser desfeita.
+            </p>
+
+            <button
+              type="button"
+              onClick={() => {
+                exportUserBackup(currentUser.username, workoutLogs, completedExercises);
+                showToast('Backup salvo antes do reset!');
+              }}
+              className="w-full mb-3 py-2 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-bold text-blue-300 flex items-center justify-center gap-2 transition-colors cursor-pointer"
+            >
+              <Download className="w-3.5 h-3.5" />
+              Baixar Backup (JSON) por Segurança
+            </button>
+
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setShowResetConfirmModal(false)}
+                className="flex-1 py-2.5 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-bold text-slate-300 transition-colors cursor-pointer"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmFullReset}
+                className="flex-1 py-2.5 px-3 rounded-xl bg-red-600 hover:bg-red-500 text-xs font-bold text-white shadow-lg shadow-red-600/20 transition-colors cursor-pointer"
+              >
+                Sim, Resetar Tudo
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modal de Princípios Básicos da Hipertrofia */}
       <PrinciplesModal

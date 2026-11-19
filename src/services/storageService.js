@@ -141,3 +141,14 @@ export function parseImportedBackup(jsonText) {
   const normalizedLogs = normalizeLogsMap(rawLogs);
   return normalizedLogs;
 }
+
+export function resetAllUserProgress(username) {
+  try {
+    localStorage.removeItem(getLogsKey(username));
+    localStorage.removeItem(getSessionKey(username));
+    localStorage.removeItem(LEGACY_LOGS_KEY);
+    localStorage.removeItem(LEGACY_SESSION_KEY);
+  } catch (e) {
+    console.warn("Erro ao resetar progresso:", e);
+  }
+}
