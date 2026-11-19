@@ -115,6 +115,39 @@ const PUMPER_EXAMPLES = [
   }
 ];
 
+const NAV_PRINCIPLES = [
+  {
+    id: 'principio-1',
+    label: '1. Até a Falha',
+    span: 'col-span-2',
+    color: 'text-rose-300 border-rose-800/70 bg-rose-950/50 hover:bg-rose-900/50'
+  },
+  {
+    id: 'principio-2',
+    label: '2. Tensão',
+    span: 'col-span-2',
+    color: 'text-amber-300 border-amber-800/70 bg-amber-950/50 hover:bg-amber-900/50'
+  },
+  {
+    id: 'principio-3',
+    label: '3. Descanso',
+    span: 'col-span-2',
+    color: 'text-blue-300 border-blue-800/70 bg-blue-950/50 hover:bg-blue-900/50'
+  },
+  {
+    id: 'principio-4',
+    label: '4. Alimentação',
+    span: 'col-span-3',
+    color: 'text-emerald-300 border-emerald-800/70 bg-emerald-950/50 hover:bg-emerald-900/50'
+  },
+  {
+    id: 'principio-5',
+    label: '5. Pumpers (Avançado)',
+    span: 'col-span-3',
+    color: 'text-purple-300 border-purple-800/70 bg-purple-950/50 hover:bg-purple-900/50'
+  }
+];
+
 export default function PrinciplesModal({ isOpen, onClose }) {
   const [selectedPumperGroup, setSelectedPumperGroup] = useState('Peitoral');
   const scrollContainerRef = useRef(null);
@@ -157,47 +190,42 @@ export default function PrinciplesModal({ isOpen, onClose }) {
         onClick={(e) => e.stopPropagation()}
       >
         {/* Cabeçalho Fixo do Modal */}
-        <div className="px-5 pt-4 pb-3 border-b border-slate-800 bg-slate-900/95 sticky top-0 z-10">
+        <div className="px-4 sm:px-5 pt-3.5 pb-3 border-b border-slate-800 bg-slate-900/95 sticky top-0 z-10">
           {/* Puxador mobile */}
-          <div className="w-10 h-1 bg-slate-700 rounded-full mx-auto mb-3 sm:hidden" />
+          <div className="w-10 h-1 bg-slate-700 rounded-full mx-auto mb-2.5 sm:hidden" />
 
-          <div className="flex items-start justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <div className="bg-gradient-to-br from-amber-500 to-orange-600 p-2.5 rounded-xl shadow-lg shadow-amber-600/20 flex-shrink-0">
+          <div className="flex items-start justify-between gap-2.5">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="bg-gradient-to-br from-amber-500 to-orange-600 p-2 rounded-xl shadow-lg shadow-amber-600/20 flex-shrink-0">
                 <BookOpen className="w-5 h-5 text-white" />
               </div>
-              <div>
+              <div className="min-w-0">
                 <h2 className="text-base sm:text-lg font-extrabold text-white leading-tight">
                   Princípios Básicos da Hipertrofia
                 </h2>
                 <p className="text-xs text-slate-400 mt-0.5">
-                  As 5 diretrizes fundamentais para extrair 100% da periodização
+                  Toque em um princípio para ir direto ao tópico
                 </p>
               </div>
             </div>
 
             <button
               onClick={onClose}
-              className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white transition-colors cursor-pointer"
+              className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white transition-colors flex-shrink-0 cursor-pointer"
               title="Fechar (Esc)"
             >
               <X className="w-5 h-5" />
             </button>
           </div>
 
-          {/* Pílulas de Navegação Rápida */}
-          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar mt-3 pt-1">
-            {[
-              { id: 'principio-1', label: '1. Até a Falha', color: 'text-rose-400 border-rose-800/60 bg-rose-950/40' },
-              { id: 'principio-2', label: '2. Tensão Contínua', color: 'text-amber-400 border-amber-800/60 bg-amber-950/40' },
-              { id: 'principio-3', label: '3. Descanso ABC', color: 'text-blue-400 border-blue-800/60 bg-blue-950/40' },
-              { id: 'principio-4', label: '4. Alimentação', color: 'text-emerald-400 border-emerald-800/60 bg-emerald-950/40' },
-              { id: 'principio-5', label: '5. Pumpers', color: 'text-purple-400 border-purple-800/60 bg-purple-950/40' }
-            ].map((nav) => (
+          {/* Grid de 2 Linhas com os 5 Princípios 100% Visíveis (Zero Scroll Horizontal) */}
+          <div className="grid grid-cols-6 gap-1.5 mt-3">
+            {NAV_PRINCIPLES.map((nav) => (
               <button
                 key={nav.id}
+                type="button"
                 onClick={() => scrollToSection(nav.id)}
-                className={`px-2.5 py-1 rounded-full text-[11px] font-bold whitespace-nowrap border transition-transform active:scale-95 cursor-pointer ${nav.color}`}
+                className={`${nav.span} py-1.5 px-2 rounded-xl text-[0.7rem] font-bold text-center border transition-all active:scale-95 cursor-pointer truncate ${nav.color}`}
               >
                 {nav.label}
               </button>
@@ -208,7 +236,7 @@ export default function PrinciplesModal({ isOpen, onClose }) {
         {/* Corpo com Scroll dos 5 Princípios */}
         <div
           ref={scrollContainerRef}
-          className="flex-1 overflow-y-auto px-5 py-4 space-y-5 text-sm text-slate-300"
+          className="flex-1 overflow-y-auto px-4 sm:px-5 py-4 space-y-5 text-sm text-slate-300"
         >
           {/* PRINCÍPIO 1: ATÉ A FALHA */}
           <section
@@ -216,11 +244,11 @@ export default function PrinciplesModal({ isOpen, onClose }) {
             className="bg-slate-950/70 border border-rose-900/50 rounded-2xl p-4 space-y-3 scroll-mt-4"
           >
             <div className="flex items-center gap-2.5">
-              <div className="bg-rose-950 border border-rose-800/70 p-2 rounded-xl text-rose-400">
+              <div className="bg-rose-950 border border-rose-800/70 p-2 rounded-xl text-rose-400 flex-shrink-0">
                 <Flame className="w-5 h-5" />
               </div>
               <div>
-                <span className="text-[10px] font-extrabold uppercase tracking-widest text-rose-400">
+                <span className="text-[0.65rem] font-extrabold uppercase tracking-widest text-rose-400">
                   Princípio 01
                 </span>
                 <h3 className="text-base font-bold text-white leading-tight">
@@ -240,7 +268,7 @@ export default function PrinciplesModal({ isOpen, onClose }) {
                   <ArrowUpCircle className="w-4 h-4 flex-shrink-0" />
                   <span>Passou do Teto?</span>
                 </div>
-                <p className="text-[11px] text-slate-300 leading-snug">
+                <p className="text-[0.7rem] text-slate-300 leading-snug">
                   Fez mais que o limite superior das reps-alvo antes de falhar? <strong className="text-emerald-300">Suba a carga</strong> no próximo treino/série.
                 </p>
               </div>
@@ -250,7 +278,7 @@ export default function PrinciplesModal({ isOpen, onClose }) {
                   <Target className="w-4 h-4 flex-shrink-0" />
                   <span>Na Faixa-Alvo?</span>
                 </div>
-                <p className="text-[11px] text-slate-300 leading-snug">
+                <p className="text-[0.7rem] text-slate-300 leading-snug">
                   A carga está calibrada. Mas lembre-se: <strong className="text-blue-300">vá até a falha real</strong>, mesmo que passe 1 ou 2 reps.
                 </p>
               </div>
@@ -260,7 +288,7 @@ export default function PrinciplesModal({ isOpen, onClose }) {
                   <ArrowDownCircle className="w-4 h-4 flex-shrink-0" />
                   <span>Menos de 3 Reps?</span>
                 </div>
-                <p className="text-[11px] text-slate-300 leading-snug">
+                <p className="text-[0.7rem] text-slate-300 leading-snug">
                   Fez menos que 3 repetições bem-feitas? O ego passou da conta: <strong className="text-amber-300">desça a carga</strong> imediatamente.
                 </p>
               </div>
@@ -273,11 +301,11 @@ export default function PrinciplesModal({ isOpen, onClose }) {
             className="bg-slate-950/70 border border-amber-900/50 rounded-2xl p-4 space-y-3 scroll-mt-4"
           >
             <div className="flex items-center gap-2.5">
-              <div className="bg-amber-950 border border-amber-800/70 p-2 rounded-xl text-amber-400">
+              <div className="bg-amber-950 border border-amber-800/70 p-2 rounded-xl text-amber-400 flex-shrink-0">
                 <Zap className="w-5 h-5" />
               </div>
               <div>
-                <span className="text-[10px] font-extrabold uppercase tracking-widest text-amber-400">
+                <span className="text-[0.65rem] font-extrabold uppercase tracking-widest text-amber-400">
                   Princípio 02
                 </span>
                 <h3 className="text-base font-bold text-white leading-tight">
@@ -306,11 +334,11 @@ export default function PrinciplesModal({ isOpen, onClose }) {
             className="bg-slate-950/70 border border-blue-900/50 rounded-2xl p-4 space-y-3 scroll-mt-4"
           >
             <div className="flex items-center gap-2.5">
-              <div className="bg-blue-950 border border-blue-800/70 p-2 rounded-xl text-blue-400">
+              <div className="bg-blue-950 border border-blue-800/70 p-2 rounded-xl text-blue-400 flex-shrink-0">
                 <RefreshCw className="w-5 h-5" />
               </div>
               <div>
-                <span className="text-[10px] font-extrabold uppercase tracking-widest text-blue-400">
+                <span className="text-[0.65rem] font-extrabold uppercase tracking-widest text-blue-400">
                   Princípio 03
                 </span>
                 <h3 className="text-base font-bold text-white leading-tight">
@@ -334,11 +362,11 @@ export default function PrinciplesModal({ isOpen, onClose }) {
             className="bg-slate-950/70 border border-emerald-900/50 rounded-2xl p-4 space-y-3 scroll-mt-4"
           >
             <div className="flex items-center gap-2.5">
-              <div className="bg-emerald-950 border border-emerald-800/70 p-2 rounded-xl text-emerald-400">
+              <div className="bg-emerald-950 border border-emerald-800/70 p-2 rounded-xl text-emerald-400 flex-shrink-0">
                 <Utensils className="w-5 h-5" />
               </div>
               <div>
-                <span className="text-[10px] font-extrabold uppercase tracking-widest text-emerald-400">
+                <span className="text-[0.65rem] font-extrabold uppercase tracking-widest text-emerald-400">
                   Princípio 04
                 </span>
                 <h3 className="text-base font-bold text-white leading-tight">
@@ -354,24 +382,24 @@ export default function PrinciplesModal({ isOpen, onClose }) {
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
               <div className="bg-slate-900 border border-emerald-800/40 rounded-xl p-3">
                 <div className="text-lg font-extrabold text-emerald-400">2g / kg</div>
-                <div className="text-[11px] font-bold text-white mt-0.5">Proteína Diária Total</div>
-                <p className="text-[11px] text-slate-400 mt-1 leading-snug">
+                <div className="text-[0.7rem] font-bold text-white mt-0.5">Proteína Diária Total</div>
+                <p className="text-[0.7rem] text-slate-400 mt-1 leading-snug">
                   Consuma cerca de 2g de proteína por quilo corporal ao dia (ex.: 80kg = ~160g/dia) para manter o balanço nitrogenado positivo.
                 </p>
               </div>
 
               <div className="bg-slate-900 border border-emerald-800/40 rounded-xl p-3">
                 <div className="text-lg font-extrabold text-emerald-400">~20 min</div>
-                <div className="text-[11px] font-bold text-white mt-0.5">Carbos Amplos Pós-Treino</div>
-                <p className="text-[11px] text-slate-400 mt-1 leading-snug">
+                <div className="text-[0.7rem] font-bold text-white mt-0.5">Carbos Amplos Pós-Treino</div>
+                <p className="text-[0.7rem] text-slate-400 mt-1 leading-snug">
                   Ingira carboidratos amplos cerca de 20 min após o treino para frear o cortisol, gerar pico de insulina e repor o glicogênio muscular.
                 </p>
               </div>
 
               <div className="bg-slate-900 border border-emerald-800/40 rounded-xl p-3">
                 <div className="text-lg font-extrabold text-emerald-400">Mín. 25g</div>
-                <div className="text-[11px] font-bold text-white mt-0.5">Proteína até 1h Depois</div>
-                <p className="text-[11px] text-slate-400 mt-1 leading-snug">
+                <div className="text-[0.7rem] font-bold text-white mt-0.5">Proteína até 1h Depois</div>
+                <p className="text-[0.7rem] text-slate-400 mt-1 leading-snug">
                   Garanta ao menos 25g de proteína de alta absorção em até 1 hora após o término do treino para disparar a síntese proteica miofibrilar.
                 </p>
               </div>
@@ -384,11 +412,11 @@ export default function PrinciplesModal({ isOpen, onClose }) {
             className="bg-slate-950/70 border border-purple-900/60 rounded-2xl p-4 space-y-3 scroll-mt-4"
           >
             <div className="flex items-center gap-2.5">
-              <div className="bg-purple-950 border border-purple-800/70 p-2 rounded-xl text-purple-400">
+              <div className="bg-purple-950 border border-purple-800/70 p-2 rounded-xl text-purple-400 flex-shrink-0">
                 <Sparkles className="w-5 h-5" />
               </div>
               <div>
-                <span className="text-[10px] font-extrabold uppercase tracking-widest text-purple-400">
+                <span className="text-[0.65rem] font-extrabold uppercase tracking-widest text-purple-400">
                   Princípio 05 • Avançados
                 </span>
                 <h3 className="text-base font-bold text-white leading-tight">
@@ -407,7 +435,7 @@ export default function PrinciplesModal({ isOpen, onClose }) {
 
             <div className="bg-slate-900 border border-slate-800 rounded-xl p-3 text-xs space-y-1">
               <div className="font-bold text-white flex items-center gap-1.5">
-                <CheckCircle2 className="w-4 h-4 text-purple-400" />
+                <CheckCircle2 className="w-4 h-4 text-purple-400 flex-shrink-0" />
                 Protocolo Diário: 4 séries × Máximas Repetições (Todos os Dias)
               </div>
               <p className="text-slate-300 leading-relaxed">
@@ -417,7 +445,7 @@ export default function PrinciplesModal({ isOpen, onClose }) {
 
             {/* Seletor de Grupo Muscular para ver os 2 exemplos de Pumper */}
             <div>
-              <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">
+              <div className="text-[0.7rem] font-bold text-slate-400 uppercase tracking-wider mb-2">
                 Selecione o Grupo Muscular (2 exemplos de Pumpers Curtos):
               </div>
 
@@ -440,11 +468,11 @@ export default function PrinciplesModal({ isOpen, onClose }) {
 
               {/* Card com os 2 exemplos do grupo selecionado */}
               <div className="bg-slate-900/90 border border-purple-800/40 rounded-xl p-3.5 space-y-2.5">
-                <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+                <div className="flex flex-wrap items-center justify-between gap-1 border-b border-slate-800 pb-2">
                   <span className="text-xs font-extrabold text-purple-300 uppercase tracking-wider">
                     Pumpers para {activePumper.group}
                   </span>
-                  <span className="text-[11px] text-slate-400 italic">
+                  <span className="text-[0.7rem] text-slate-400 italic">
                     Alvo: {activePumper.deficit}
                   </span>
                 </div>
@@ -456,7 +484,7 @@ export default function PrinciplesModal({ isOpen, onClose }) {
                       className="bg-slate-950/80 border border-slate-800/80 rounded-xl p-2.5"
                     >
                       <div className="text-xs font-bold text-white mb-1 flex items-center gap-1.5">
-                        <span className="bg-purple-900/70 text-purple-200 text-[10px] font-extrabold w-4 h-4 rounded-full flex items-center justify-center flex-shrink-0">
+                        <span className="bg-purple-900/70 text-purple-200 text-[0.65rem] font-extrabold w-4 h-4 rounded-full flex items-center justify-center flex-shrink-0">
                           {idx + 1}
                         </span>
                         {ex.name}

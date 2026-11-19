@@ -152,3 +152,37 @@ export function resetAllUserProgress(username) {
     console.warn("Erro ao resetar progresso:", e);
   }
 }
+
+const UI_SCALE_KEY = "irontracker_ui_scale";
+const UI_SCALE_FONT_SIZES = {
+  normal: "16px",
+  large: "18px",
+  xlarge: "19.5px"
+};
+
+export function applyUiScaleToDocument(scale) {
+  if (typeof document === "undefined") return;
+  const fontSize = UI_SCALE_FONT_SIZES[scale] || UI_SCALE_FONT_SIZES.normal;
+  document.documentElement.style.fontSize = fontSize;
+}
+
+export function loadUiScale() {
+  try {
+    const saved = localStorage.getItem(UI_SCALE_KEY);
+    const scale = saved && UI_SCALE_FONT_SIZES[saved] ? saved : "normal";
+    applyUiScaleToDocument(scale);
+    return scale;
+  } catch {
+    return "normal";
+  }
+}
+
+export function saveUiScale(scale) {
+  const validScale = UI_SCALE_FONT_SIZES[scale] ? scale : "normal";
+  try {
+    localStorage.setItem(UI_SCALE_KEY, validScale);
+  } catch {
+    // ignore
+  }
+  applyUiScaleToDocument(validScale);
+}

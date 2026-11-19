@@ -15,7 +15,8 @@ import {
   User,
   BookOpen,
   Trash2,
-  AlertTriangle
+  AlertTriangle,
+  Type
 } from 'lucide-react';
 import { INITIAL_CSV_DATA } from './data/fallbackWorkouts';
 import {
@@ -35,7 +36,9 @@ import {
   saveUserCompletedSession,
   exportUserBackup,
   parseImportedBackup,
-  resetAllUserProgress
+  resetAllUserProgress,
+  loadUiScale,
+  saveUiScale
 } from './services/storageService';
 import LoginScreen from './components/LoginScreen';
 import ExerciseCard from './components/ExerciseCard';
@@ -60,6 +63,12 @@ export default function App() {
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showPrinciplesModal, setShowPrinciplesModal] = useState(false);
   const [showResetConfirmModal, setShowResetConfirmModal] = useState(false);
+  const [uiScale, setUiScale] = useState(() => loadUiScale());
+
+  const handleUiScaleChange = (newScale) => {
+    setUiScale(newScale);
+    saveUiScale(newScale);
+  };
 
   // Histórico e Sessão por usuário logado
   const [workoutLogs, setWorkoutLogs] = useState({});
@@ -340,12 +349,12 @@ export default function App() {
               <div className="flex items-center gap-2">
                 <h1 className="font-extrabold text-lg leading-none tracking-tight text-white">IronTracker</h1>
                 {isOfflineFallback && (
-                  <span className="text-[9px] bg-amber-950 text-amber-400 border border-amber-800/60 px-1.5 py-0.5 rounded font-bold uppercase">
+                  <span className="text-[0.6rem] bg-amber-950 text-amber-400 border border-amber-800/60 px-1.5 py-0.5 rounded font-bold uppercase">
                     Offline
                   </span>
                 )}
               </div>
-              <p className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider mt-0.5">
+              <p className="text-[0.65rem] text-slate-400 font-semibold uppercase tracking-wider mt-0.5">
                 Hipertrofia Anual
               </p>
             </div>
@@ -382,11 +391,40 @@ export default function App() {
 
             {/* Dropdown do Usuário */}
             {showUserMenu && (
-              <div className="absolute right-0 top-12 w-56 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl p-2 z-40">
-                <div className="px-3 py-2 border-b border-slate-800 mb-1">
+              <div className="absolute right-0 top-12 w-64 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl p-2.5 z-40">
+                <div className="px-2.5 py-2 border-b border-slate-800 mb-2">
                   <div className="text-xs font-bold text-white truncate">{currentUser.name}</div>
-                  <div className="text-[10px] text-slate-400 uppercase tracking-wider">
+                  <div className="text-[0.65rem] text-slate-400 uppercase tracking-wider">
                     @{currentUser.username} • {currentUser.role}
+                  </div>
+                </div>
+
+                {/* Controle de Tamanho de Fonte e Elementos */}
+                <div className="px-2 py-2 mb-1.5 bg-slate-950/70 border border-slate-800 rounded-xl">
+                  <div className="flex items-center gap-1.5 text-[0.65rem] font-bold text-slate-400 uppercase tracking-wider mb-1.5">
+                    <Type className="w-3.5 h-3.5 text-blue-400" />
+                    <span>Tamanho da Fonte / Interface</span>
+                  </div>
+                  <div className="grid grid-cols-3 gap-1">
+                    {[
+                      { id: 'normal', label: 'A', desc: 'Padrão' },
+                      { id: 'large', label: 'A+', desc: 'Médio' },
+                      { id: 'xlarge', label: 'A++', desc: 'Grande' }
+                    ].map((opt) => (
+                      <button
+                        key={opt.id}
+                        type="button"
+                        onClick={() => handleUiScaleChange(opt.id)}
+                        className={`py-1.5 px-1 rounded-lg border text-center transition-all cursor-pointer ${
+                          uiScale === opt.id
+                            ? 'bg-blue-600 text-white border-blue-400 shadow-sm'
+                            : 'bg-slate-900 text-slate-300 border-slate-800 hover:bg-slate-800'
+                        }`}
+                      >
+                        <div className="text-xs font-extrabold leading-none">{opt.label}</div>
+                        <div className="text-[0.6rem] opacity-80 mt-0.5">{opt.desc}</div>
+                      </button>
+                    ))}
                   </div>
                 </div>
 
@@ -442,8 +480,12 @@ export default function App() {
           </div>
         </div>
 
-        {/* Seletor de Mês, Link do Guia & Botão Princípios */}
-        <div className="max-w-md mx-auto px-4 py-2.5 border-t border-slate-800/80 flex items-center gap-2">
+        {/* Seletor de Mês, Link do Guia & Botão Princípios (Relayout Adaptativo em Fonte Grande) */}
+        <div
+          className={`max-w-md mx-auto px-4 py-2.5 border-t border-slate-800/80 ${
+            uiScale === 'xlarge' ? 'space-y-2' : 'flex items-center gap-2'
+          }`}
+        >
           <div className="relative flex-1 min-w-0">
             <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-blue-400 pointer-events-none" />
             <select
@@ -460,28 +502,30 @@ export default function App() {
             <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
           </div>
 
-          {currentDocLink && (
-            <a
-              href={currentDocLink}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center justify-center gap-1.5 px-3 py-2 bg-blue-950/60 text-blue-300 border border-blue-800/70 rounded-xl text-xs font-bold hover:bg-blue-900/50 transition-colors flex-shrink-0"
-              title={`Ler Guia Completo de ${selectedMonth}`}
-            >
-              <FileText className="w-3.5 h-3.5" />
-              <span>Guia</span>
-            </a>
-          )}
+          <div className={uiScale === 'xlarge' ? 'grid grid-cols-2 gap-2' : 'flex items-center gap-2 flex-shrink-0'}>
+            {currentDocLink && (
+              <a
+                href={currentDocLink}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-center gap-1.5 px-3 py-2 bg-blue-950/60 text-blue-300 border border-blue-800/70 rounded-xl text-xs font-bold hover:bg-blue-900/50 transition-colors flex-shrink-0"
+                title={`Ler Guia Completo de ${selectedMonth}`}
+              >
+                <FileText className="w-3.5 h-3.5" />
+                <span>{uiScale === 'xlarge' ? `Guia de ${selectedMonth}` : 'Guia'}</span>
+              </a>
+            )}
 
-          <button
-            type="button"
-            onClick={() => setShowPrinciplesModal(true)}
-            className="flex items-center justify-center gap-1.5 px-3 py-2 bg-amber-950/60 text-amber-300 border border-amber-700/70 rounded-xl text-xs font-bold hover:bg-amber-900/50 hover:text-amber-200 transition-colors flex-shrink-0 cursor-pointer shadow-sm"
-            title="Princípios Básicos da Hipertrofia"
-          >
-            <BookOpen className="w-3.5 h-3.5 text-amber-400" />
-            <span>Princípios</span>
-          </button>
+            <button
+              type="button"
+              onClick={() => setShowPrinciplesModal(true)}
+              className="flex items-center justify-center gap-1.5 px-3 py-2 bg-amber-950/60 text-amber-300 border border-amber-700/70 rounded-xl text-xs font-bold hover:bg-amber-900/50 hover:text-amber-200 transition-colors flex-shrink-0 cursor-pointer shadow-sm"
+              title="Princípios Básicos da Hipertrofia"
+            >
+              <BookOpen className="w-3.5 h-3.5 text-amber-400" />
+              <span>Princípios</span>
+            </button>
+          </div>
         </div>
       </header>
 
@@ -523,7 +567,7 @@ export default function App() {
                 style={{ width: `${progressStats.pct}%` }}
               />
             </div>
-            <div className="flex items-center justify-between text-[11px] text-slate-400 mt-1.5">
+            <div className="flex items-center justify-between text-[0.7rem] text-slate-400 mt-1.5">
               <span>
                 Obrigatórios: <strong className="text-slate-200">{progressStats.completedMandatory}/{progressStats.mandatoryCount}</strong>
               </span>
@@ -531,7 +575,7 @@ export default function App() {
                 <button
                   type="button"
                   onClick={() => setHideOptionals(!hideOptionals)}
-                  className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border transition-colors cursor-pointer ${
+                  className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[0.65rem] font-bold border transition-colors cursor-pointer ${
                     hideOptionals
                       ? 'bg-slate-800 text-slate-400 border-slate-700'
                       : 'bg-purple-950/60 text-purple-300 border-purple-800/60'
@@ -589,6 +633,7 @@ export default function App() {
                   onTriggerTimer={(seconds) => setTimerTrigger({ seconds, timestamp: Date.now() })}
                   history={workoutLogs[canonicalKey] || []}
                   isCompleted={completedExercises.includes(canonicalKey)}
+                  uiScale={uiScale}
                 />
               );
             })

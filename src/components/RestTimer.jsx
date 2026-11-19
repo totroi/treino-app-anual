@@ -313,7 +313,7 @@ export default function RestTimer({ externalTrigger }) {
             }`}
           >
             <div className="text-xs font-bold">{p.label}</div>
-            <div className="text-[9px] text-slate-400 truncate">{p.desc}</div>
+            <div className="text-[0.6rem] text-slate-400 truncate">{p.desc}</div>
           </button>
         ))}
       </div>

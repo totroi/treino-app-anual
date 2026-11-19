@@ -29,7 +29,8 @@ export default function ExerciseCard({
   onDeleteLog,
   onTriggerTimer,
   history,
-  isCompleted
+  isCompleted,
+  uiScale = 'normal'
 }) {
   const [weight, setWeight] = useState('');
   const [reps, setReps] = useState('');
@@ -40,6 +41,9 @@ export default function ExerciseCard({
   const isOptional = isOptionalExercise(rawExerciseName);
   const displayTitle = getDisplayExerciseName(rawExerciseName);
   const canonicalKey = getCanonicalExerciseKey(rawExerciseName);
+
+  const isScaledUp = uiScale === 'large' || uiScale === 'xlarge';
+  const isExtraLarge = uiScale === 'xlarge';
 
   const lastLog = history && history.length > 0 ? history[0] : null;
   const advancedTechnique = cleanAdvancedTechnique(data['Técnica Avançada']);
@@ -62,7 +66,7 @@ export default function ExerciseCard({
     if (lastLog.reps) setReps(String(lastLog.reps));
   };
 
-  // --- MODO COMPACTO (EXERCÍCIO CONCLUÍCIO) ---
+  // --- MODO COMPACTO (EXERCÍCIO CONCLUÍDO) ---
   if (isCompleted) {
     return (
       <div className="bg-emerald-950/40 border border-emerald-800/80 rounded-xl p-3 mb-2 flex items-center justify-between gap-2 shadow-sm transition-all">
@@ -71,17 +75,17 @@ export default function ExerciseCard({
             <Check className="w-4 h-4 text-emerald-200" />
           </div>
           <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-1.5">
-              <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider truncate">
+            <div className="flex items-center flex-wrap gap-1.5">
+              <span className="text-[0.65rem] font-bold text-emerald-400 uppercase tracking-wider truncate">
                 {data['Grupo muscular']}
               </span>
               {isOptional && (
-                <span className="text-[9px] font-bold bg-purple-900/60 text-purple-300 px-1.5 py-0.2 rounded-full uppercase">
+                <span className="text-[0.6rem] font-bold bg-purple-900/60 text-purple-300 px-1.5 py-0.2 rounded-full uppercase">
                   Opcional
                 </span>
               )}
             </div>
-            <h3 className="text-sm font-bold text-emerald-100 truncate">
+            <h3 className={`text-sm font-bold text-emerald-100 ${isScaledUp ? 'leading-snug' : 'truncate'}`}>
               {displayTitle}
             </h3>
           </div>
@@ -114,6 +118,11 @@ export default function ExerciseCard({
     ? "bg-purple-950/30 border-purple-800/60"
     : "bg-slate-900/80 border-slate-800";
 
+  // Em fonte Grande (A++), ou se os textos de Séries/Cadência forem muito longos no modo Médio (A+), empilha em 1 coluna
+  const hasLongMetricsText =
+    (data['Séries/Reps'] || '').length > 16 || (data['Cadência'] || '').length > 16;
+  const stackMetrics = isExtraLarge || (isScaledUp && hasLongMetricsText);
+
   return (
     <div className={`rounded-xl border overflow-hidden mb-4 transition-all hover:border-slate-700 ${cardStyles}`}>
       {/* Cabeçalho */}
@@ -124,7 +133,7 @@ export default function ExerciseCard({
               {data['Grupo muscular']}
             </span>
             {isOptional && (
-              <span className="flex items-center gap-1 text-[10px] font-bold bg-purple-900/70 text-purple-200 border border-purple-700/50 px-2 py-0.5 rounded-full uppercase tracking-wide">
+              <span className="flex items-center gap-1 text-[0.65rem] font-bold bg-purple-900/70 text-purple-200 border border-purple-700/50 px-2 py-0.5 rounded-full uppercase tracking-wide">
                 <Sparkles className="w-3 h-3" />
                 Opcional
               </span>
@@ -148,7 +157,7 @@ export default function ExerciseCard({
               className="text-right bg-slate-950/70 hover:bg-slate-800 border border-slate-800 px-2.5 py-1 rounded-lg transition-colors cursor-pointer"
               title="Clique para preencher com a última carga"
             >
-              <div className="text-[10px] text-slate-400 uppercase tracking-wider">Última</div>
+              <div className="text-[0.65rem] text-slate-400 uppercase tracking-wider">Última</div>
               <div className="font-bold text-xs text-emerald-400">
                 {lastLog.weight}kg{lastLog.reps ? ` × ${lastLog.reps}` : ''}
               </div>
@@ -167,11 +176,11 @@ export default function ExerciseCard({
       </div>
 
       {/* Detalhes: Séries/Reps, Cadência, Descanso e Técnica Avançada (se houver) */}
-      <div className="p-4 grid grid-cols-2 gap-2.5 text-sm">
+      <div className={`p-4 grid ${stackMetrics ? 'grid-cols-1' : 'grid-cols-2'} gap-2.5 text-sm`}>
         <div className="flex items-start gap-2 bg-slate-950/40 p-2.5 rounded-lg border border-slate-800/60">
           <TrendingUp className={`w-4 h-4 mt-0.5 flex-shrink-0 ${isOptional ? 'text-purple-400' : 'text-blue-400'}`} />
           <div className="min-w-0">
-            <span className="block text-slate-400 text-[11px]">Séries / Reps</span>
+            <span className="block text-slate-400 text-[0.7rem]">Séries / Reps</span>
             <span className="font-semibold text-slate-100 text-xs">{data['Séries/Reps']}</span>
           </div>
         </div>
@@ -179,17 +188,21 @@ export default function ExerciseCard({
         <div className="flex items-start gap-2 bg-slate-950/40 p-2.5 rounded-lg border border-slate-800/60">
           <Clock className={`w-4 h-4 mt-0.5 flex-shrink-0 ${isOptional ? 'text-purple-400' : 'text-blue-400'}`} />
           <div className="min-w-0">
-            <span className="block text-slate-400 text-[11px]">Cadência</span>
+            <span className="block text-slate-400 text-[0.7rem]">Cadência</span>
             <span className="font-semibold text-slate-100 text-xs">{data['Cadência']}</span>
           </div>
         </div>
 
         {/* Linha de Descanso Contextualizado + Botão Rápido do Cronômetro */}
-        <div className="col-span-2 flex items-center justify-between gap-2 bg-slate-950/40 p-2.5 rounded-lg border border-slate-800/60">
+        <div
+          className={`${stackMetrics ? 'col-span-1' : 'col-span-2'} flex ${
+            isExtraLarge ? 'flex-col items-stretch' : 'items-center justify-between'
+          } gap-2 bg-slate-950/40 p-2.5 rounded-lg border border-slate-800/60`}
+        >
           <div className="flex items-start gap-2 min-w-0">
             <Timer className={`w-4 h-4 mt-0.5 flex-shrink-0 ${isOptional ? 'text-purple-400' : 'text-blue-400'}`} />
             <div className="min-w-0">
-              <span className="block text-slate-400 text-[10px] font-bold uppercase tracking-wider">
+              <span className="block text-slate-400 text-[0.65rem] font-bold uppercase tracking-wider">
                 Descanso Recomendado
               </span>
               <span className="text-slate-200 text-xs font-medium">{restDescription}</span>
@@ -203,7 +216,7 @@ export default function ExerciseCard({
                 unlockTimerAudio();
                 onTriggerTimer(restSeconds);
               }}
-              className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-blue-950/70 hover:bg-blue-900/80 border border-blue-700/60 text-blue-300 hover:text-white text-xs font-bold flex-shrink-0 transition-colors cursor-pointer"
+              className="flex items-center justify-center gap-1 px-2.5 py-1.5 rounded-lg bg-blue-950/70 hover:bg-blue-900/80 border border-blue-700/60 text-blue-300 hover:text-white text-xs font-bold flex-shrink-0 transition-colors cursor-pointer"
               title={`Iniciar cronômetro de ${restSeconds}s`}
             >
               <Timer className="w-3.5 h-3.5" />
@@ -214,10 +227,10 @@ export default function ExerciseCard({
 
         {/* Técnica Avançada: exibida APENAS se não estiver em branco na planilha */}
         {advancedTechnique && (
-          <div className="col-span-2 flex items-start gap-2 bg-amber-950/25 p-2.5 rounded-lg border border-amber-800/40">
+          <div className={`${stackMetrics ? 'col-span-1' : 'col-span-2'} flex items-start gap-2 bg-amber-950/25 p-2.5 rounded-lg border border-amber-800/40`}>
             <Zap className="w-4 h-4 text-amber-400 mt-0.5 flex-shrink-0" />
             <div>
-              <span className="block text-amber-400 text-[10px] font-bold uppercase tracking-wider">
+              <span className="block text-amber-400 text-[0.65rem] font-bold uppercase tracking-wider">
                 Técnica Avançada
               </span>
               <span className="text-amber-200 text-xs font-medium">{advancedTechnique}</span>
@@ -238,65 +251,135 @@ export default function ExerciseCard({
         )}
       </div>
 
-      {/* Área de Registro de Carga e Histórico */}
+      {/* Área de Registro de Carga e Histórico (Com Relayout Adaptativo para Fontes Maiores) */}
       <div className={`p-4 border-t ${isOptional ? 'bg-purple-950/20 border-purple-800/60' : 'bg-slate-950/60 border-slate-800'}`}>
-        <div className="flex items-end gap-2.5">
-          <div className="flex-1">
-            <label className="text-xs text-slate-400 mb-1 block font-medium">Carga (kg)</label>
-            <input
-              type="number"
-              inputMode="decimal"
-              step="0.5"
-              placeholder={lastLog ? `Última: ${lastLog.weight}kg` : "ex: 20"}
-              value={weight}
-              onChange={(e) => setWeight(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter') handleSave(); }}
-              className="w-full p-2 rounded-lg border border-slate-700 bg-slate-900 text-white text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-            />
+        {isScaledUp ? (
+          /* RELAYOUT ADAPTATIVO (2 LINHAS) PARA FONTES MÉDIA (A+) E GRANDE (A++) */
+          <div className="space-y-2.5">
+            <div className="grid grid-cols-2 gap-2.5">
+              <div>
+                <label className="text-xs text-slate-400 mb-1 block font-medium">Carga (kg)</label>
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  step="0.5"
+                  placeholder={lastLog ? `Última: ${lastLog.weight}kg` : "ex: 20"}
+                  value={weight}
+                  onChange={(e) => setWeight(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') handleSave(); }}
+                  className="w-full p-2.5 rounded-lg border border-slate-700 bg-slate-900 text-white text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                />
+              </div>
+              <div>
+                <label className="text-xs text-slate-400 mb-1 block font-medium">Reps</label>
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  placeholder={`ex: ${defaultRepsPlaceholder}`}
+                  value={reps}
+                  onChange={(e) => setReps(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') handleSave(); }}
+                  className="w-full p-2.5 rounded-lg border border-slate-700 bg-slate-900 text-white text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2.5">
+              <button
+                type="button"
+                onClick={handleSave}
+                disabled={!weight && weight !== '0'}
+                title="Salvar carga e concluir exercício"
+                className={`flex-1 py-2.5 px-4 rounded-lg font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer ${
+                  savedSuccess
+                    ? 'bg-emerald-600 text-white'
+                    : 'bg-blue-600 hover:bg-blue-500 text-white disabled:opacity-40 disabled:cursor-not-allowed'
+                }`}
+              >
+                {savedSuccess ? <CheckCircle2 className="w-4 h-4" /> : <Save className="w-4 h-4" />}
+                <span>{savedSuccess ? 'Salvo!' : 'Salvar e Concluir'}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setShowHistory(!showHistory)}
+                title="Ver histórico de cargas"
+                className={`py-2.5 px-3.5 rounded-lg border text-xs font-bold flex items-center gap-1.5 transition-all relative cursor-pointer ${
+                  showHistory
+                    ? 'bg-blue-950/60 border-blue-500/70 text-blue-300'
+                    : 'border-slate-700 text-slate-300 hover:bg-slate-800'
+                }`}
+              >
+                <History className="w-4 h-4" />
+                <span>Histórico</span>
+                {history && history.length > 0 && (
+                  <span className="bg-blue-600 text-white text-[0.6rem] font-bold px-1.5 py-0.2 rounded-full">
+                    {history.length > 9 ? '9+' : history.length}
+                  </span>
+                )}
+              </button>
+            </div>
           </div>
-          <div className="w-24">
-            <label className="text-xs text-slate-400 mb-1 block font-medium">Reps</label>
-            <input
-              type="number"
-              inputMode="numeric"
-              placeholder={`ex: ${defaultRepsPlaceholder}`}
-              value={reps}
-              onChange={(e) => setReps(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter') handleSave(); }}
-              className="w-full p-2 rounded-lg border border-slate-700 bg-slate-900 text-white text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-            />
+        ) : (
+          /* LAYOUT COMPACTO (1 LINHA) PARA FONTE PADRÃO (A) */
+          <div className="flex items-end gap-2.5">
+            <div className="flex-1">
+              <label className="text-xs text-slate-400 mb-1 block font-medium">Carga (kg)</label>
+              <input
+                type="number"
+                inputMode="decimal"
+                step="0.5"
+                placeholder={lastLog ? `Última: ${lastLog.weight}kg` : "ex: 20"}
+                value={weight}
+                onChange={(e) => setWeight(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') handleSave(); }}
+                className="w-full p-2 rounded-lg border border-slate-700 bg-slate-900 text-white text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+              />
+            </div>
+            <div className="w-24">
+              <label className="text-xs text-slate-400 mb-1 block font-medium">Reps</label>
+              <input
+                type="number"
+                inputMode="numeric"
+                placeholder={`ex: ${defaultRepsPlaceholder}`}
+                value={reps}
+                onChange={(e) => setReps(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') handleSave(); }}
+                className="w-full p-2 rounded-lg border border-slate-700 bg-slate-900 text-white text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+              />
+            </div>
+            <button
+              type="button"
+              onClick={handleSave}
+              disabled={!weight && weight !== '0'}
+              title="Salvar carga e concluir exercício"
+              className={`p-2.5 rounded-lg flex items-center justify-center transition-all cursor-pointer ${
+                savedSuccess
+                  ? 'bg-emerald-600 text-white'
+                  : 'bg-blue-600 hover:bg-blue-500 text-white disabled:opacity-40 disabled:cursor-not-allowed'
+              }`}
+            >
+              {savedSuccess ? <CheckCircle2 className="w-5 h-5" /> : <Save className="w-5 h-5" />}
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowHistory(!showHistory)}
+              title="Ver histórico de cargas"
+              className={`p-2.5 rounded-lg border transition-all relative cursor-pointer ${
+                showHistory
+                  ? 'bg-blue-950/60 border-blue-500/70 text-blue-300'
+                  : 'border-slate-700 text-slate-400 hover:bg-slate-800 hover:text-slate-200'
+              }`}
+            >
+              <History className="w-5 h-5" />
+              {history && history.length > 0 && (
+                <span className="absolute -top-1.5 -right-1.5 bg-blue-600 text-white text-[0.6rem] font-bold w-4 h-4 rounded-full flex items-center justify-center">
+                  {history.length > 9 ? '9+' : history.length}
+                </span>
+              )}
+            </button>
           </div>
-          <button
-            type="button"
-            onClick={handleSave}
-            disabled={!weight && weight !== '0'}
-            title="Salvar carga e concluir exercício"
-            className={`p-2.5 rounded-lg flex items-center justify-center transition-all cursor-pointer ${
-              savedSuccess
-                ? 'bg-emerald-600 text-white'
-                : 'bg-blue-600 hover:bg-blue-500 text-white disabled:opacity-40 disabled:cursor-not-allowed'
-            }`}
-          >
-            {savedSuccess ? <CheckCircle2 className="w-5 h-5" /> : <Save className="w-5 h-5" />}
-          </button>
-          <button
-            type="button"
-            onClick={() => setShowHistory(!showHistory)}
-            title="Ver histórico de cargas"
-            className={`p-2.5 rounded-lg border transition-all relative cursor-pointer ${
-              showHistory
-                ? 'bg-blue-950/60 border-blue-500/70 text-blue-300'
-                : 'border-slate-700 text-slate-400 hover:bg-slate-800 hover:text-slate-200'
-            }`}
-          >
-            <History className="w-5 h-5" />
-            {history && history.length > 0 && (
-              <span className="absolute -top-1.5 -right-1.5 bg-blue-600 text-white text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
-                {history.length > 9 ? '9+' : history.length}
-              </span>
-            )}
-          </button>
-        </div>
+        )}
 
         {/* Histórico Expandido */}
         {showHistory && (
@@ -305,7 +388,7 @@ export default function ExerciseCard({
               <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">
                 Histórico Unificado ({history?.length || 0})
               </h4>
-              <span className="text-[10px] text-slate-500">Sincronizado entre meses</span>
+              <span className="text-[0.65rem] text-slate-500">Sincronizado entre meses</span>
             </div>
 
             {history && history.length > 0 ? (
@@ -325,7 +408,7 @@ export default function ExerciseCard({
                       <div className="flex items-center gap-2.5">
                         {diff !== 0 && !Number.isNaN(diff) && (
                           <span
-                            className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
+                            className={`text-[0.65rem] font-bold px-1.5 py-0.5 rounded ${
                               diff > 0
                                 ? 'bg-emerald-950 text-emerald-400 border border-emerald-800/60'
                                 : 'bg-amber-950 text-amber-400 border border-amber-800/60'
