@@ -133,22 +133,34 @@ export const getRepsPlaceholder = (seriesRepsText) => {
 };
 
 /**
- * Extrai o tempo de descanso recomendado (em segundos) a partir da coluna 'Descanso'
- * ou do contexto do exercício para acionar o cronômetro com 1 clique.
+ * Extrai o tempo de descanso recomendado (em segundos) a partir da coluna 'Descanso',
+ * priorizando sempre o LIMITE INFERIOR quando houver intervalo (ex: "90-120s" -> 90s),
+ * para que o usuário utilize o botão "+15s" se desejar estender o descanso.
  */
 export const parseRestSeconds = (descansoText = "", tecnicaText = "", groupText = "") => {
   const d = (descansoText || "").toLowerCase();
   const tech = (tecnicaText || "").toLowerCase();
   const group = (groupText || "").toLowerCase();
 
+  // 1. Prioridade para micro-pausa de Rest-Pause (15s)
   if (d.includes("15s") || tech.includes("rest-pause")) return 15;
-  if (d.includes("120s")) return 120;
-  if (d.includes("90-120s") || d.includes("90s")) return 90;
-  if (d.includes("75-90s") || d.includes("75s") || d.includes("60-90s")) return 75;
-  if (d.includes("30-45s") || d.includes("30s") || group.includes("panturrilha") || group.includes("abdômen")) return 30;
-  if (d.includes("45-60s") || d.includes("45s")) return 45;
-  if (d.includes("60s") || d.includes("60-75s")) return 60;
 
+  // 2. Busca explicitamente um intervalo (ex: "90-120s", "60-75s", "45-60s", "30-45s") e retorna o LIMITE INFERIOR
+  const rangeMatch = d.match(/(\d+)\s*-\s*(\d+)\s*s/);
+  if (rangeMatch) {
+    const lowerBound = parseInt(rangeMatch[1], 10);
+    if (lowerBound > 0) return lowerBound;
+  }
+
+  // 3. Busca valores positivos em segundos (ignorando "0s no par" / "0s na redução")
+  const allSecs = [...d.matchAll(/(\d+)\s*s\b/g)]
+    .map((m) => parseInt(m[1], 10))
+    .filter((n) => n > 0);
+  if (allSecs.length > 0) {
+    return allSecs[0];
+  }
+
+  if (group.includes("panturrilha") || group.includes("abdômen")) return 30;
   return 60;
 };
 

@@ -15,3 +15,67 @@
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
+/* Animações contínuas (cadência 2-2 sem pausa articular) para silhuetas OLED */
+@keyframes lift-y {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-22px); }
+}
+
+@keyframes lift-y-deep {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(24px); }
+}
+
+@keyframes press-diag {
+  0%, 100% { transform: translate(0px, 0px); }
+  50% { transform: translate(18px, -18px); }
+}
+
+@keyframes swing-curl {
+  0%, 100% { transform: rotate(28deg); }
+  50% { transform: rotate(-68deg); }
+}
+
+@keyframes swing-pushdown {
+  0%, 100% { transform: rotate(-35deg); }
+  50% { transform: rotate(52deg); }
+}
+
+@keyframes lateral-left {
+  0%, 100% { transform: rotate(12deg); }
+  50% { transform: rotate(78deg); }
+}
+
+@keyframes lateral-right {
+  0%, 100% { transform: rotate(-12deg); }
+  50% { transform: rotate(-78deg); }
+}
+
+@keyframes leg-ext {
+  0%, 100% { transform: rotate(0deg); }
+  50% { transform: rotate(-72deg); }
+}
+
+@keyframes vacuum-pulse {
+  0%, 100% { transform: scaleY(1); }
+  50% { transform: scaleY(0.62); }
+}
+
+@keyframes oled-drift {
+  0%, 100% { transform: translate(0px, 0px); }
+  25% { transform: translate(3px, -3px); }
+  50% { transform: translate(-2px, 3px); }
+  75% { transform: translate(-3px, -2px); }
+}
+
+.anim-lift-y { animation: lift-y 3.6s ease-in-out infinite; }
+.anim-lift-y-deep { animation: lift-y-deep 3.8s ease-in-out infinite; }
+.anim-press-diag { animation: press-diag 3.6s ease-in-out infinite; }
+.anim-swing-curl { animation: swing-curl 3.4s ease-in-out infinite; }
+.anim-swing-pushdown { animation: swing-pushdown 3.4s ease-in-out infinite; }
+.anim-lateral-left { animation: lateral-left 3.4s ease-in-out infinite; }
+.anim-lateral-right { animation: lateral-right 3.4s ease-in-out infinite; }
+.anim-leg-ext { animation: leg-ext 3.4s ease-in-out infinite; }
+.anim-vacuum { animation: vacuum-pulse 4.5s ease-in-out infinite; }
+.anim-oled-drift { animation: oled-drift 45s ease-in-out infinite; }

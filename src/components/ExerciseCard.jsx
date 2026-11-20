@@ -10,7 +10,8 @@ import {
   RotateCcw,
   Check,
   Trash2,
-  Timer
+  Timer,
+  Moon
 } from 'lucide-react';
 import {
   isOptionalExercise,
@@ -28,6 +29,9 @@ export default function ExerciseCard({
   onToggleComplete,
   onDeleteLog,
   onTriggerTimer,
+  onFocusExercise,
+  onOpenScreensaver,
+  isFocused = false,
   history,
   isCompleted,
   uiScale = 'normal'
@@ -111,7 +115,11 @@ export default function ExerciseCard({
 
   // --- MODO EXPANDIDO (NORMAL) ---
   const cardStyles = isOptional
-    ? "bg-purple-950/15 border-purple-800/70 border-dashed"
+    ? isFocused
+      ? "bg-purple-950/20 border-sky-500/80 border-dashed ring-1 ring-sky-500/30"
+      : "bg-purple-950/15 border-purple-800/70 border-dashed"
+    : isFocused
+    ? "bg-slate-900 border-sky-500/80 ring-1 ring-sky-500/30 shadow-md shadow-sky-950/40"
     : "bg-slate-900 border-slate-800 shadow-sm";
 
   const headerStyles = isOptional
@@ -124,7 +132,10 @@ export default function ExerciseCard({
   const stackMetrics = isExtraLarge || (isScaledUp && hasLongMetricsText);
 
   return (
-    <div className={`rounded-xl border overflow-hidden mb-4 transition-all hover:border-slate-700 ${cardStyles}`}>
+    <div
+      onClick={() => onFocusExercise && onFocusExercise(data)}
+      className={`rounded-xl border overflow-hidden mb-4 transition-all hover:border-slate-700 ${cardStyles}`}
+    >
       {/* Cabeçalho */}
       <div className={`p-4 border-b flex justify-between items-start gap-2 ${headerStyles}`}>
         <div className="flex-1 min-w-0">
@@ -166,7 +177,27 @@ export default function ExerciseCard({
 
           <button
             type="button"
-            onClick={() => onToggleComplete(canonicalKey)}
+            onClick={(e) => {
+              e.stopPropagation();
+              unlockTimerAudio();
+              if (onOpenScreensaver) onOpenScreensaver(data, restSeconds);
+            }}
+            className={`p-2 rounded-lg border transition-colors cursor-pointer ${
+              isFocused
+                ? 'border-sky-700/80 bg-sky-950/50 text-sky-300 hover:bg-sky-900/60'
+                : 'border-slate-700/80 bg-slate-800/50 text-slate-400 hover:bg-sky-950/40 hover:text-sky-300'
+            }`}
+            title="Abrir Modo Foco OLED (Screensaver)"
+          >
+            <Moon className="w-4 h-4" />
+          </button>
+
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleComplete(canonicalKey);
+            }}
             className="p-2 rounded-lg border border-slate-700/80 bg-slate-800/50 hover:bg-emerald-900/40 hover:border-emerald-700 text-slate-400 hover:text-emerald-300 transition-colors cursor-pointer"
             title="Marcar exercício como concluído"
           >
@@ -212,8 +243,10 @@ export default function ExerciseCard({
           {onTriggerTimer && (
             <button
               type="button"
-              onClick={() => {
+              onClick={(e) => {
+                e.stopPropagation();
                 unlockTimerAudio();
+                if (onFocusExercise) onFocusExercise(data);
                 onTriggerTimer(restSeconds);
               }}
               className="flex items-center justify-center gap-1 px-2.5 py-1.5 rounded-lg bg-blue-950/70 hover:bg-blue-900/80 border border-blue-700/60 text-blue-300 hover:text-white text-xs font-bold flex-shrink-0 transition-colors cursor-pointer"

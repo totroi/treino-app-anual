@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React from 'react';
 import { Timer, Play, Pause, RotateCcw, X, Volume2, VolumeX, Plus, BellOff } from 'lucide-react';
-import { unlockTimerAudio, playAlarmBurst, stopSharedAudio } from '../utils/timerAudio';
+import { unlockTimerAudio } from '../utils/timerAudio';
 
 const PRESETS = [
   { label: '15s', seconds: 15, desc: 'Rest-Pause' },
@@ -10,116 +10,24 @@ const PRESETS = [
   { label: '120s', seconds: 120, desc: 'Pesado' }
 ];
 
-export default function RestTimer({ externalTrigger }) {
-  const [isOpen, setIsOpen] = useState(false);
-  const [secondsLeft, setSecondsLeft] = useState(0);
-  const [totalSeconds, setTotalSeconds] = useState(60);
-  const [isRunning, setIsRunning] = useState(false);
-  const [soundEnabled, setSoundEnabled] = useState(true);
-  const [justFinished, setJustFinished] = useState(false);
-  const [isAlarmRinging, setIsAlarmRinging] = useState(false);
-  const [lastTriggerTimestamp, setLastTriggerTimestamp] = useState(0);
-  const alarmIntervalRef = useRef(null);
-
-  const stopAlarm = useCallback(() => {
-    setIsAlarmRinging(false);
-    if (alarmIntervalRef.current) {
-      clearInterval(alarmIntervalRef.current);
-      alarmIntervalRef.current = null;
-    }
-    stopSharedAudio();
-    if (navigator.vibrate) {
-      try {
-        navigator.vibrate(0);
-      } catch {
-        // ignore
-      }
-    }
-  }, []);
-
-  // Acionamento externo (botão de descanso do card)
-  if (externalTrigger && externalTrigger.timestamp !== lastTriggerTimestamp) {
-    const secs = externalTrigger.seconds || 60;
-    setLastTriggerTimestamp(externalTrigger.timestamp);
-    setTotalSeconds(secs);
-    setSecondsLeft(secs);
-    setIsRunning(true);
-    setJustFinished(false);
-    setIsAlarmRinging(false);
-    setIsOpen(true);
-  }
-
-  // Loop de alarme contínuo quando o cronômetro chega a zero
-  useEffect(() => {
-    if (!isAlarmRinging) {
-      if (alarmIntervalRef.current) {
-        clearInterval(alarmIntervalRef.current);
-        alarmIntervalRef.current = null;
-      }
-      return;
-    }
-
-    if (soundEnabled) playAlarmBurst();
-    if (navigator.vibrate) {
-      try {
-        navigator.vibrate([250, 120, 250]);
-      } catch {
-        // ignore
-      }
-    }
-
-    let cycles = 0;
-    alarmIntervalRef.current = setInterval(() => {
-      cycles += 1;
-      if (cycles >= 15) {
-        setIsAlarmRinging(false);
-        clearInterval(alarmIntervalRef.current);
-        alarmIntervalRef.current = null;
-        return;
-      }
-      if (soundEnabled) playAlarmBurst();
-      if (navigator.vibrate) {
-        try {
-          navigator.vibrate([250, 120, 250]);
-        } catch {
-          // ignore
-        }
-      }
-    }, 1100);
-
-    return () => {
-      if (alarmIntervalRef.current) {
-        clearInterval(alarmIntervalRef.current);
-        alarmIntervalRef.current = null;
-      }
-    };
-  }, [isAlarmRinging, soundEnabled]);
-
-  // Contagem regressiva
-  useEffect(() => {
-    if (!isRunning) return;
-    const interval = setInterval(() => {
-      setSecondsLeft((prev) => {
-        if (prev <= 1) {
-          setIsRunning(false);
-          setJustFinished(true);
-          setIsAlarmRinging(true);
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-    return () => clearInterval(interval);
-  }, [isRunning]);
-
-  const startPreset = (secs) => {
-    unlockTimerAudio();
-    stopAlarm();
-    setTotalSeconds(secs);
-    setSecondsLeft(secs);
-    setIsRunning(true);
-    setJustFinished(false);
-  };
+export default function RestTimer({ timer }) {
+  const {
+    isOpen,
+    setIsOpen,
+    secondsLeft,
+    totalSeconds,
+    isRunning,
+    soundEnabled,
+    justFinished,
+    isAlarmRinging,
+    startTimer,
+    togglePlayPause,
+    addSeconds,
+    resetTimer,
+    stopAlarm,
+    dismissAlarm,
+    toggleSound
+  } = timer;
 
   const formatTime = (secs) => {
     const m = Math.floor(secs / 60);
@@ -133,14 +41,10 @@ export default function RestTimer({ externalTrigger }) {
       : 0;
 
   if (!isOpen) {
-    // Se estiver apitando mesmo minimizado, 1 clique no botão flutuante para o alarme imediatamente!
     if (isAlarmRinging) {
       return (
         <button
-          onClick={() => {
-            stopAlarm();
-            setJustFinished(false);
-          }}
+          onClick={dismissAlarm}
           className="fixed bottom-4 right-4 z-40 flex items-center gap-2 px-4 py-3 rounded-full shadow-2xl bg-emerald-600 hover:bg-emerald-500 text-white border-2 border-emerald-300 animate-bounce cursor-pointer"
           title="Toque para parar o alarme"
         >
@@ -201,13 +105,7 @@ export default function RestTimer({ externalTrigger }) {
 
         <div className="flex items-center gap-1">
           <button
-            onClick={() => {
-              unlockTimerAudio();
-              const nextState = !soundEnabled;
-              setSoundEnabled(nextState);
-              if (nextState) playAlarmBurst();
-              else stopAlarm();
-            }}
+            onClick={toggleSound}
             className="p-1.5 text-slate-400 hover:text-slate-200 rounded-lg cursor-pointer"
             title={soundEnabled ? 'Som ativado (clique para silenciar)' : 'Som desativado (clique para ativar e testar)'}
           >
@@ -230,10 +128,7 @@ export default function RestTimer({ externalTrigger }) {
       {isAlarmRinging ? (
         <button
           type="button"
-          onClick={() => {
-            stopAlarm();
-            setJustFinished(false);
-          }}
+          onClick={dismissAlarm}
           className="w-full py-3 px-4 mb-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white font-extrabold text-sm flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/30 border border-emerald-400 animate-pulse cursor-pointer"
         >
           <BellOff className="w-5 h-5" />
@@ -252,13 +147,7 @@ export default function RestTimer({ externalTrigger }) {
 
           <div className="flex items-center gap-1.5">
             <button
-              onClick={() => {
-                unlockTimerAudio();
-                stopAlarm();
-                setSecondsLeft((prev) => prev + 15);
-                setTotalSeconds((prev) => Math.max(prev, secondsLeft + 15));
-                setJustFinished(false);
-              }}
+              onClick={() => addSeconds(15)}
               className="px-2 py-1.5 text-xs font-bold rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 flex items-center gap-0.5 cursor-pointer"
               title="Adicionar 15 segundos"
             >
@@ -267,15 +156,7 @@ export default function RestTimer({ externalTrigger }) {
             </button>
 
             <button
-              onClick={() => {
-                unlockTimerAudio();
-                stopAlarm();
-                if (secondsLeft === 0) {
-                  startPreset(totalSeconds || 60);
-                } else {
-                  setIsRunning(!isRunning);
-                }
-              }}
+              onClick={togglePlayPause}
               className={`p-2 rounded-lg font-bold text-white transition-colors cursor-pointer ${
                 isRunning ? 'bg-amber-600 hover:bg-amber-500' : 'bg-blue-600 hover:bg-blue-500'
               }`}
@@ -285,12 +166,7 @@ export default function RestTimer({ externalTrigger }) {
             </button>
 
             <button
-              onClick={() => {
-                stopAlarm();
-                setIsRunning(false);
-                setSecondsLeft(totalSeconds);
-                setJustFinished(false);
-              }}
+              onClick={resetTimer}
               className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 cursor-pointer"
               title="Reiniciar"
             >
@@ -305,7 +181,7 @@ export default function RestTimer({ externalTrigger }) {
         {PRESETS.map((p) => (
           <button
             key={p.seconds}
-            onClick={() => startPreset(p.seconds)}
+            onClick={() => startTimer(p.seconds, true)}
             className={`py-1.5 px-1 rounded-lg border text-center transition-all cursor-pointer ${
               totalSeconds === p.seconds && isRunning
                 ? 'bg-blue-600/25 border-blue-500 text-blue-300'

@@ -11,7 +11,8 @@ import {
   ArrowDownCircle,
   Target,
   CheckCircle2,
-  BookOpen
+  BookOpen,
+  Droplets
 } from 'lucide-react';
 
 const PUMPER_EXAMPLES = [
@@ -400,9 +401,55 @@ export default function PrinciplesModal({ isOpen, onClose }) {
                 <div className="text-lg font-extrabold text-emerald-400">Mín. 25g</div>
                 <div className="text-[0.7rem] font-bold text-white mt-0.5">Proteína até 1h Depois</div>
                 <p className="text-[0.7rem] text-slate-400 mt-1 leading-snug">
-                  Garanta ao menos 25g de proteína de alta absorção em até 1 hora após o término do treino para disparar a síntese proteica miofibrilar.
+                  Garanta ao menos 25g de proteína de alto valor biológico até 1h pós-treino para atingir o limiar de leucina (~2,5–3g) e disparar a via mTORC1.
                 </p>
               </div>
+            </div>
+
+            {/* Protocolo Pré & Intra-Treino: Água + Sal Integral + Bicarbonato de Sódio */}
+            <div className="bg-cyan-950/25 border border-cyan-800/50 rounded-xl p-3.5 space-y-2.5">
+              <div className="flex items-center gap-2">
+                <div className="bg-cyan-950 border border-cyan-700/60 p-1.5 rounded-lg text-cyan-400 flex-shrink-0">
+                  <Droplets className="w-4 h-4" />
+                </div>
+                <div>
+                  <span className="text-[0.65rem] font-extrabold uppercase tracking-wider text-cyan-400 block">
+                    Protocolo Pré & Intra-Treino
+                  </span>
+                  <h4 className="text-xs sm:text-sm font-bold text-white leading-tight">
+                    800ml–1L Água + 2 Pitadas Generosas de Sal Integral + 1 Colher Rasa de Sopa de Bicarbonato
+                  </h4>
+                </div>
+              </div>
+
+              <p className="text-xs text-slate-300 leading-relaxed">
+                Consumida em goles espaçados antes e ao longo da sessão, esta solução hidroeletrolítica e alcalinizante sustenta a <strong className="text-white">força contrátil até a última série</strong> e permite treinar pesado apenas com uma <strong className="text-cyan-300">refeição pré-treino leve</strong>:
+              </p>
+
+              <ul className="space-y-1.5 text-[0.7rem] text-slate-300 leading-relaxed list-none">
+                <li className="flex items-start gap-1.5">
+                  <span className="text-cyan-400 font-bold mt-0.5">•</span>
+                  <span>
+                    <strong className="text-white">Tamponamento de Acidose (Bicarbonato — NaHCO₃):</strong> Em séries até a falha sob tensão contínua, o acúmulo de prótons <strong className="text-cyan-200">H⁺</strong> inibe a glicólise (PFK-1) e compete com o cálcio (Ca²⁺) na troponina C. O bicarbonato eleva o pH extracelular, acelerando o efluxo de H⁺ via transportadores MCT e adiando a fadiga mecânica.
+                  </span>
+                </li>
+                <li className="flex items-start gap-1.5">
+                  <span className="text-cyan-400 font-bold mt-0.5">•</span>
+                  <span>
+                    <strong className="text-white">Volume Plasmático & Disparo Neural (Água + Sal Integral):</strong> O sódio e traços minerais expandem a volemia (perfusão capilar e <em>pump</em> denso) e sustentam a <strong className="text-cyan-200">bomba Na⁺/K⁺-ATPase</strong>, mantendo a excitabilidade da membrana muscular e prevenindo quedas de força ou cãibras.
+                  </span>
+                </li>
+                <li className="flex items-start gap-1.5">
+                  <span className="text-cyan-400 font-bold mt-0.5">•</span>
+                  <span>
+                    <strong className="text-white">Por que basta uma refeição leve antes:</strong> A energia da musculação intensa vem do <strong className="text-cyan-200">glicogênio muscular pré-estocado (300–700g)</strong> e da fosfocreatina. Uma refeição pesada antes sequestra sangue para o trato digestivo; já a refeição leve somada a esta solução mantém o fluxo sanguíneo 100% voltado aos músculos.
+                  </span>
+                </li>
+              </ul>
+
+              <p className="text-[0.65rem] italic text-cyan-200/80 bg-slate-950/60 p-2 rounded-lg border border-cyan-900/40">
+                <strong className="not-italic text-cyan-300">Adaptação prática:</strong> Beba em goles distribuídos (iniciando ~30 min antes e seguindo durante o treino). Se nunca utilizou bicarbonato no treino, inicie com ½ colher nos primeiros dias para testar tolerância gástrica (respeitando eventuais restrições médicas de sódio).
+              </p>
             </div>
           </section>
 

@@ -186,3 +186,28 @@ export function saveUiScale(scale) {
   }
   applyUiScaleToDocument(validScale);
 }
+
+const SCREENSAVER_DELAY_KEY = "irontracker_screensaver_delay";
+const VALID_SCREENSAVER_DELAYS = [0, 15, 20, 30, 45];
+
+export function loadScreensaverDelay() {
+  try {
+    const saved = localStorage.getItem(SCREENSAVER_DELAY_KEY);
+    if (saved !== null) {
+      const parsed = parseInt(saved, 10);
+      if (VALID_SCREENSAVER_DELAYS.includes(parsed)) return parsed;
+    }
+  } catch {
+    // ignore
+  }
+  return 20; // Padrão: 20 segundos
+}
+
+export function saveScreensaverDelay(seconds) {
+  const valid = VALID_SCREENSAVER_DELAYS.includes(seconds) ? seconds : 20;
+  try {
+    localStorage.setItem(SCREENSAVER_DELAY_KEY, String(valid));
+  } catch {
+    // ignore
+  }
+}

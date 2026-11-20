@@ -16,7 +16,8 @@ import {
   BookOpen,
   Trash2,
   AlertTriangle,
-  Type
+  Type,
+  Moon
 } from 'lucide-react';
 import { INITIAL_CSV_DATA } from './data/fallbackWorkouts';
 import {
@@ -38,12 +39,16 @@ import {
   parseImportedBackup,
   resetAllUserProgress,
   loadUiScale,
-  saveUiScale
+  saveUiScale,
+  loadScreensaverDelay,
+  saveScreensaverDelay
 } from './services/storageService';
+import { useRestTimer } from './hooks/useRestTimer';
 import LoginScreen from './components/LoginScreen';
 import ExerciseCard from './components/ExerciseCard';
 import RestTimer from './components/RestTimer';
 import PrinciplesModal from './components/PrinciplesModal';
+import FocusScreensaver from './components/FocusScreensaver';
 
 export default function App() {
   const [currentUser, setCurrentUser] = useState(() => {
@@ -64,16 +69,24 @@ export default function App() {
   const [showPrinciplesModal, setShowPrinciplesModal] = useState(false);
   const [showResetConfirmModal, setShowResetConfirmModal] = useState(false);
   const [uiScale, setUiScale] = useState(() => loadUiScale());
+  const [screensaverDelay, setScreensaverDelay] = useState(() => loadScreensaverDelay());
+  const [focusedExercise, setFocusedExercise] = useState(null);
+  const [isScreensaverOpen, setIsScreensaverOpen] = useState(false);
 
   const handleUiScaleChange = (newScale) => {
     setUiScale(newScale);
     saveUiScale(newScale);
   };
 
+  const handleScreensaverDelayChange = (secs) => {
+    setScreensaverDelay(secs);
+    saveScreensaverDelay(secs);
+  };
+
   // Histórico e Sessão por usuário logado
   const [workoutLogs, setWorkoutLogs] = useState({});
   const [completedExercises, setCompletedExercises] = useState([]);
-  const [timerTrigger, setTimerTrigger] = useState(null);
+  const timer = useRestTimer();
   const fileInputRef = useRef(null);
 
   const showToast = useCallback((msg) => {
@@ -143,10 +156,52 @@ export default function App() {
     }
   }, [availableMonths, selectedMonth]);
 
-  // Reseta filtro de grupo muscular ao trocar mês ou treino
+  // Reseta filtro de grupo muscular e exercício focado ao trocar mês ou treino
   useEffect(() => {
     setSelectedMuscleGroup('TODOS');
+    setFocusedExercise(null);
+    setIsScreensaverOpen(false);
   }, [selectedMonth, selectedWorkout]);
+
+  // Auto-Dim do Screensaver OLED por inatividade quando há um exercício focado
+  useEffect(() => {
+    if (
+      !currentUser ||
+      !focusedExercise ||
+      screensaverDelay <= 0 ||
+      isScreensaverOpen ||
+      showPrinciplesModal ||
+      showResetConfirmModal ||
+      showUserMenu
+    ) {
+      return;
+    }
+
+    let timeoutId = null;
+    const resetInactivityTimer = () => {
+      if (timeoutId) clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => {
+        setIsScreensaverOpen(true);
+      }, screensaverDelay * 1000);
+    };
+
+    const events = ['pointerdown', 'keydown', 'touchstart', 'scroll'];
+    events.forEach((ev) => window.addEventListener(ev, resetInactivityTimer, { passive: true }));
+    resetInactivityTimer();
+
+    return () => {
+      if (timeoutId) clearTimeout(timeoutId);
+      events.forEach((ev) => window.removeEventListener(ev, resetInactivityTimer));
+    };
+  }, [
+    currentUser,
+    focusedExercise,
+    screensaverDelay,
+    isScreensaverOpen,
+    showPrinciplesModal,
+    showResetConfirmModal,
+    showUserMenu
+  ]);
 
   // Exercícios do mês e treino selecionados (antes do filtro de grupo/opcional)
   const baseWorkoutExercises = useMemo(() => {
@@ -428,6 +483,36 @@ export default function App() {
                   </div>
                 </div>
 
+                {/* Controle de Screensaver OLED (Auto-Dim por Inatividade) */}
+                <div className="px-2 py-2 mb-1.5 bg-slate-950/70 border border-slate-800 rounded-xl">
+                  <div className="flex items-center gap-1.5 text-[0.65rem] font-bold text-slate-400 uppercase tracking-wider mb-1.5">
+                    <Moon className="w-3.5 h-3.5 text-sky-400" />
+                    <span>Screensaver OLED (Auto-Dim)</span>
+                  </div>
+                  <div className="grid grid-cols-5 gap-1">
+                    {[
+                      { val: 0, label: 'Off' },
+                      { val: 15, label: '15s' },
+                      { val: 20, label: '20s' },
+                      { val: 30, label: '30s' },
+                      { val: 45, label: '45s' }
+                    ].map((opt) => (
+                      <button
+                        key={opt.val}
+                        type="button"
+                        onClick={() => handleScreensaverDelayChange(opt.val)}
+                        className={`py-1.5 px-0.5 rounded-lg border text-center text-[0.65rem] font-bold transition-all cursor-pointer ${
+                          screensaverDelay === opt.val
+                            ? 'bg-sky-600 text-white border-sky-400 shadow-sm'
+                            : 'bg-slate-900 text-slate-300 border-slate-800 hover:bg-slate-800'
+                        }`}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
                 <button
                   onClick={() => {
                     exportUserBackup(currentUser.username, workoutLogs, completedExercises);
@@ -630,7 +715,19 @@ export default function App() {
                   onSaveLog={handleSaveLog}
                   onToggleComplete={handleToggleComplete}
                   onDeleteLog={handleDeleteLog}
-                  onTriggerTimer={(seconds) => setTimerTrigger({ seconds, timestamp: Date.now() })}
+                  onTriggerTimer={(seconds) => timer.startTimer(seconds, true)}
+                  onFocusExercise={(ex) => setFocusedExercise(ex)}
+                  onOpenScreensaver={(ex, restSeconds) => {
+                    setFocusedExercise(ex);
+                    if (!timer.isRunning && timer.secondsLeft === 0) {
+                      timer.startTimer(restSeconds, false);
+                    }
+                    setIsScreensaverOpen(true);
+                  }}
+                  isFocused={
+                    focusedExercise &&
+                    getCanonicalExerciseKey(focusedExercise['Exercício']) === canonicalKey
+                  }
                   history={workoutLogs[canonicalKey] || []}
                   isCompleted={completedExercises.includes(canonicalKey)}
                   uiScale={uiScale}
@@ -723,8 +820,16 @@ export default function App() {
         onClose={() => setShowPrinciplesModal(false)}
       />
 
+      {/* Screensaver Interativo OLED True Black */}
+      <FocusScreensaver
+        isOpen={isScreensaverOpen}
+        exercise={focusedExercise}
+        timer={timer}
+        onExit={() => setIsScreensaverOpen(false)}
+      />
+
       {/* Cronômetro de Descanso Flutuante */}
-      <RestTimer externalTrigger={timerTrigger} />
+      {!isScreensaverOpen && <RestTimer timer={timer} />}
     </div>
   );
 }
