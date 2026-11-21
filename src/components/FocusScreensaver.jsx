@@ -186,10 +186,17 @@ export default function FocusScreensaver({
     if (lastLog.reps) setReps(String(lastLog.reps));
   };
 
-  const handleSaveSetInFocus = () => {
+  const handleSaveSetInFocus = (e) => {
+    if (e) e.preventDefault();
     if (!canSave || !onSaveSet) return;
-    onSaveSet(canonicalKey, displayName, weight, reps, restSeconds, exercise);
-    // Salvar a série no Modo Foco dispara o descanso automaticamente
+    const saved = onSaveSet(canonicalKey, displayName, weight, reps, restSeconds, exercise);
+    if (!saved) return;
+    // Fecha o teclado iOS suavemente APÓS a gravação confirmada
+    if (typeof document !== 'undefined' && document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur();
+    }
+    setIsInputFocused(false);
+    // Salvar a série confirmada no Modo Foco dispara o descanso automaticamente
     timer.startTimer(restSeconds, false, displayName);
     setReps('');
     setSavedSuccess(true);
@@ -255,16 +262,16 @@ export default function FocusScreensaver({
     );
   }
 
-  // ESTÁGIO 1: INTERATIVO DIMMED (90%+ #000000, zero fills claros, paleta suave de baixo APL)
+  // ESTÁGIO 1: INTERATIVO DIMMED (fluxo estável justify-start: zero deslocamento de botão quando teclado iOS fecha)
   return (
     <div
-      className="fixed inset-0 z-50 min-h-[100dvh] bg-black text-zinc-400 flex flex-col items-center justify-between px-safe pt-safe-screen pb-safe-screen overflow-y-auto overscroll-contain ui-fade-in"
+      className="fixed inset-0 z-50 min-h-[100dvh] bg-black text-zinc-400 flex flex-col items-center justify-start px-safe pt-safe-screen pb-safe-screen overflow-y-auto overscroll-contain ui-fade-in"
       role="dialog"
       aria-modal="true"
       aria-label="Modo Foco OLED"
     >
       {/* Topo discreto com contraste apagado */}
-      <div className="w-full max-w-sm flex items-center justify-between text-xs text-zinc-600 uppercase tracking-widest mb-1">
+      <div className="w-full max-w-sm flex items-center justify-between text-xs text-zinc-600 uppercase tracking-widest mb-2">
         <span>Modo Foco • Eco OLED</span>
         {todaySetsCount > 0 ? (
           <span className="text-emerald-500/80 font-bold normal-case tracking-normal">
@@ -275,8 +282,8 @@ export default function FocusScreensaver({
         )}
       </div>
 
-      {/* Conteúdo central */}
-      <div className="w-full max-w-sm flex flex-col items-center text-center my-auto py-2 space-y-3">
+      {/* Conteúdo central em fluxo estável (sem my-auto que pula ao recolher o teclado no iPhone) */}
+      <div className="w-full max-w-sm flex flex-col items-center text-center py-1 space-y-3">
         {/* Bloco visual com deslocamento anti-burn-in (±10px) — isolado dos inputs */}
         <div className="w-full flex flex-col items-center anim-oled-drift select-none">
           <ExerciseSilhouette
@@ -324,8 +331,11 @@ export default function FocusScreensaver({
           )}
         </div>
 
-        {/* Registro Rápido True Black (zero preenchimentos acesos; outline suave) */}
-        <div className="w-full bg-black border border-zinc-900 rounded-2xl p-3 text-left space-y-2.5">
+        {/* Registro Rápido True Black em <form> real com blindagem contra blur/keyboard-collapse no iOS */}
+        <form
+          onSubmit={handleSaveSetInFocus}
+          className="w-full bg-black border border-zinc-900 rounded-2xl p-3 text-left space-y-2.5"
+        >
           <div className="grid grid-cols-2 gap-2">
             <div>
               <label
@@ -344,7 +354,6 @@ export default function FocusScreensaver({
                 onFocus={() => setIsInputFocused(true)}
                 onBlur={() => setIsInputFocused(false)}
                 onChange={(e) => setWeight(e.target.value)}
-                onKeyDown={(e) => { if (e.key === 'Enter') handleSaveSetInFocus(); }}
                 className="w-full min-h-[44px] px-3 py-2 rounded-xl border border-zinc-800/90 bg-black text-zinc-200 text-base placeholder-zinc-700 focus:border-sky-700 outline-none"
               />
             </div>
@@ -366,7 +375,6 @@ export default function FocusScreensaver({
                 onFocus={() => setIsInputFocused(true)}
                 onBlur={() => setIsInputFocused(false)}
                 onChange={(e) => setReps(e.target.value)}
-                onKeyDown={(e) => { if (e.key === 'Enter') handleSaveSetInFocus(); }}
                 className="w-full min-h-[44px] px-3 py-2 rounded-xl border border-zinc-800/90 bg-black text-zinc-200 text-base placeholder-zinc-700 focus:border-sky-700 outline-none"
               />
             </div>
@@ -374,9 +382,12 @@ export default function FocusScreensaver({
 
           <div className="flex items-center gap-2">
             <button
-              type="button"
-              onClick={handleSaveSetInFocus}
+              type="submit"
               disabled={!canSave}
+              onPointerDown={(e) => {
+                // Evita que o iOS feche o teclado e desloque o botão antes do submit/click completar
+                if (canSave) e.preventDefault();
+              }}
               className={`flex-1 min-h-[44px] px-3 py-2 rounded-xl font-bold text-xs sm:text-sm border flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
                 savedSuccess
                   ? 'bg-black border-emerald-700 text-emerald-400'
@@ -396,6 +407,7 @@ export default function FocusScreensaver({
             {!isCompleted && onToggleComplete && (
               <button
                 type="button"
+                onPointerDown={(e) => e.preventDefault()}
                 onClick={handleCompleteInFocus}
                 aria-label="Concluir exercício e sair do modo foco"
                 title="Marcar exercício como concluído"
@@ -406,7 +418,19 @@ export default function FocusScreensaver({
               </button>
             )}
           </div>
-        </div>
+
+          {todaySetsCount > 0 && lastLog && (
+            <div className="flex items-center justify-between gap-2 pt-0.5 text-xs text-emerald-500/80">
+              <span className="flex items-center gap-1 truncate">
+                <CheckCircle2 className="w-3.5 h-3.5 flex-shrink-0" />
+                <span className="truncate">
+                  Série #{todaySetsCount} registrada ({formatWeightDisplay(lastLog.weight)}kg
+                  {lastLog.reps ? ` × ${lastLog.reps}` : ''})
+                </span>
+              </span>
+            </div>
+          )}
+        </form>
 
         {/* Cronômetro Ultra-Low-APL (outline puro sobre #000000) */}
         <div className="w-full bg-black border border-zinc-900 rounded-2xl p-3.5 select-none">
@@ -422,7 +446,10 @@ export default function FocusScreensaver({
           {timer.isAlarmRinging ? (
             <button
               type="button"
-              onClick={timer.dismissAlarm}
+              onClick={() => {
+                setIsUltraEco(false);
+                timer.dismissAlarm();
+              }}
               className="w-full min-h-[52px] py-3 px-4 rounded-xl bg-black hover:bg-emerald-950/40 text-emerald-400 font-extrabold text-sm flex items-center justify-center gap-2 border-2 border-emerald-600/80 animate-pulse cursor-pointer"
             >
               <BellOff className="w-5 h-5" />
@@ -519,7 +546,7 @@ export default function FocusScreensaver({
       </div>
 
       {/* Botão explícito de saída em outline True Black */}
-      <div className="w-full max-w-sm pt-2">
+      <div className="w-full max-w-sm mt-auto pt-3">
         <button
           type="button"
           onClick={onExit}

@@ -14,6 +14,13 @@ import {
 } from '../services/storageService';
 import { normalizeWeightInput, parsePtBrNumber } from '../utils/numberFormat';
 
+function getLocalDateKey(date = new Date()) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
 export function useWorkoutLogs(username, selectedMonth, selectedWorkout) {
   const [workoutLogs, setWorkoutLogs] = useState(() =>
     username ? loadUserWorkoutLogs(username) : {}
@@ -97,15 +104,15 @@ export function useWorkoutLogs(username, selectedMonth, selectedWorkout) {
   );
 
   // Conta quantas séries o atleta salvou na SESSÃO ATIVA de hoje para este exercício.
-  // Se a sessão/semana foi reiniciada hoje, logs anteriores ao reinício continuam no histórico
-  // mas não inflam o contador da nova sessão.
+  // Usa chave local pura YYYY-MM-DD (imune a variações de locale no iOS Safari) e respeita reinícios da sessão.
   const getTodaySetsCount = useCallback(
     (canonicalKey) => {
       const entries = workoutLogs[canonicalKey] || [];
-      const todayStr = new Date().toLocaleDateString('pt-BR');
+      const todayKey = getLocalDateKey(new Date());
       return entries.filter((item) => {
         const itemDate = new Date(item.date);
-        if (itemDate.toLocaleDateString('pt-BR') !== todayStr) return false;
+        if (Number.isNaN(itemDate.getTime())) return false;
+        if (getLocalDateKey(itemDate) !== todayKey) return false;
         if (currentSessionStartMs !== null && itemDate.getTime() < currentSessionStartMs) {
           return false;
         }
@@ -115,7 +122,7 @@ export function useWorkoutLogs(username, selectedMonth, selectedWorkout) {
     [workoutLogs, currentSessionStartMs]
   );
 
-  // Salva uma série SEM colapsar/concluir o card automaticamente (Item 4.1)
+  // Salva uma série SEM colapsar/concluir o card automaticamente e persiste sincronamente no localStorage
   const logSet = useCallback(
     (canonicalKey, displayTitle, rawWeight, rawReps) => {
       const cleanWeight = normalizeWeightInput(rawWeight);
@@ -135,7 +142,9 @@ export function useWorkoutLogs(username, selectedMonth, selectedWorkout) {
 
       setWorkoutLogs((prev) => {
         const currentLogs = prev[canonicalKey] || [];
-        return { ...prev, [canonicalKey]: [newLog, ...currentLogs] };
+        const nextLogs = { ...prev, [canonicalKey]: [newLog, ...currentLogs] };
+        if (username) saveUserWorkoutLogs(username, nextLogs);
+        return nextLogs;
       });
 
       setBackupMeta((prev) => ({
@@ -145,7 +154,7 @@ export function useWorkoutLogs(username, selectedMonth, selectedWorkout) {
 
       return newLog;
     },
-    [getTodaySetsCount, selectedMonth, selectedWorkout]
+    [getTodaySetsCount, selectedMonth, selectedWorkout, username]
   );
 
   // Marca ou desmarca exercício concluído APENAS no escopo `${selectedMonth}::${selectedWorkout}`
@@ -181,13 +190,18 @@ export function useWorkoutLogs(username, selectedMonth, selectedWorkout) {
     [completedInCurrentScope, currentScopeKey]
   );
 
-  const deleteLog = useCallback((canonicalKey, logId, idx) => {
-    setWorkoutLogs((prev) => {
-      const current = prev[canonicalKey] || [];
-      const updated = current.filter((item, i) => (logId ? item.id !== logId : i !== idx));
-      return { ...prev, [canonicalKey]: updated };
-    });
-  }, []);
+  const deleteLog = useCallback(
+    (canonicalKey, logId, idx) => {
+      setWorkoutLogs((prev) => {
+        const current = prev[canonicalKey] || [];
+        const updated = current.filter((item, i) => (logId ? item.id !== logId : i !== idx));
+        const nextLogs = { ...prev, [canonicalKey]: updated };
+        if (username) saveUserWorkoutLogs(username, nextLogs);
+        return nextLogs;
+      });
+    },
+    [username]
+  );
 
   // Reinicia apenas o status do Treino atual (reabre cards e zera contador da sessão, sem apagar histórico)
   const resetCurrentWorkoutStatus = useCallback(() => {

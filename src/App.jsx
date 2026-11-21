@@ -297,7 +297,7 @@ function AuthenticatedWorkspace({ currentUser, onLogout }) {
     options = {}
   ) => {
     const saved = logs.logSet(canonicalKey, displayTitle, weight, reps);
-    if (!saved) return;
+    if (!saved) return null;
     setFocusedExercise(exerciseObj);
     if (!options.suppressTimerAndToast) {
       if (autoStartTimer) {
@@ -307,6 +307,7 @@ function AuthenticatedWorkspace({ currentUser, onLogout }) {
         showToast(`Série #${saved.setNumber} salva (${saved.weight}kg)!`);
       }
     }
+    return saved;
   };
 
   const handleToggleComplete = (canonicalKey, displayTitle) => {
