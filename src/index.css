@@ -1,10 +1,26 @@
 @import "tailwindcss";
 
 @layer base {
+  html,
   body {
-    background-color: #020617;
-    color: #f8fafc;
+    background-color: #000000;
+    color: #f4f4f5;
   }
+
+  button,
+  a,
+  select,
+  input[type="checkbox"] {
+    touch-action: manipulation;
+  }
+}
+
+/* Safe-area utilities para iPhone com Dynamic Island / Home Indicator */
+.pt-safe {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 /* Custom scrollbar discreta para chips horizontais */
@@ -16,7 +32,23 @@
   scrollbar-width: none;
 }
 
-/* Animações contínuas (cadência 2-2 sem pausa articular) para silhuetas OLED */
+/* Microinterações leves reais (substituindo classes mortas animate-in fade-in) */
+@keyframes uiFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.ui-fade-in {
+  animation: uiFadeIn 180ms ease-out both;
+}
+
+/* Animações contínuas (cadência controlada sem pausa articular) para silhuetas OLED */
 @keyframes lift-y {
   0%, 100% { transform: translateY(0px); }
   50% { transform: translateY(-22px); }
@@ -57,16 +89,27 @@
   50% { transform: rotate(-72deg); }
 }
 
+@keyframes leg-hang {
+  0%, 100% { transform: rotate(0deg); }
+  50% { transform: rotate(-82deg); }
+}
+
+@keyframes neck-nod {
+  0%, 100% { transform: rotate(-14deg); }
+  50% { transform: rotate(18deg); }
+}
+
 @keyframes vacuum-pulse {
   0%, 100% { transform: scaleY(1); }
   50% { transform: scaleY(0.62); }
 }
 
+/* Deslocamento anti-burn-in ampliado (±10px) para telas OLED */
 @keyframes oled-drift {
   0%, 100% { transform: translate(0px, 0px); }
-  25% { transform: translate(3px, -3px); }
-  50% { transform: translate(-2px, 3px); }
-  75% { transform: translate(-3px, -2px); }
+  25% { transform: translate(9px, -8px); }
+  50% { transform: translate(-8px, 10px); }
+  75% { transform: translate(-10px, -6px); }
 }
 
 .anim-lift-y { animation: lift-y 3.6s ease-in-out infinite; }
@@ -77,5 +120,25 @@
 .anim-lateral-left { animation: lateral-left 3.4s ease-in-out infinite; }
 .anim-lateral-right { animation: lateral-right 3.4s ease-in-out infinite; }
 .anim-leg-ext { animation: leg-ext 3.4s ease-in-out infinite; }
+.anim-leg-hang { animation: leg-hang 3.6s ease-in-out infinite; }
+.anim-neck-nod { animation: neck-nod 3.6s ease-in-out infinite; }
 .anim-vacuum { animation: vacuum-pulse 4.5s ease-in-out infinite; }
-.anim-oled-drift { animation: oled-drift 45s ease-in-out infinite; }
+.anim-oled-drift { animation: oled-drift 48s ease-in-out infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .ui-fade-in,
+  .anim-lift-y,
+  .anim-lift-y-deep,
+  .anim-press-diag,
+  .anim-swing-curl,
+  .anim-swing-pushdown,
+  .anim-lateral-left,
+  .anim-lateral-right,
+  .anim-leg-ext,
+  .anim-leg-hang,
+  .anim-neck-nod,
+  .anim-vacuum,
+  .anim-oled-drift {
+    animation: none !important;
+  }
+}

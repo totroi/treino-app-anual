@@ -1,17 +1,14 @@
 import React, { useState } from 'react';
 import {
-  Save,
-  History,
   TrendingUp,
   Clock,
   Zap,
-  CheckCircle2,
   Sparkles,
-  RotateCcw,
-  Check,
-  Trash2,
   Timer,
-  Moon
+  Moon,
+  HelpCircle,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
 import {
   isOptionalExercise,
@@ -21,25 +18,39 @@ import {
   parseRestSeconds,
   cleanAdvancedTechnique
 } from '../utils/exerciseNormalizer';
+import { formatWeightDisplay } from '../utils/numberFormat';
 import { unlockTimerAudio } from '../utils/timerAudio';
+import ExerciseCardCompleted from './ExerciseCardCompleted';
+import ExerciseLogForm from './ExerciseLogForm';
+import ExerciseHistoryList from './ExerciseHistoryList';
+
+function explainCadence(cadenceText) {
+  const m = (cadenceText || '').trim().match(/^(\d+)-(\d+)-(\d+)-(\d+)$/);
+  if (!m) {
+    return 'Controle a fase de descida e subida sob tensão contínua sem pausar nos extremos.';
+  }
+  return `${m[1]}s descendo (excêntrica) • ${m[2]}s no fundo • ${m[3]}s subindo (concêntrica) • ${m[4]}s no topo.`;
+}
 
 export default function ExerciseCard({
   data,
-  onSaveLog,
+  onSaveSet,
   onToggleComplete,
   onDeleteLog,
   onTriggerTimer,
-  onFocusExercise,
   onOpenScreensaver,
+  onOpenPrincipleSection,
   isFocused = false,
   history,
+  todaySetsCount = 0,
   isCompleted,
   uiScale = 'normal'
 }) {
   const [weight, setWeight] = useState('');
   const [reps, setReps] = useState('');
   const [showHistory, setShowHistory] = useState(false);
-  const [savedSuccess, setSavedSuccess] = useState(false);
+  const [showCadenceHelp, setShowCadenceHelp] = useState(false);
+  const [expandNotes, setExpandNotes] = useState(false);
 
   const rawExerciseName = data['Exercício'] || '';
   const isOptional = isOptionalExercise(rawExerciseName);
@@ -55,127 +66,97 @@ export default function ExerciseCard({
   const restSeconds = parseRestSeconds(restDescription, advancedTechnique, data['Grupo muscular']);
   const defaultRepsPlaceholder = getRepsPlaceholder(data['Séries/Reps']);
 
-  const handleSave = () => {
-    if (!weight && weight !== '0') return;
-    onSaveLog(canonicalKey, displayTitle, weight, reps);
-    setWeight('');
-    setReps('');
-    setSavedSuccess(true);
-    setTimeout(() => setSavedSuccess(false), 1800);
-  };
-
-  const handleQuickFillLast = () => {
+  const handleQuickFillLast = (e) => {
+    e.stopPropagation();
     if (!lastLog) return;
-    setWeight(String(lastLog.weight));
+    setWeight(formatWeightDisplay(lastLog.weight));
     if (lastLog.reps) setReps(String(lastLog.reps));
   };
 
-  // --- MODO COMPACTO (EXERCÍCIO CONCLUÍDO) ---
   if (isCompleted) {
     return (
-      <div className="bg-emerald-950/40 border border-emerald-800/80 rounded-xl p-3 mb-2 flex items-center justify-between gap-2 shadow-sm transition-all">
-        <div className="flex items-center gap-3 overflow-hidden flex-1">
-          <div className="bg-emerald-800/80 p-1.5 rounded-full flex-shrink-0">
-            <Check className="w-4 h-4 text-emerald-200" />
-          </div>
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center flex-wrap gap-1.5">
-              <span className="text-[0.65rem] font-bold text-emerald-400 uppercase tracking-wider truncate">
-                {data['Grupo muscular']}
-              </span>
-              {isOptional && (
-                <span className="text-[0.6rem] font-bold bg-purple-900/60 text-purple-300 px-1.5 py-0.2 rounded-full uppercase">
-                  Opcional
-                </span>
-              )}
-            </div>
-            <h3 className={`text-sm font-bold text-emerald-100 ${isScaledUp ? 'leading-snug' : 'truncate'}`}>
-              {displayTitle}
-            </h3>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2 flex-shrink-0">
-          {lastLog && (
-            <span className="text-xs font-bold text-emerald-200 bg-emerald-900/70 border border-emerald-700/60 px-2.5 py-1 rounded-lg">
-              {lastLog.weight}kg{lastLog.reps ? ` • ${lastLog.reps}r` : ''}
-            </span>
-          )}
-          <button
-            onClick={() => onToggleComplete(canonicalKey)}
-            className="p-1.5 rounded-lg bg-emerald-900/50 hover:bg-emerald-800 text-emerald-300 hover:text-white border border-emerald-700/50 transition-colors cursor-pointer"
-            title="Reabrir exercício"
-          >
-            <RotateCcw className="w-4 h-4" />
-          </button>
-        </div>
-      </div>
+      <ExerciseCardCompleted
+        data={data}
+        displayTitle={displayTitle}
+        isOptional={isOptional}
+        canonicalKey={canonicalKey}
+        lastLog={lastLog}
+        todaySetsCount={todaySetsCount}
+        onToggleComplete={onToggleComplete}
+        isScaledUp={isScaledUp}
+      />
     );
   }
 
-  // --- MODO EXPANDIDO (NORMAL) ---
   const cardStyles = isOptional
     ? isFocused
-      ? "bg-purple-950/20 border-sky-500/80 border-dashed ring-1 ring-sky-500/30"
-      : "bg-purple-950/15 border-purple-800/70 border-dashed"
+      ? 'bg-purple-950/20 border-sky-500/80 border-dashed ring-1 ring-sky-500/30'
+      : 'bg-purple-950/15 border-purple-800/70 border-dashed'
     : isFocused
-    ? "bg-slate-900 border-sky-500/80 ring-1 ring-sky-500/30 shadow-md shadow-sky-950/40"
-    : "bg-slate-900 border-slate-800 shadow-sm";
+    ? 'bg-zinc-950 border-sky-500/80 ring-1 ring-sky-500/30'
+    : 'bg-zinc-950 border-zinc-800/90';
 
   const headerStyles = isOptional
-    ? "bg-purple-950/30 border-purple-800/60"
-    : "bg-slate-900/80 border-slate-800";
+    ? 'bg-purple-950/30 border-purple-800/60'
+    : 'bg-zinc-900/50 border-zinc-800/80';
 
-  // Em fonte Grande (A++), ou se os textos de Séries/Cadência forem muito longos no modo Médio (A+), empilha em 1 coluna
   const hasLongMetricsText =
-    (data['Séries/Reps'] || '').length > 16 || (data['Cadência'] || '').length > 16;
+    (data['Séries/Reps'] || '').length > 16 || (data['Cadência'] || '').length > 14;
   const stackMetrics = isExtraLarge || (isScaledUp && hasLongMetricsText);
 
+  const execText = (data['Modo de execução'] || '').trim();
+  const obsText = (data['Observação'] || '').trim();
+  const isLongText = execText.length + obsText.length > 170;
+
   return (
-    <div
-      onClick={() => onFocusExercise && onFocusExercise(data)}
-      className={`rounded-xl border overflow-hidden mb-4 transition-all hover:border-slate-700 ${cardStyles}`}
-    >
+    <article className={`rounded-2xl border overflow-hidden mb-4 transition-all ${cardStyles}`}>
       {/* Cabeçalho */}
-      <div className={`p-4 border-b flex justify-between items-start gap-2 ${headerStyles}`}>
+      <div className={`p-3.5 border-b flex justify-between items-start gap-2 ${headerStyles}`}>
         <div className="flex-1 min-w-0">
-          <div className="flex items-center flex-wrap gap-2 mb-1">
+          <div className="flex items-center flex-wrap gap-1.5 mb-1">
             {data['Ordem'] && data['Ordem'] !== '99' && (
-              <span className="text-[0.65rem] font-extrabold bg-slate-800 text-slate-300 border border-slate-700 px-1.5 py-0.5 rounded-md font-mono">
+              <span className="text-xs font-extrabold bg-zinc-800 text-zinc-200 border border-zinc-700 px-1.5 py-0.5 rounded-md font-mono">
                 #{data['Ordem']}
               </span>
             )}
             <span className="text-xs font-bold text-blue-400 uppercase tracking-wider">
               {data['Grupo muscular']}
             </span>
+            {todaySetsCount > 0 && (
+              <span className="text-xs font-bold bg-emerald-950 text-emerald-300 border border-emerald-800/70 px-2 py-0.5 rounded-full">
+                {todaySetsCount} {todaySetsCount === 1 ? 'série hoje' : 'séries hoje'}
+              </span>
+            )}
             {isOptional && (
-              <span className="flex items-center gap-1 text-[0.65rem] font-bold bg-purple-900/70 text-purple-200 border border-purple-700/50 px-2 py-0.5 rounded-full uppercase tracking-wide">
+              <span className="flex items-center gap-1 text-xs font-bold bg-purple-900/70 text-purple-200 border border-purple-700/60 px-2 py-0.5 rounded-full uppercase">
                 <Sparkles className="w-3 h-3" />
                 Opcional
               </span>
             )}
           </div>
-          <h3 className={`text-lg font-bold leading-snug ${isOptional ? 'text-slate-200' : 'text-white'}`}>
+          <h3 className="text-lg font-extrabold leading-snug text-white">
             {displayTitle}
           </h3>
           {data['Especificação do grupo muscular'] && (
-            <span className="text-xs text-slate-400 block mt-0.5">
+            <span className="text-xs text-zinc-400 block mt-0.5">
               {data['Especificação do grupo muscular']}
             </span>
           )}
         </div>
 
-        <div className="flex items-center gap-2 flex-shrink-0">
+        <div className="flex items-center gap-1.5 flex-shrink-0">
           {lastLog && (
             <button
               type="button"
               onClick={handleQuickFillLast}
-              className="text-right bg-slate-950/70 hover:bg-slate-800 border border-slate-800 px-2.5 py-1 rounded-lg transition-colors cursor-pointer"
-              title="Clique para preencher com a última carga"
+              className="min-h-[44px] px-2.5 py-1 text-right bg-black hover:bg-zinc-900 border border-zinc-800 rounded-xl transition-colors cursor-pointer"
+              title="Toque para preencher com a última carga"
             >
-              <div className="text-[0.65rem] text-slate-400 uppercase tracking-wider">Última</div>
-              <div className="font-bold text-xs text-emerald-400">
-                {lastLog.weight}kg{lastLog.reps ? ` × ${lastLog.reps}` : ''}
+              <div className="text-[0.65rem] text-zinc-400 uppercase tracking-wider leading-none">
+                Última
+              </div>
+              <div className="font-bold text-xs text-emerald-400 font-mono mt-0.5">
+                {formatWeightDisplay(lastLog.weight)}kg{lastLog.reps ? `×${lastLog.reps}` : ''}
               </div>
             </button>
           )}
@@ -187,64 +168,77 @@ export default function ExerciseCard({
               unlockTimerAudio();
               if (onOpenScreensaver) onOpenScreensaver(data, restSeconds);
             }}
-            className={`p-2 rounded-lg border transition-colors cursor-pointer ${
+            aria-label={`Abrir Modo Foco OLED para ${displayTitle}`}
+            className={`min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl border transition-colors cursor-pointer ${
               isFocused
-                ? 'border-sky-700/80 bg-sky-950/50 text-sky-300 hover:bg-sky-900/60'
-                : 'border-slate-700/80 bg-slate-800/50 text-slate-400 hover:bg-sky-950/40 hover:text-sky-300'
+                ? 'border-sky-600 bg-sky-950/60 text-sky-300'
+                : 'border-zinc-700 bg-zinc-900 text-zinc-300 hover:bg-sky-950/50 hover:text-sky-300'
             }`}
-            title="Abrir Modo Foco OLED (Screensaver)"
+            title="Modo Foco OLED (Screensaver)"
           >
-            <Moon className="w-4 h-4" />
-          </button>
-
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              onToggleComplete(canonicalKey);
-            }}
-            className="p-2 rounded-lg border border-slate-700/80 bg-slate-800/50 hover:bg-emerald-900/40 hover:border-emerald-700 text-slate-400 hover:text-emerald-300 transition-colors cursor-pointer"
-            title="Marcar exercício como concluído"
-          >
-            <Check className="w-4 h-4" />
+            <Moon className="w-5 h-5" />
           </button>
         </div>
       </div>
 
-      {/* Detalhes: Séries/Reps, Cadência, Descanso e Técnica Avançada (se houver) */}
-      <div className={`p-4 grid ${stackMetrics ? 'grid-cols-1' : 'grid-cols-2'} gap-2.5 text-sm`}>
-        <div className="flex items-start gap-2 bg-slate-950/40 p-2.5 rounded-lg border border-slate-800/60">
+      {/* Métricas: Séries/Reps, Cadência Tocável, Descanso + Timer e Técnica Avançada */}
+      <div className={`p-3.5 grid ${stackMetrics ? 'grid-cols-1' : 'grid-cols-2'} gap-2.5 text-sm`}>
+        <div className="flex items-start gap-2 bg-black/70 p-2.5 rounded-xl border border-zinc-800/80">
           <TrendingUp className={`w-4 h-4 mt-0.5 flex-shrink-0 ${isOptional ? 'text-purple-400' : 'text-blue-400'}`} />
           <div className="min-w-0">
-            <span className="block text-slate-400 text-[0.7rem]">Séries / Reps</span>
-            <span className="font-semibold text-slate-100 text-xs">{data['Séries/Reps']}</span>
+            <span className="block text-zinc-400 text-xs">Séries / Reps</span>
+            <span className="font-bold text-zinc-100 text-sm">{data['Séries/Reps']}</span>
           </div>
         </div>
 
-        <div
-          className="flex items-start gap-2 bg-slate-950/40 p-2.5 rounded-lg border border-slate-800/60"
-          title="Cadência padrão E-F-C-T: Excêntrica - Pausa Fundo - Concêntrica - Pausa Topo (em segundos)"
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            setShowCadenceHelp((prev) => !prev);
+          }}
+          className="text-left flex items-start justify-between gap-2 bg-black/70 hover:bg-zinc-900/70 p-2.5 rounded-xl border border-zinc-800/80 transition-colors cursor-pointer"
+          aria-expanded={showCadenceHelp}
         >
-          <Clock className={`w-4 h-4 mt-0.5 flex-shrink-0 ${isOptional ? 'text-purple-400' : 'text-blue-400'}`} />
-          <div className="min-w-0">
-            <span className="block text-slate-400 text-[0.7rem]">Cadência (E-F-C-T)</span>
-            <span className="font-semibold text-slate-100 text-xs">{data['Cadência']}</span>
+          <div className="flex items-start gap-2 min-w-0">
+            <Clock className={`w-4 h-4 mt-0.5 flex-shrink-0 ${isOptional ? 'text-purple-400' : 'text-blue-400'}`} />
+            <div className="min-w-0">
+              <span className="block text-zinc-400 text-xs">Cadência</span>
+              <span className="font-bold text-zinc-100 text-sm">{data['Cadência']}</span>
+            </div>
           </div>
-        </div>
+          <HelpCircle className="w-4 h-4 text-zinc-500 flex-shrink-0 mt-0.5" />
+        </button>
 
-        {/* Linha de Descanso Contextualizado + Botão Rápido do Cronômetro */}
+        {showCadenceHelp && (
+          <div className={`${stackMetrics ? 'col-span-1' : 'col-span-2'} bg-zinc-900 border border-zinc-700 rounded-xl p-2.5 text-xs text-zinc-200 flex items-center justify-between gap-2 ui-fade-in`}>
+            <span>{explainCadence(data['Cadência'])}</span>
+            {onOpenPrincipleSection && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onOpenPrincipleSection('principio-2');
+                }}
+                className="min-h-[36px] px-2.5 rounded-lg bg-amber-950/70 text-amber-300 border border-amber-800/60 font-bold whitespace-nowrap cursor-pointer"
+              >
+                Ler Regra
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* Descanso Recomendado + Botão Iniciar >= 44px */}
         <div
           className={`${stackMetrics ? 'col-span-1' : 'col-span-2'} flex ${
             isExtraLarge ? 'flex-col items-stretch' : 'items-center justify-between'
-          } gap-2 bg-slate-950/40 p-2.5 rounded-lg border border-slate-800/60`}
+          } gap-2.5 bg-black/70 p-2.5 rounded-xl border border-zinc-800/80`}
         >
           <div className="flex items-start gap-2 min-w-0">
             <Timer className={`w-4 h-4 mt-0.5 flex-shrink-0 ${isOptional ? 'text-purple-400' : 'text-blue-400'}`} />
             <div className="min-w-0">
-              <span className="block text-slate-400 text-[0.65rem] font-bold uppercase tracking-wider">
-                Descanso Recomendado
-              </span>
-              <span className="text-slate-200 text-xs font-medium">{restDescription}</span>
+              <span className="block text-zinc-400 text-xs font-semibold">Descanso</span>
+              <span className="text-zinc-200 text-xs font-medium leading-snug">{restDescription}</span>
             </div>
           </div>
 
@@ -254,233 +248,109 @@ export default function ExerciseCard({
               onClick={(e) => {
                 e.stopPropagation();
                 unlockTimerAudio();
-                if (onFocusExercise) onFocusExercise(data);
-                onTriggerTimer(restSeconds);
+                onTriggerTimer(restSeconds, data, displayTitle);
               }}
-              className="flex items-center justify-center gap-1 px-2.5 py-1.5 rounded-lg bg-blue-950/70 hover:bg-blue-900/80 border border-blue-700/60 text-blue-300 hover:text-white text-xs font-bold flex-shrink-0 transition-colors cursor-pointer"
+              className="min-h-[44px] px-3.5 py-2 flex items-center justify-center gap-1.5 rounded-xl bg-blue-950/80 hover:bg-blue-900 border border-blue-700/70 text-blue-200 hover:text-white text-xs font-extrabold flex-shrink-0 transition-colors cursor-pointer"
               title={`Iniciar cronômetro de ${restSeconds}s`}
             >
-              <Timer className="w-3.5 h-3.5" />
-              Iniciar {restSeconds}s
+              <Timer className="w-4 h-4" />
+              <span>Iniciar {restSeconds}s</span>
             </button>
           )}
         </div>
 
-        {/* Técnica Avançada: exibida APENAS se não estiver em branco na planilha */}
+        {/* Técnica Avançada (apenas quando preenchida) com deep-link '?' */}
         {advancedTechnique && (
-          <div className={`${stackMetrics ? 'col-span-1' : 'col-span-2'} flex items-start gap-2 bg-amber-950/25 p-2.5 rounded-lg border border-amber-800/40`}>
-            <Zap className="w-4 h-4 text-amber-400 mt-0.5 flex-shrink-0" />
-            <div>
-              <span className="block text-amber-400 text-[0.65rem] font-bold uppercase tracking-wider">
-                Técnica Avançada
-              </span>
-              <span className="text-amber-200 text-xs font-medium">{advancedTechnique}</span>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Execução e Observação */}
-      <div className="px-4 pb-4 text-sm text-slate-300 space-y-2">
-        <p className="leading-relaxed">
-          <span className="font-semibold text-slate-100">Execução:</span> {data['Modo de execução']}
-        </p>
-        {data['Observação'] && (
-          <p className="text-xs italic text-slate-400 bg-slate-950/40 p-2.5 rounded-lg border border-slate-800/50">
-            <span className="font-semibold text-slate-300 not-italic">Nota:</span> {data['Observação']}
-          </p>
-        )}
-      </div>
-
-      {/* Área de Registro de Carga e Histórico (Com Relayout Adaptativo para Fontes Maiores) */}
-      <div className={`p-4 border-t ${isOptional ? 'bg-purple-950/20 border-purple-800/60' : 'bg-slate-950/60 border-slate-800'}`}>
-        {isScaledUp ? (
-          /* RELAYOUT ADAPTATIVO (2 LINHAS) PARA FONTES MÉDIA (A+) E GRANDE (A++) */
-          <div className="space-y-2.5">
-            <div className="grid grid-cols-2 gap-2.5">
-              <div>
-                <label className="text-xs text-slate-400 mb-1 block font-medium">Carga (kg)</label>
-                <input
-                  type="number"
-                  inputMode="decimal"
-                  step="0.5"
-                  placeholder={lastLog ? `Última: ${lastLog.weight}kg` : "ex: 20"}
-                  value={weight}
-                  onChange={(e) => setWeight(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === 'Enter') handleSave(); }}
-                  className="w-full p-2.5 rounded-lg border border-slate-700 bg-slate-900 text-white text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-                />
-              </div>
-              <div>
-                <label className="text-xs text-slate-400 mb-1 block font-medium">Reps</label>
-                <input
-                  type="number"
-                  inputMode="numeric"
-                  placeholder={`ex: ${defaultRepsPlaceholder}`}
-                  value={reps}
-                  onChange={(e) => setReps(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === 'Enter') handleSave(); }}
-                  className="w-full p-2.5 rounded-lg border border-slate-700 bg-slate-900 text-white text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-                />
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2.5">
-              <button
-                type="button"
-                onClick={handleSave}
-                disabled={!weight && weight !== '0'}
-                title="Salvar carga e concluir exercício"
-                className={`flex-1 py-2.5 px-4 rounded-lg font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer ${
-                  savedSuccess
-                    ? 'bg-emerald-600 text-white'
-                    : 'bg-blue-600 hover:bg-blue-500 text-white disabled:opacity-40 disabled:cursor-not-allowed'
-                }`}
-              >
-                {savedSuccess ? <CheckCircle2 className="w-4 h-4" /> : <Save className="w-4 h-4" />}
-                <span>{savedSuccess ? 'Salvo!' : 'Salvar e Concluir'}</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setShowHistory(!showHistory)}
-                title="Ver histórico de cargas"
-                className={`py-2.5 px-3.5 rounded-lg border text-xs font-bold flex items-center gap-1.5 transition-all relative cursor-pointer ${
-                  showHistory
-                    ? 'bg-blue-950/60 border-blue-500/70 text-blue-300'
-                    : 'border-slate-700 text-slate-300 hover:bg-slate-800'
-                }`}
-              >
-                <History className="w-4 h-4" />
-                <span>Histórico</span>
-                {history && history.length > 0 && (
-                  <span className="bg-blue-600 text-white text-[0.6rem] font-bold px-1.5 py-0.2 rounded-full">
-                    {history.length > 9 ? '9+' : history.length}
-                  </span>
-                )}
-              </button>
-            </div>
-          </div>
-        ) : (
-          /* LAYOUT COMPACTO (1 LINHA) PARA FONTE PADRÃO (A) */
-          <div className="flex items-end gap-2.5">
-            <div className="flex-1">
-              <label className="text-xs text-slate-400 mb-1 block font-medium">Carga (kg)</label>
-              <input
-                type="number"
-                inputMode="decimal"
-                step="0.5"
-                placeholder={lastLog ? `Última: ${lastLog.weight}kg` : "ex: 20"}
-                value={weight}
-                onChange={(e) => setWeight(e.target.value)}
-                onKeyDown={(e) => { if (e.key === 'Enter') handleSave(); }}
-                className="w-full p-2 rounded-lg border border-slate-700 bg-slate-900 text-white text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-              />
-            </div>
-            <div className="w-24">
-              <label className="text-xs text-slate-400 mb-1 block font-medium">Reps</label>
-              <input
-                type="number"
-                inputMode="numeric"
-                placeholder={`ex: ${defaultRepsPlaceholder}`}
-                value={reps}
-                onChange={(e) => setReps(e.target.value)}
-                onKeyDown={(e) => { if (e.key === 'Enter') handleSave(); }}
-                className="w-full p-2 rounded-lg border border-slate-700 bg-slate-900 text-white text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-              />
-            </div>
-            <button
-              type="button"
-              onClick={handleSave}
-              disabled={!weight && weight !== '0'}
-              title="Salvar carga e concluir exercício"
-              className={`p-2.5 rounded-lg flex items-center justify-center transition-all cursor-pointer ${
-                savedSuccess
-                  ? 'bg-emerald-600 text-white'
-                  : 'bg-blue-600 hover:bg-blue-500 text-white disabled:opacity-40 disabled:cursor-not-allowed'
-              }`}
-            >
-              {savedSuccess ? <CheckCircle2 className="w-5 h-5" /> : <Save className="w-5 h-5" />}
-            </button>
-            <button
-              type="button"
-              onClick={() => setShowHistory(!showHistory)}
-              title="Ver histórico de cargas"
-              className={`p-2.5 rounded-lg border transition-all relative cursor-pointer ${
-                showHistory
-                  ? 'bg-blue-950/60 border-blue-500/70 text-blue-300'
-                  : 'border-slate-700 text-slate-400 hover:bg-slate-800 hover:text-slate-200'
-              }`}
-            >
-              <History className="w-5 h-5" />
-              {history && history.length > 0 && (
-                <span className="absolute -top-1.5 -right-1.5 bg-blue-600 text-white text-[0.6rem] font-bold w-4 h-4 rounded-full flex items-center justify-center">
-                  {history.length > 9 ? '9+' : history.length}
+          <div className={`${stackMetrics ? 'col-span-1' : 'col-span-2'} flex items-center justify-between gap-2 bg-amber-950/25 p-2.5 rounded-xl border border-amber-800/50`}>
+            <div className="flex items-start gap-2 min-w-0">
+              <Zap className="w-4 h-4 text-amber-400 mt-0.5 flex-shrink-0" />
+              <div className="min-w-0">
+                <span className="block text-amber-400 text-xs font-bold uppercase tracking-wider">
+                  Técnica Avançada
                 </span>
-              )}
-            </button>
-          </div>
-        )}
-
-        {/* Histórico Expandido */}
-        {showHistory && (
-          <div className="mt-4 pt-3 border-t border-slate-800 animate-in fade-in">
-            <div className="flex items-center justify-between mb-2">
-              <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-                Histórico Unificado ({history?.length || 0})
-              </h4>
-              <span className="text-[0.65rem] text-slate-500">Sincronizado entre meses</span>
-            </div>
-
-            {history && history.length > 0 ? (
-              <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
-                {history.map((log, idx) => {
-                  const prevLog = history[idx + 1];
-                  const diff = prevLog ? parseFloat(log.weight) - parseFloat(prevLog.weight) : 0;
-                  return (
-                    <div
-                      key={log.id || idx}
-                      className="flex items-center justify-between text-xs p-2 bg-slate-900 rounded-lg border border-slate-800"
-                    >
-                      <span className="text-slate-400">
-                        {new Date(log.date).toLocaleDateString('pt-BR')}
-                      </span>
-
-                      <div className="flex items-center gap-2.5">
-                        {diff !== 0 && !Number.isNaN(diff) && (
-                          <span
-                            className={`text-[0.65rem] font-bold px-1.5 py-0.5 rounded ${
-                              diff > 0
-                                ? 'bg-emerald-950 text-emerald-400 border border-emerald-800/60'
-                                : 'bg-amber-950 text-amber-400 border border-amber-800/60'
-                            }`}
-                          >
-                            {diff > 0 ? `+${diff}kg` : `${diff}kg`}
-                          </span>
-                        )}
-                        <span className="font-mono font-bold text-slate-100">{log.weight}kg</span>
-                        {log.reps && <span className="text-slate-400">{log.reps} reps</span>}
-                        {onDeleteLog && (
-                          <button
-                            type="button"
-                            onClick={() => onDeleteLog(canonicalKey, log.id, idx)}
-                            className="text-slate-500 hover:text-red-400 p-1 transition-colors cursor-pointer"
-                            title="Excluir este registro"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
+                <span className="text-amber-100 text-sm font-medium">{advancedTechnique}</span>
               </div>
-            ) : (
-              <p className="text-xs text-slate-500 italic">Nenhum registro salvo para este exercício ainda.</p>
+            </div>
+            {onOpenPrincipleSection && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onOpenPrincipleSection('glossario');
+                }}
+                aria-label="Entender esta técnica no glossário"
+                className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl text-amber-300 hover:bg-amber-900/40 flex-shrink-0 cursor-pointer"
+              >
+                <HelpCircle className="w-4 h-4" />
+              </button>
             )}
           </div>
         )}
       </div>
-    </div>
+
+      {/* Execução & Nota (Colapsável para manter altura ergonômica durante o treino — Item 4.5) */}
+      <div className="px-3.5 pb-3.5 text-sm text-zinc-200 space-y-2">
+        <p className={`leading-relaxed ${isLongText && !expandNotes ? 'line-clamp-2' : ''}`}>
+          <span className="font-bold text-white">Execução:</span> {execText}
+        </p>
+        {obsText && (!isLongText || expandNotes) && (
+          <p className="text-xs text-zinc-300 bg-black/70 p-2.5 rounded-xl border border-zinc-800/80 leading-relaxed">
+            <span className="font-bold text-zinc-200">Nota:</span> {obsText}
+          </p>
+        )}
+        {isLongText && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setExpandNotes((prev) => !prev);
+            }}
+            className="min-h-[40px] px-2 -ml-2 text-xs font-bold text-blue-400 hover:text-blue-300 inline-flex items-center gap-1 cursor-pointer"
+          >
+            {expandNotes ? (
+              <>
+                <ChevronUp className="w-4 h-4" />
+                Recolher detalhes
+              </>
+            ) : (
+              <>
+                <ChevronDown className="w-4 h-4" />
+                Ver execução completa e nota
+              </>
+            )}
+          </button>
+        )}
+      </div>
+
+      {/* Registro de Série & Histórico */}
+      <div className={`p-3.5 border-t ${isOptional ? 'bg-purple-950/20 border-purple-800/60' : 'bg-zinc-900/40 border-zinc-800/80'}`}>
+        <ExerciseLogForm
+          exerciseId={`${canonicalKey}-${data['Ordem'] || '0'}`}
+          weight={weight}
+          reps={reps}
+          onWeightChange={setWeight}
+          onRepsChange={setReps}
+          lastLog={lastLog}
+          defaultRepsPlaceholder={defaultRepsPlaceholder}
+          todaySetsCount={todaySetsCount}
+          historyCount={history?.length || 0}
+          showHistory={showHistory}
+          onSaveSet={() => {
+            onSaveSet(canonicalKey, displayTitle, weight, reps, restSeconds, data);
+            setReps('');
+          }}
+          onToggleComplete={() => onToggleComplete(canonicalKey, displayTitle)}
+          onToggleHistory={() => setShowHistory((prev) => !prev)}
+        />
+
+        {showHistory && (
+          <ExerciseHistoryList
+            history={history}
+            canonicalKey={canonicalKey}
+            onDeleteLog={onDeleteLog}
+          />
+        )}
+      </div>
+    </article>
   );
 }

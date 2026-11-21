@@ -6,7 +6,9 @@ export async function fetchWorkoutsCSV() {
   const workoutsGid = process.env.WORKOUTS_SHEET_GID || DEFAULT_WORKOUTS_GID;
   const url = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv&gid=${workoutsGid}`;
 
-  const response = await fetch(url);
+  const response = await fetch(url, {
+    signal: AbortSignal.timeout(6000)
+  });
   if (!response.ok) {
     throw new Error(`Falha ao buscar planilha: HTTP ${response.status}`);
   }

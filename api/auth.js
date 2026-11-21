@@ -3,8 +3,20 @@ import crypto from 'node:crypto';
 const DEFAULT_SHEET_ID = "1_2aqsSQMa8PdCsNQcTkdBj1hepqruyeaobwVD4OXZL0";
 const DEFAULT_USERS_GID = "416797079";
 const FALLBACK_USERS = [
-  { usuario: "dan", senha: "iron2026", nome: "Dan Castro", ativo: "SIM", perfil: "admin" },
-  { usuario: "convidado", senha: "treino2026", nome: "Atleta Convidado", ativo: "SIM", perfil: "user" }
+  {
+    usuario: "dan",
+    senha: process.env.FALLBACK_ADMIN_HASH || "sha256:21f243ce675635d702409395876eee826f28b1795208ab88d0ac6822b106c244",
+    nome: "Dan Castro",
+    ativo: "SIM",
+    perfil: "admin"
+  },
+  {
+    usuario: "convidado",
+    senha: "sha256:7e1e2eecc06fc17bcd97a31f7fb410f56fe5814e8eb31be2fc4908f5fbf9954e",
+    nome: "Atleta Convidado",
+    ativo: "SIM",
+    perfil: "user"
+  }
 ];
 
 function parseSimpleCSV(csvText) {
@@ -100,7 +112,8 @@ export async function authenticateUser(username, password) {
 
   try {
     const response = await fetch(csvUrl, {
-      headers: { 'Cache-Control': 'no-cache' }
+      headers: { 'Cache-Control': 'no-cache' },
+      signal: AbortSignal.timeout(5000)
     });
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const csvText = await response.text();

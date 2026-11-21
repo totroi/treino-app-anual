@@ -14,18 +14,93 @@ export const MONTHS_ORDER = [
 ];
 
 export const MONTHLY_DOCS = {
-  "Janeiro": "https://docs.google.com/document/d/1Rk8MvsPW_Es8weZ6yNiPvLK2IF1ZSc9KuwvRcQNMk0g/edit?usp=sharing",
-  "Fevereiro": "https://docs.google.com/document/d/1KNjq9QURk1pzOzyA3TQ5dRaEY--NCSVuSrUHFeS0QDE/edit?usp=sharing",
-  "Março": "https://docs.google.com/document/d/1YVTyj-h4feR2bnJvVTBVWnWIZ8pHkLsbyZESM-0Wnhs/edit?usp=sharing",
-  "Abril": "https://docs.google.com/document/d/1o9iy8_NCTCRqgqqUouBNst73NQb3OW2ueKNx_dIM--M/edit?usp=sharing",
-  "Maio": "https://docs.google.com/document/d/1_XfwEkvWvjLlfQ4ZcJdBIvZms7oK8XPIkMUECpefvDM/edit?usp=sharing",
-  "Junho": "https://docs.google.com/document/d/1tBsZ71SC0evH-dYJmTzY4ri-TkGL2fsiAcX2QYyRsPs/edit?usp=sharing",
-  "Julho": "https://docs.google.com/document/d/1_0BYS5HXXacYImF4Jod4RaYHP037uem5iqJN_om4zC0/edit?usp=sharing",
-  "Agosto": "https://docs.google.com/document/d/1ElFv93J8FlCfp2hVWUStZDxhZTymIawPcSWgsS20YqU/edit?usp=sharing",
-  "Setembro": "https://docs.google.com/document/d/1aGe-gluyurse9bjSenC7qhm6R_W4wVgTFmbEfiHz-wo/edit?usp=sharing",
-  "Outubro": "https://docs.google.com/document/d/1YqeM3g5DoDof-w0VEDpcbaiiHMbxtU7geDVlXcWG1R4/edit?usp=sharing",
-  "Novembro": "https://docs.google.com/document/d/1jDvZX8JuHVzrr72b85On6OP1gMobn0tBmQEYGg3ieaU/edit?usp=sharing",
-  "Dezembro": "https://docs.google.com/document/d/1DB7OcpfK0iHNC2tq9DVEczigXBCTYpL7J6_xf-JcjpM/edit?usp=sharing"
+  "Janeiro": "https://docs.google.com/document/d/1Rk8MvsPW_Es8weZ6yNiPvLK2IF1ZSc9KuwvRcQNMk0g/preview",
+  "Fevereiro": "https://docs.google.com/document/d/1KNjq9QURk1pzOzyA3TQ5dRaEY--NCSVuSrUHFeS0QDE/preview",
+  "Março": "https://docs.google.com/document/d/1YVTyj-h4feR2bnJvVTBVWnWIZ8pHkLsbyZESM-0Wnhs/preview",
+  "Abril": "https://docs.google.com/document/d/1o9iy8_NCTCRqgqqUouBNst73NQb3OW2ueKNx_dIM--M/preview",
+  "Maio": "https://docs.google.com/document/d/1_XfwEkvWvjLlfQ4ZcJdBIvZms7oK8XPIkMUECpefvDM/preview",
+  "Junho": "https://docs.google.com/document/d/1tBsZ71SC0evH-dYJmTzY4ri-TkGL2fsiAcX2QYyRsPs/preview",
+  "Julho": "https://docs.google.com/document/d/1_0BYS5HXXacYImF4Jod4RaYHP037uem5iqJN_om4zC0/preview",
+  "Agosto": "https://docs.google.com/document/d/1ElFv93J8FlCfp2hVWUStZDxhZTymIawPcSWgsS20YqU/preview",
+  "Setembro": "https://docs.google.com/document/d/1aGe-gluyurse9bjSenC7qhm6R_W4wVgTFmbEfiHz-wo/preview",
+  "Outubro": "https://docs.google.com/document/d/1YqeM3g5DoDof-w0VEDpcbaiiHMbxtU7geDVlXcWG1R4/preview",
+  "Novembro": "https://docs.google.com/document/d/1jDvZX8JuHVzrr72b85On6OP1gMobn0tBmQEYGg3ieaU/preview",
+  "Dezembro": "https://docs.google.com/document/d/1DB7OcpfK0iHNC2tq9DVEczigXBCTYpL7J6_xf-JcjpM/preview"
+};
+
+export const MONTHLY_SUMMARIES = {
+  "Fevereiro": {
+    cycle: "Mês 01/12 • O Alicerce da Grandeza",
+    school: "John McCallum & Reg Park (Volume & Força Base)",
+    orderRule: "Compostos pesados primeiro → Acessórios → Breathing Squats ao final",
+    focus: "Construir densidade estrutural e capacidade neural com básicos livres (Supino 5x5-8, Terra, Breathing Squats 1x25 e Press). Descanso de 90s nos compostos e 30s nas panturrilhas."
+  },
+  "Março": {
+    cycle: "Mês 02/12 • A Consolidação da Massa",
+    school: "Sergio Oliva & Tom Platz (Tensão Contínua 3/4)",
+    orderRule: "Compostos pesados primeiro → Isoladores de alongamento → Panturrilhas alta frequência",
+    focus: "Consolidar volume com movimentos de três quartos (sem lockout), I Go/You Go nos braços e inclusão do Deltoide Posterior para equilíbrio escapular."
+  },
+  "Abril": {
+    cycle: "Mês 03/12 • O Ápice da Contração (Heavy Duty)",
+    school: "Mike Mentzer (HIT & Pré-Exaustão)",
+    orderRule: "Pré-Exaustão HIT: Isolador até a falha → Composto imediato",
+    focus: "Cadências lentas (4-1-2-0), negativas controladas e contrações estáticas. Inclui Gêmeos Sentado (Sóleo a 90º) com pausa de 2s no alongamento."
+  },
+  "Maio": {
+    cycle: "Mês 04/12 • Densidade Miofibrilar e Força Absoluta",
+    school: "Arnold Schwarzenegger & Sergio Oliva (Princípio do Choque)",
+    orderRule: "Compostos pesados primeiro → Dropsets na última série → Super-séries",
+    focus: "Quebrar platôs com Dropsets, Rest-Pause e elevações laterais em choque, equilibrados com Deltoide Posterior e Stomach Vacuum (A/B/C)."
+  },
+  "Junho": {
+    cycle: "Mês 05/12 • Simetria, Refinamento e Estética Proporcional",
+    school: "Arnold & Frank Zane (V-Taper & Detalhamento)",
+    orderRule: "Compostos claviculares/dorsais → Super-séries de braços → Sóleo & Vácuo",
+    focus: "Preencher peitoral superior, esculpir V-Taper, super-séries antagônicas de braços, Deltoide Posterior obrigatório e Gêmeos Sentado (Sóleo)."
+  },
+  "Julho": {
+    cycle: "Mês 06/12 • Dureza Muscular e Densidade Extrema",
+    school: "Mike Mentzer (HIT Puro — 1 Série até a Falha Absoluta)",
+    orderRule: "Pré-Exaustão HIT (1 série no limite; opcionais são substitutos de 1-2x)",
+    focus: "Volume ultracondensado com negativas lentas (8s) e Rest-Pause. Descanso de 120-180s nos compostos pesados para ressíntese de 100% da Fosfocreatina (PCr)."
+  },
+  "Agosto": {
+    cycle: "Mês 07/12 • Consolidação e Expansão Estratégica",
+    school: "Mike Mentzer (HIT 1-2 séries, cadência 4-0-4-2)",
+    orderRule: "Pré-Exaustão HIT (Pec Deck → Supino; Pullover → Pulldown; Extensora → Leg Press)",
+    focus: "Intensidade cirúrgica com baixíssimo volume, Deltoide Posterior HIT e pausas de 120-180s nos compostos para máxima tensão mecânica sem cortisol crônico."
+  },
+  "Setembro": {
+    cycle: "Mês 08/12 • Maturidade e Detalhamento Miofibrilar",
+    school: "McCallum & Leandro Twin (Força Bruta + Detalhe)",
+    orderRule: "Compostos pesados 5x5-8 com Rest-Pause → Isolamento → Breathing Squats 1x20",
+    focus: "Retorno à carga bruta combinada com Elevação Lateral obrigatória, Sóleo sentado e Stomach Vacuum para densidade madura."
+  },
+  "Outubro": {
+    cycle: "Mês 09/12 • Dureza Muscular e Densidade de Aço",
+    school: "Mike Mentzer & Sergio Oliva (Pré-Exaustão + 3/4)",
+    orderRule: "Pré-Exaustão HIT (Pec Deck → Supinos; Extensora → Leg Press)",
+    focus: "Negativas lentas (5-8s), pausa de 2s no pico do Pec Deck, Supino 3/4 com Dropset e Deltoide Posterior obrigatório no Treino C."
+  },
+  "Novembro": {
+    cycle: "Mês 10/12 • Refinamento Estético e Evolução de Potencial",
+    school: "Mentzer & Arnold (Falha Estática & Negativas)",
+    orderRule: "Pré-Exaustão HIT no Peitoral → Negativas 7-10s → Vacuum (A/B/C)",
+    focus: "Equilíbrio entre pré-exaustão, rosca Preacher com falha estática e negativas lentas, preparando o físico para o choque final de Dezembro."
+  },
+  "Dezembro": {
+    cycle: "Mês 11/12 • Expansão Estrutural e Sobrecarga Final",
+    school: "Arnold, McCallum & Tom Platz (Sobrecarga Máxima)",
+    orderRule: "Compostos pesados → Stripping & Super-séries → Breathing Squats 1x25",
+    focus: "Pico de intensidade anual unindo Supino 3/4 + Rest-Pause, Stripping nos deltoides, Deltoide Posterior, Sóleo e Breathing Squats 1x25."
+  },
+  "Janeiro": {
+    cycle: "Mês 12/12 • O Apogeu da Hipertrofia (Consolidação Final)",
+    school: "Vince Gironda, Arnold & Steve Reeves (Precisão Biomecânica)",
+    orderRule: "Compostos clássicos (Neck Press / Chin / Hack) → Isolamento → Reeves Toe Press",
+    focus: "Fechamento do ciclo anual com Neck Press (pés no banco), Hack Slide com pausa isométrica segura de 1s no fundo e Reeves Toe Press."
+  }
 };
 
 export const getCurrentMonthName = () => {

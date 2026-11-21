@@ -12,7 +12,7 @@ Aplicativo web mobile-first para acompanhamento de treinos de musculação perio
   - Suporta senhas em texto simples ou hash SHA-256 (`sha256:<hash>`), além de ativação/desativação instantânea (`ativo = SIM` ou `NAO`).
 - **Sincronização Inteligente com Cache de Borda (`GET /api/workouts`):**
   - Cache CDN de 5 minutos (`s-maxage=300, stale-while-revalidate=600`), suportando facilmente **100+ usuários diários sem custo** no plano gratuito da Vercel e dentro dos limites do Google Sheets.
-  - Fallback completo offline (`src/data/fallbackWorkouts.js`) sincronizado com os 240 exercícios da planilha.
+  - Fallback completo offline (`src/data/fallbackWorkouts.js`) carregado sob demanda e sincronizado com os 248 exercícios da planilha.
 - **Histórico de Cargas Unificado entre Meses:**
   - Normalizador inteligente (`getCanonicalExerciseKey`) que unifica o histórico do mesmo exercício mesmo quando há variações de nome ou prefixo `OPCIONAL` entre meses diferentes.
   - Migração transparente dos dados anteriores do `localStorage` (`gym_tracker_logs`) para o perfil do usuário logado.
@@ -28,7 +28,7 @@ Aplicativo web mobile-first para acompanhamento de treinos de musculação perio
 ## Estrutura da Planilha Google Sheets
 
 A planilha base possui 3 abas:
-1. **`Table 1` (`gid: 190965404`):** Base dos 240 exercícios nos 12 meses.
+1. **`Table 1` (`gid: 190965404`):** Base dos 248 exercícios nos 12 meses (com `Ordem` biomecânica, `Cadência` E-F-C-T e `Descanso`).
 2. **`Usuarios` (`gid: 416797079`):** Controle de acesso ao aplicativo com as colunas:
    - `usuario` | `senha` | `nome` | `ativo` (`SIM`/`NAO`) | `perfil` (`admin`/`user`) | `observacao`
 3. **`Source References` (`gid: 201829341`):** Referências bibliográficas da periodização.

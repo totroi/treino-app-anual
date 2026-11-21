@@ -46,6 +46,9 @@ export async function loginUser(username, password, rememberMe = true) {
       loggedInAt: new Date().toISOString()
     };
 
+    // Limpa qualquer sessão anterior em ambos os storages para evitar vazamento entre rememberMe=true/false
+    logoutUser();
+
     const targetStorage = rememberMe ? localStorage : sessionStorage;
     targetStorage.setItem(SESSION_KEY, JSON.stringify(sessionData));
     return { ok: true, user: data.user };

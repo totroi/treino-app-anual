@@ -1,5 +1,5 @@
 import React from 'react';
-import { Timer, Play, Pause, RotateCcw, X, Volume2, VolumeX, Plus, BellOff } from 'lucide-react';
+import { Timer, Play, Pause, RotateCcw, X, Volume2, VolumeX, Plus, Minus, BellOff } from 'lucide-react';
 import { unlockTimerAudio } from '../utils/timerAudio';
 
 const PRESETS = [
@@ -21,6 +21,7 @@ export default function RestTimer({ timer }) {
     soundEnabled,
     justFinished,
     isAlarmRinging,
+    activeExerciseName,
     startTimer,
     togglePlayPause,
     addSeconds,
@@ -45,11 +46,12 @@ export default function RestTimer({ timer }) {
     if (isAlarmRinging) {
       return (
         <button
+          type="button"
           onClick={dismissAlarm}
-          className="fixed bottom-4 right-4 z-40 flex items-center gap-2 px-4 py-3 rounded-full shadow-2xl bg-emerald-600 hover:bg-emerald-500 text-white border-2 border-emerald-300 animate-bounce cursor-pointer"
-          title="Toque para parar o alarme"
+          className="fixed bottom-[calc(1rem+env(safe-area-inset-bottom))] right-4 z-40 min-h-[48px] flex items-center gap-2 px-4 py-3 rounded-full shadow-2xl bg-emerald-600 hover:bg-emerald-500 text-white border-2 border-emerald-300 animate-bounce cursor-pointer"
+          aria-label="Parar alarme de descanso"
         >
-          <BellOff className="w-4 h-4" />
+          <BellOff className="w-5 h-5" />
           <span className="text-xs font-extrabold uppercase tracking-wider">Parar Alarme</span>
         </button>
       );
@@ -57,21 +59,23 @@ export default function RestTimer({ timer }) {
 
     return (
       <button
+        type="button"
         onClick={() => {
           unlockTimerAudio();
           setIsOpen(true);
         }}
-        className={`fixed bottom-4 right-4 z-30 flex items-center gap-2 px-3.5 py-2.5 rounded-full shadow-xl border transition-all cursor-pointer ${
+        className={`fixed bottom-[calc(1rem+env(safe-area-inset-bottom))] right-4 z-30 min-h-[44px] min-w-[44px] flex items-center gap-2 px-4 py-2.5 rounded-full shadow-xl border transition-all cursor-pointer ${
           isRunning
             ? 'bg-blue-600 text-white border-blue-400 animate-pulse'
             : justFinished
             ? 'bg-emerald-600 text-white border-emerald-400'
-            : 'bg-slate-900/95 text-slate-200 border-slate-700 hover:border-blue-500'
+            : 'bg-zinc-950/95 text-zinc-100 border-zinc-700 hover:border-blue-500'
         }`}
+        aria-label="Abrir cronômetro de descanso"
         title="Cronômetro de Descanso"
       >
-        <Timer className="w-4 h-4 text-blue-400" />
-        <span className="text-xs font-bold font-mono">
+        <Timer className={`w-4 h-4 ${isRunning ? 'text-white' : 'text-blue-400'}`} />
+        <span className="text-xs font-extrabold font-mono">
           {isRunning || secondsLeft > 0 ? formatTime(secondsLeft) : 'Descanso'}
         </span>
       </button>
@@ -79,65 +83,80 @@ export default function RestTimer({ timer }) {
   }
 
   return (
-    <div className="fixed bottom-3 left-1/2 -translate-x-1/2 z-30 w-[calc(100%-1.5rem)] max-w-md bg-slate-900/95 backdrop-blur-md border border-slate-700 rounded-2xl shadow-2xl p-3.5 text-slate-100">
+    <div
+      className="fixed bottom-[calc(0.75rem+env(safe-area-inset-bottom))] left-1/2 -translate-x-1/2 z-30 w-[calc(100%-1.5rem)] max-w-md bg-zinc-950/95 backdrop-blur-md border border-zinc-800 rounded-2xl shadow-2xl p-3.5 text-zinc-100 ui-fade-in"
+      role="region"
+      aria-label="Cronômetro de Descanso"
+    >
       {/* Barra de progresso fina no topo */}
       {totalSeconds > 0 && (
-        <div className="w-full h-1 bg-slate-800 rounded-full overflow-hidden mb-2.5">
+        <div className="w-full h-1.5 bg-zinc-900 rounded-full overflow-hidden mb-2.5">
           <div
             className={`h-full transition-all duration-300 ${
-              justFinished ? 'bg-emerald-500' : 'bg-blue-500'
+              justFinished || isAlarmRinging ? 'bg-emerald-500' : 'bg-blue-500'
             }`}
             style={{ width: `${progressPct}%` }}
           />
         </div>
       )}
 
-      <div className="flex items-center justify-between gap-2 mb-2.5">
-        <div className="flex items-center gap-2">
-          <Timer className={`w-4 h-4 ${justFinished ? 'text-emerald-400' : 'text-blue-400'}`} />
-          <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
-            {isAlarmRinging
-              ? 'Tempo Esgotado! Volte à Série'
-              : justFinished
-              ? 'Descanso Concluído!'
-              : 'Cronômetro de Descanso'}
-          </span>
+      <div className="flex items-center justify-between gap-2 mb-2">
+        <div className="min-w-0 flex items-center gap-2">
+          <Timer className={`w-4 h-4 flex-shrink-0 ${justFinished || isAlarmRinging ? 'text-emerald-400' : 'text-blue-400'}`} />
+          <div className="min-w-0">
+            <span className="block text-xs font-extrabold uppercase tracking-wider text-zinc-300 truncate">
+              {isAlarmRinging
+                ? 'Tempo Esgotado! Volte à Série'
+                : justFinished
+                ? 'Descanso Concluído!'
+                : 'Cronômetro de Descanso'}
+            </span>
+            {activeExerciseName && (
+              <span className="block text-xs text-zinc-400 truncate leading-tight">
+                {activeExerciseName}
+              </span>
+            )}
+          </div>
         </div>
 
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1 flex-shrink-0">
           <button
+            type="button"
             onClick={toggleSound}
-            className="p-1.5 text-slate-400 hover:text-slate-200 rounded-lg cursor-pointer"
-            title={soundEnabled ? 'Som ativado (clique para silenciar)' : 'Som desativado (clique para ativar e testar)'}
+            aria-label={soundEnabled ? 'Silenciar alarme' : 'Ativar e testar som do alarme'}
+            className="min-w-[44px] min-h-[44px] flex items-center justify-center text-zinc-300 hover:text-white hover:bg-zinc-900 rounded-xl cursor-pointer"
+            title={soundEnabled ? 'Som ativado (toque para silenciar)' : 'Som desativado (toque para ativar)'}
           >
-            {soundEnabled ? <Volume2 className="w-4 h-4 text-blue-400" /> : <VolumeX className="w-4 h-4" />}
+            {soundEnabled ? <Volume2 className="w-5 h-5 text-blue-400" /> : <VolumeX className="w-5 h-5 text-zinc-500" />}
           </button>
           <button
+            type="button"
             onClick={() => {
               stopAlarm();
               setIsOpen(false);
             }}
-            className="p-1.5 text-slate-400 hover:text-slate-200 rounded-lg cursor-pointer"
+            aria-label="Minimizar cronômetro"
+            className="min-w-[44px] min-h-[44px] flex items-center justify-center text-zinc-300 hover:text-white hover:bg-zinc-900 rounded-xl cursor-pointer"
             title="Minimizar"
           >
-            <X className="w-4 h-4" />
+            <X className="w-5 h-5" />
           </button>
         </div>
       </div>
 
-      {/* Botão de 1 clique em destaque para PARAR ALARME quando estiver apitando */}
+      {/* Botão de 1 toque em destaque para PARAR ALARME quando estiver apitando */}
       {isAlarmRinging ? (
         <button
           type="button"
           onClick={dismissAlarm}
-          className="w-full py-3 px-4 mb-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white font-extrabold text-sm flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/30 border border-emerald-400 animate-pulse cursor-pointer"
+          className="w-full min-h-[52px] py-3 px-4 mb-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white font-extrabold text-sm flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/30 border border-emerald-400 animate-pulse cursor-pointer"
         >
           <BellOff className="w-5 h-5" />
-          PARAR ALARME (1 Clique)
+          PARAR ALARME
         </button>
       ) : (
-        /* Display central + controles normais */
-        <div className="flex items-center justify-between bg-slate-950/80 border border-slate-800 rounded-xl px-3.5 py-2.5 mb-2.5">
+        /* Display central + controles >= 44x44px */
+        <div className="flex items-center justify-between gap-2 bg-black border border-zinc-800 rounded-xl px-3 py-2 mb-2.5">
           <div
             className={`text-2xl font-mono font-extrabold tracking-tight ${
               justFinished ? 'text-emerald-400' : 'text-white'
@@ -148,27 +167,44 @@ export default function RestTimer({ timer }) {
 
           <div className="flex items-center gap-1.5">
             <button
-              onClick={() => addSeconds(15)}
-              className="px-2 py-1.5 text-xs font-bold rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 flex items-center gap-0.5 cursor-pointer"
-              title="Adicionar 15 segundos"
+              type="button"
+              onClick={() => addSeconds(-15)}
+              aria-label="Subtrair 15 segundos"
+              className="min-w-[44px] min-h-[44px] px-2 text-xs font-bold rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-200 flex items-center justify-center gap-0.5 cursor-pointer"
+              title="Diminuir 15 segundos"
             >
-              <Plus className="w-3 h-3" />
-              15s
+              <Minus className="w-3.5 h-3.5" />
+              <span>15s</span>
             </button>
 
             <button
+              type="button"
+              onClick={() => addSeconds(15)}
+              aria-label="Adicionar 15 segundos"
+              className="min-w-[44px] min-h-[44px] px-2 text-xs font-bold rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-200 flex items-center justify-center gap-0.5 cursor-pointer"
+              title="Adicionar 15 segundos"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>15s</span>
+            </button>
+
+            <button
+              type="button"
               onClick={togglePlayPause}
-              className={`p-2 rounded-lg font-bold text-white transition-colors cursor-pointer ${
+              aria-label={isRunning ? 'Pausar cronômetro' : 'Iniciar cronômetro'}
+              className={`min-w-[44px] min-h-[44px] px-3 rounded-xl font-bold text-white flex items-center justify-center transition-colors cursor-pointer ${
                 isRunning ? 'bg-amber-600 hover:bg-amber-500' : 'bg-blue-600 hover:bg-blue-500'
               }`}
               title={isRunning ? 'Pausar' : 'Iniciar'}
             >
-              {isRunning ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+              {isRunning ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5" />}
             </button>
 
             <button
+              type="button"
               onClick={resetTimer}
-              className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 cursor-pointer"
+              aria-label="Reiniciar cronômetro"
+              className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-300 cursor-pointer"
               title="Reiniciar"
             >
               <RotateCcw className="w-4 h-4" />
@@ -177,23 +213,30 @@ export default function RestTimer({ timer }) {
         </div>
       )}
 
-      {/* Presets rápidos (6 opções em 2x3 no mobile para toque confortável) */}
+      {/* Presets rápidos (6 opções em 2x3 no mobile com toque >= 44px e fonte legível >= 11px) */}
       <div className="grid grid-cols-3 sm:grid-cols-6 gap-1.5">
         {PRESETS.map((p) => (
           <button
             key={p.seconds}
+            type="button"
             onClick={() => startTimer(p.seconds, true)}
-            className={`py-1.5 px-1 rounded-lg border text-center transition-all cursor-pointer ${
+            className={`min-h-[44px] py-1.5 px-1 rounded-xl border text-center transition-all cursor-pointer ${
               totalSeconds === p.seconds && isRunning
-                ? 'bg-blue-600/25 border-blue-500 text-blue-300'
-                : 'bg-slate-800/70 border-slate-700/70 hover:bg-slate-800 text-slate-300'
+                ? 'bg-blue-600/25 border-blue-500 text-blue-200'
+                : 'bg-zinc-900 border-zinc-800 hover:bg-zinc-800 text-zinc-200'
             }`}
           >
-            <div className="text-xs font-bold">{p.label}</div>
-            <div className="text-[0.6rem] text-slate-400 truncate">{p.desc}</div>
+            <div className="text-xs font-extrabold leading-tight">{p.label}</div>
+            <div className="text-[0.7rem] text-zinc-400 truncate leading-tight mt-0.5">{p.desc}</div>
           </button>
         ))}
       </div>
+
+      {soundEnabled && (
+        <p className="text-[0.7rem] text-zinc-500 text-center mt-2 leading-tight">
+          No iPhone, mantenha a chave lateral fora do Silencioso para ouvir o alarme.
+        </p>
+      )}
     </div>
   );
 }

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { unlockTimerAudio, playAlarmBurst, stopSharedAudio } from '../utils/timerAudio';
+import { unlockTimerAudio, playAlarmBurst, stopSharedAudio, triggerSafeVibration } from '../utils/timerAudio';
 
 export function useRestTimer() {
   const [isOpen, setIsOpen] = useState(false);
@@ -9,6 +9,10 @@ export function useRestTimer() {
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [justFinished, setJustFinished] = useState(false);
   const [isAlarmRinging, setIsAlarmRinging] = useState(false);
+  const [activeExerciseName, setActiveExerciseName] = useState('');
+
+  // Timestamp absoluto de término para precisão ±1s mesmo com tela bloqueada no iOS/Android
+  const endTimeRef = useRef(null);
   const alarmIntervalRef = useRef(null);
 
   const stopAlarm = useCallback(() => {
@@ -18,16 +22,10 @@ export function useRestTimer() {
       alarmIntervalRef.current = null;
     }
     stopSharedAudio();
-    if (navigator.vibrate) {
-      try {
-        navigator.vibrate(0);
-      } catch {
-        // ignore
-      }
-    }
+    triggerSafeVibration(0);
   }, []);
 
-  // Loop de alarme contínuo quando o tempo chega a zero
+  // Loop de alarme contínuo quando o cronômetro zera
   useEffect(() => {
     if (!isAlarmRinging) {
       if (alarmIntervalRef.current) {
@@ -38,13 +36,7 @@ export function useRestTimer() {
     }
 
     if (soundEnabled) playAlarmBurst();
-    if (navigator.vibrate) {
-      try {
-        navigator.vibrate([250, 120, 250]);
-      } catch {
-        // ignore
-      }
-    }
+    triggerSafeVibration([250, 120, 250]);
 
     let cycles = 0;
     alarmIntervalRef.current = setInterval(() => {
@@ -56,13 +48,7 @@ export function useRestTimer() {
         return;
       }
       if (soundEnabled) playAlarmBurst();
-      if (navigator.vibrate) {
-        try {
-          navigator.vibrate([250, 120, 250]);
-        } catch {
-          // ignore
-        }
-      }
+      triggerSafeVibration([250, 120, 250]);
     }, 1100);
 
     return () => {
@@ -73,60 +59,92 @@ export function useRestTimer() {
     };
   }, [isAlarmRinging, soundEnabled]);
 
-  // Contagem regressiva
+  // Recalcula tempo restante a partir de Date.now() — imune ao throttling de background do Safari/Chrome
+  const syncRemaining = useCallback(() => {
+    if (!endTimeRef.current) return;
+    const remaining = Math.max(0, Math.ceil((endTimeRef.current - Date.now()) / 1000));
+    setSecondsLeft(remaining);
+    if (remaining <= 0) {
+      endTimeRef.current = null;
+      setIsRunning(false);
+      setJustFinished(true);
+      setIsAlarmRinging(true);
+    }
+  }, []);
+
   useEffect(() => {
     if (!isRunning) return;
-    const interval = setInterval(() => {
-      setSecondsLeft((prev) => {
-        if (prev <= 1) {
-          setIsRunning(false);
-          setJustFinished(true);
-          setIsAlarmRinging(true);
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-    return () => clearInterval(interval);
-  }, [isRunning]);
+    syncRemaining();
+    const interval = setInterval(syncRemaining, 250);
+    const handleResume = () => syncRemaining();
+    document.addEventListener('visibilitychange', handleResume);
+    window.addEventListener('focus', handleResume);
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleResume);
+      window.removeEventListener('focus', handleResume);
+    };
+  }, [isRunning, syncRemaining]);
 
-  const startTimer = useCallback((secs, openPanel = true) => {
-    unlockTimerAudio();
-    stopAlarm();
-    const duration = secs || 60;
-    setTotalSeconds(duration);
-    setSecondsLeft(duration);
-    setIsRunning(true);
-    setJustFinished(false);
-    if (openPanel) setIsOpen(true);
-  }, [stopAlarm]);
+  const startTimer = useCallback(
+    (secs, openPanel = true, exerciseLabel = '') => {
+      unlockTimerAudio();
+      stopAlarm();
+      const duration = Math.max(5, secs || 60);
+      endTimeRef.current = Date.now() + duration * 1000;
+      setTotalSeconds(duration);
+      setSecondsLeft(duration);
+      setIsRunning(true);
+      setJustFinished(false);
+      if (exerciseLabel) setActiveExerciseName(exerciseLabel);
+      if (openPanel) setIsOpen(true);
+    },
+    [stopAlarm]
+  );
 
   const togglePlayPause = useCallback(() => {
     unlockTimerAudio();
     stopAlarm();
-    if (secondsLeft === 0) {
-      const duration = totalSeconds || 60;
-      setSecondsLeft(duration);
-      setIsRunning(true);
-      setJustFinished(false);
-    } else {
-      setIsRunning((prev) => !prev);
+    if (isRunning) {
+      // Pausa mantendo segundos restantes exatos
+      const remaining = endTimeRef.current
+        ? Math.max(0, Math.ceil((endTimeRef.current - Date.now()) / 1000))
+        : secondsLeft;
+      endTimeRef.current = null;
+      setSecondsLeft(remaining);
+      setIsRunning(false);
+      return;
     }
-  }, [secondsLeft, totalSeconds, stopAlarm]);
 
-  const addSeconds = useCallback((delta = 15) => {
-    unlockTimerAudio();
-    stopAlarm();
-    setSecondsLeft((prev) => {
-      const next = prev + delta;
-      setTotalSeconds((tot) => Math.max(tot, next));
-      return next;
-    });
+    const resumeSecs = secondsLeft > 0 ? secondsLeft : totalSeconds || 60;
+    endTimeRef.current = Date.now() + resumeSecs * 1000;
+    setSecondsLeft(resumeSecs);
+    setIsRunning(true);
     setJustFinished(false);
-  }, [stopAlarm]);
+  }, [isRunning, secondsLeft, totalSeconds, stopAlarm]);
+
+  // Updater puro (sem aninhar setState dentro de outro updater)
+  const addSeconds = useCallback(
+    (delta = 15) => {
+      unlockTimerAudio();
+      stopAlarm();
+      const base = isRunning && endTimeRef.current
+        ? Math.max(0, Math.ceil((endTimeRef.current - Date.now()) / 1000))
+        : secondsLeft;
+      const next = Math.max(5, base + delta);
+      if (isRunning) {
+        endTimeRef.current = Date.now() + next * 1000;
+      }
+      setSecondsLeft(next);
+      setTotalSeconds((prevTot) => Math.max(prevTot, next));
+      setJustFinished(false);
+    },
+    [isRunning, secondsLeft, stopAlarm]
+  );
 
   const resetTimer = useCallback(() => {
     stopAlarm();
+    endTimeRef.current = null;
     setIsRunning(false);
     setSecondsLeft(totalSeconds);
     setJustFinished(false);
@@ -156,6 +174,7 @@ export function useRestTimer() {
     soundEnabled,
     justFinished,
     isAlarmRinging,
+    activeExerciseName,
     startTimer,
     togglePlayPause,
     addSeconds,

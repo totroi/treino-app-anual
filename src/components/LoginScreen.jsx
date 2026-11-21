@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Dumbbell, Lock, User, Eye, EyeOff, ArrowRight, ShieldCheck, AlertCircle, Loader2 } from 'lucide-react';
+import { Dumbbell, Lock, User, Eye, EyeOff, ArrowRight, ShieldCheck, AlertCircle, Loader2, Sparkles } from 'lucide-react';
 import { loginUser } from '../services/authService';
 
 export default function LoginScreen({ onLoginSuccess }) {
@@ -29,111 +29,145 @@ export default function LoginScreen({ onLoginSuccess }) {
     }
   };
 
-  return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col justify-center items-center px-4 py-8 relative overflow-hidden">
-      {/* Glow decorativo de fundo */}
-      <div className="absolute -top-32 -left-32 w-80 h-80 bg-blue-600/15 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute -bottom-32 -right-32 w-80 h-80 bg-indigo-600/15 rounded-full blur-3xl pointer-events-none" />
+  const handleDemoFill = () => {
+    setUsername('convidado');
+    setPassword('treino2026');
+    setError('');
+  };
 
-      <div className="w-full max-w-sm bg-slate-900/90 backdrop-blur-md border border-slate-800 rounded-2xl shadow-2xl p-6 relative z-10">
+  return (
+    <div className="min-h-screen bg-black text-zinc-100 flex flex-col justify-start sm:justify-center items-center px-4 pt-[max(2rem,env(safe-area-inset-top))] pb-[max(2rem,env(safe-area-inset-bottom))] overflow-y-auto">
+      <div className="w-full max-w-sm bg-zinc-950 border border-zinc-800 rounded-2xl shadow-2xl p-6 ui-fade-in">
         {/* Cabeçalho / Logo */}
         <div className="flex flex-col items-center text-center mb-6">
-          <div className="bg-gradient-to-br from-blue-500 to-blue-700 p-3.5 rounded-2xl shadow-lg shadow-blue-600/30 mb-3">
+          <div className="bg-gradient-to-br from-blue-500 to-blue-700 p-3.5 rounded-2xl shadow-lg shadow-blue-600/25 mb-3">
             <Dumbbell className="w-8 h-8 text-white" />
           </div>
           <h1 className="text-2xl font-extrabold tracking-tight text-white">IronTracker</h1>
           <p className="text-xs font-semibold uppercase tracking-widest text-blue-400 mt-1">
             Periodização & Hipertrofia Anual
           </p>
+          <p className="text-xs text-zinc-400 mt-1.5">
+            248 exercícios • Timer OLED • Histórico local
+          </p>
         </div>
 
-        {/* Mensagem de erro */}
+        {/* Mensagem de erro acessível */}
         {error && (
-          <div className="mb-4 p-3 rounded-xl bg-red-950/60 border border-red-800/70 flex items-start gap-2.5 text-red-200 text-xs animate-in fade-in">
+          <div
+            role="alert"
+            className="mb-4 p-3 rounded-xl bg-red-950/70 border border-red-800/80 flex items-start gap-2.5 text-red-200 text-sm ui-fade-in"
+          >
             <AlertCircle className="w-4 h-4 text-red-400 flex-shrink-0 mt-0.5" />
             <span>{error}</span>
           </div>
         )}
 
-        {/* Formulário */}
+        {/* Formulário com inputs >= 16px (text-base) e alvos >= 44px */}
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">
+            <label
+              htmlFor="login-username"
+              className="block text-xs font-bold text-zinc-400 uppercase tracking-wider mb-1.5"
+            >
               Usuário
             </label>
             <div className="relative">
-              <User className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <User className="w-4 h-4 text-zinc-500 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
               <input
+                id="login-username"
                 type="text"
                 autoComplete="username"
                 autoCapitalize="none"
+                enterKeyHint="next"
                 placeholder="Digite seu usuário"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-slate-100 placeholder-slate-600 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                className="w-full min-h-[48px] pl-10 pr-4 py-2.5 rounded-xl bg-black border border-zinc-800 text-zinc-100 placeholder-zinc-500 text-base focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">
+            <label
+              htmlFor="login-password"
+              className="block text-xs font-bold text-zinc-400 uppercase tracking-wider mb-1.5"
+            >
               Senha
             </label>
             <div className="relative">
-              <Lock className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <Lock className="w-4 h-4 text-zinc-500 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
               <input
+                id="login-password"
                 type={showPassword ? 'text' : 'password'}
                 autoComplete="current-password"
+                enterKeyHint="go"
                 placeholder="Digite sua senha"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full pl-10 pr-10 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-slate-100 placeholder-slate-600 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                className="w-full min-h-[48px] pl-10 pr-12 py-2.5 rounded-xl bg-black border border-zinc-800 text-zinc-100 placeholder-zinc-500 text-base focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 p-1"
-                tabIndex={-1}
+                aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
+                className="absolute right-0.5 top-1/2 -translate-y-1/2 w-11 h-11 flex items-center justify-center text-zinc-400 hover:text-zinc-200 rounded-xl cursor-pointer"
               >
-                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
               </button>
             </div>
           </div>
 
-          <div className="flex items-center justify-between pt-1">
-            <label className="flex items-center gap-2 cursor-pointer select-none text-xs text-slate-400 hover:text-slate-300">
+          <div className="pt-0.5">
+            <label
+              htmlFor="login-remember"
+              className="min-h-[44px] flex items-center gap-3 cursor-pointer select-none text-sm text-zinc-300 hover:text-white"
+            >
               <input
+                id="login-remember"
                 type="checkbox"
                 checked={rememberMe}
                 onChange={(e) => setRememberMe(e.target.checked)}
-                className="rounded border-slate-700 bg-slate-950 text-blue-600 focus:ring-blue-500"
+                className="w-5 h-5 rounded border-zinc-700 bg-black text-blue-600 focus:ring-blue-500"
               />
-              Manter conectado neste aparelho
+              <span>Manter conectado neste aparelho</span>
             </label>
           </div>
 
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-3 px-4 rounded-xl bg-blue-600 hover:bg-blue-500 active:bg-blue-700 disabled:opacity-60 text-white font-bold text-sm shadow-lg shadow-blue-600/25 flex items-center justify-center gap-2 transition-all cursor-pointer"
+            className="w-full min-h-[48px] py-3 px-4 rounded-xl bg-blue-600 hover:bg-blue-500 active:bg-blue-700 disabled:opacity-60 text-white font-bold text-base shadow-lg shadow-blue-600/25 flex items-center justify-center gap-2 transition-all cursor-pointer"
           >
             {loading ? (
               <>
-                <Loader2 className="w-4 h-4 animate-spin" />
+                <Loader2 className="w-5 h-5 animate-spin" />
                 Validando acesso...
               </>
             ) : (
               <>
                 Acessar Treinos
-                <ArrowRight className="w-4 h-4" />
+                <ArrowRight className="w-5 h-5" />
               </>
             )}
           </button>
         </form>
 
+        {/* Descoberta Demo para iniciantes e avaliadores (Item 1.4) */}
+        <div className="mt-4">
+          <button
+            type="button"
+            onClick={handleDemoFill}
+            className="w-full min-h-[44px] py-2 px-3 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-xs font-semibold text-zinc-300 hover:text-white flex items-center justify-center gap-2 transition-colors cursor-pointer"
+          >
+            <Sparkles className="w-4 h-4 text-amber-400" />
+            Explorar em Modo Demonstração (convidado)
+          </button>
+        </div>
+
         {/* Rodapé informativo */}
-        <div className="mt-6 pt-4 border-t border-slate-800/80 flex items-center justify-center gap-1.5 text-[11px] text-slate-500">
-          <ShieldCheck className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" />
+        <div className="mt-5 pt-4 border-t border-zinc-800/80 flex items-center justify-center gap-1.5 text-xs text-zinc-400">
+          <ShieldCheck className="w-4 h-4 text-emerald-500 flex-shrink-0" />
           <span>Acesso restrito a atletas autorizados na planilha</span>
         </div>
       </div>

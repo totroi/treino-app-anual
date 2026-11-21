@@ -1,77 +1,107 @@
-import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import React, { useState, useMemo, useRef, useCallback, useEffect } from 'react';
+import { RefreshCw, Info, CheckCircle2, Undo2 } from 'lucide-react';
 import {
-  Dumbbell,
-  Calendar,
-  ChevronDown,
-  Info,
-  RefreshCw,
-  FileText,
-  RotateCcw,
-  LogOut,
-  Download,
-  Upload,
-  Sparkles,
-  CheckCircle2,
-  User,
-  BookOpen,
-  Trash2,
-  AlertTriangle,
-  Type,
-  Moon
-} from 'lucide-react';
-import { INITIAL_CSV_DATA } from './data/fallbackWorkouts';
-import {
-  MONTHLY_DOCS,
   getCurrentMonthName,
   sortMonthsChronologically,
   isOptionalExercise,
   getDisplayExerciseName,
-  getCanonicalExerciseKey,
-  parseCSV
+  getCanonicalExerciseKey
 } from './utils/exerciseNormalizer';
 import { getCurrentSession, logoutUser } from './services/authService';
 import {
-  loadUserWorkoutLogs,
-  saveUserWorkoutLogs,
-  loadUserCompletedSession,
-  saveUserCompletedSession,
-  exportUserBackup,
-  parseImportedBackup,
-  resetAllUserProgress,
   loadUiScale,
   saveUiScale,
   loadScreensaverDelay,
-  saveScreensaverDelay
+  saveScreensaverDelay,
+  loadAutoStartTimer,
+  saveAutoStartTimer
 } from './services/storageService';
+import { useWorkoutsData } from './hooks/useWorkoutsData';
+import { useWorkoutLogs } from './hooks/useWorkoutLogs';
 import { useRestTimer } from './hooks/useRestTimer';
+import { useFocusAutoDim } from './hooks/useFocusAutoDim';
 import LoginScreen from './components/LoginScreen';
+import HeaderBar from './components/HeaderBar';
+import MonthAndGuidesBar from './components/MonthAndGuidesBar';
+import WorkoutTabs from './components/WorkoutTabs';
+import WorkoutFilters from './components/WorkoutFilters';
 import ExerciseCard from './components/ExerciseCard';
-import RestTimer from './components/RestTimer';
+import ProfileDrawer from './components/ProfileDrawer';
+import ConfirmResetModal from './components/ConfirmResetModal';
+import ResultsModal from './components/ResultsModal';
 import PrinciplesModal from './components/PrinciplesModal';
 import FocusScreensaver from './components/FocusScreensaver';
+import RestTimer from './components/RestTimer';
 
-export default function App() {
-  const [currentUser, setCurrentUser] = useState(() => {
-    const session = getCurrentSession();
-    return session ? session.user : null;
-  });
-
-  const [rawData, setRawData] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [isOfflineFallback, setIsOfflineFallback] = useState(false);
-  const [toastMessage, setToastMessage] = useState('');
-
+function AuthenticatedWorkspace({ currentUser, onLogout }) {
   const [selectedMonth, setSelectedMonth] = useState(getCurrentMonthName());
   const [selectedWorkout, setSelectedWorkout] = useState('A');
   const [selectedMuscleGroup, setSelectedMuscleGroup] = useState('TODOS');
   const [hideOptionals, setHideOptionals] = useState(false);
+  const [statusFilter, setStatusFilter] = useState('TODOS'); // 'TODOS' | 'PENDENTES'
+  const [searchQuery, setSearchQuery] = useState('');
+
   const [showUserMenu, setShowUserMenu] = useState(false);
-  const [showPrinciplesModal, setShowPrinciplesModal] = useState(false);
-  const [showResetConfirmModal, setShowResetConfirmModal] = useState(false);
+  const [showResultsModal, setShowResultsModal] = useState(false);
+  const [principlesState, setPrinciplesState] = useState({ isOpen: false, section: null });
+  const [resetModalMode, setResetModalMode] = useState(null); // 'session' | 'full' | null
+
   const [uiScale, setUiScale] = useState(() => loadUiScale());
   const [screensaverDelay, setScreensaverDelay] = useState(() => loadScreensaverDelay());
+  const [autoStartTimer, setAutoStartTimer] = useState(() => loadAutoStartTimer());
   const [focusedExercise, setFocusedExercise] = useState(null);
   const [isScreensaverOpen, setIsScreensaverOpen] = useState(false);
+
+  // Toast com suporte opcional a ação "Desfazer"
+  const [toast, setToast] = useState(null);
+  const toastTimeoutRef = useRef(null);
+
+  const showToast = useCallback((message, undoAction = null) => {
+    if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
+    setToast({ message, undoAction });
+    toastTimeoutRef.current = setTimeout(() => {
+      setToast(null);
+      toastTimeoutRef.current = null;
+    }, undoAction ? 4500 : 3000);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
+    };
+  }, []);
+
+  const { rawData, loading, isOfflineFallback, syncWorkouts } = useWorkoutsData(true, showToast);
+  const logs = useWorkoutLogs(currentUser.username, selectedMonth, selectedWorkout);
+  const timer = useRestTimer();
+
+  const availableMonths = useMemo(() => {
+    const months = new Set(rawData.map((d) => d['Mês']?.trim()).filter(Boolean));
+    return sortMonthsChronologically(Array.from(months));
+  }, [rawData]);
+
+  const effectiveMonth = useMemo(() => {
+    if (availableMonths.length > 0 && !availableMonths.includes(selectedMonth)) {
+      return availableMonths[0];
+    }
+    return selectedMonth;
+  }, [availableMonths, selectedMonth]);
+
+  const handleSelectMonth = (month) => {
+    setSelectedMonth(month);
+    setSelectedMuscleGroup('TODOS');
+    setSearchQuery('');
+    setFocusedExercise(null);
+    setIsScreensaverOpen(false);
+  };
+
+  const handleSelectWorkout = (workout) => {
+    setSelectedWorkout(workout);
+    setSelectedMuscleGroup('TODOS');
+    setSearchQuery('');
+    setFocusedExercise(null);
+    setIsScreensaverOpen(false);
+  };
 
   const handleUiScaleChange = (newScale) => {
     setUiScale(newScale);
@@ -83,171 +113,130 @@ export default function App() {
     saveScreensaverDelay(secs);
   };
 
-  // Histórico e Sessão por usuário logado
-  const [workoutLogs, setWorkoutLogs] = useState({});
-  const [completedExercises, setCompletedExercises] = useState([]);
-  const timer = useRestTimer();
-  const fileInputRef = useRef(null);
+  const handleToggleAutoStartTimer = (enabled) => {
+    setAutoStartTimer(enabled);
+    saveAutoStartTimer(enabled);
+  };
 
-  const showToast = useCallback((msg) => {
-    setToastMessage(msg);
-    setTimeout(() => setToastMessage(''), 3000);
+  const openPrinciplesSection = useCallback((section = null) => {
+    setPrinciplesState({ isOpen: true, section });
   }, []);
 
-  // Carrega dados do usuário quando loga
-  useEffect(() => {
-    if (!currentUser) return;
-    setWorkoutLogs(loadUserWorkoutLogs(currentUser.username));
-    setCompletedExercises(loadUserCompletedSession(currentUser.username));
-  }, [currentUser]);
-
-  // Salva dados do usuário quando alterados
-  useEffect(() => {
-    if (!currentUser) return;
-    saveUserWorkoutLogs(currentUser.username, workoutLogs);
-  }, [workoutLogs, currentUser]);
-
-  useEffect(() => {
-    if (!currentUser) return;
-    saveUserCompletedSession(currentUser.username, completedExercises);
-  }, [completedExercises, currentUser]);
-
-  // Carrega planilha via rota serverless com cache (/api/workouts) + fallback offline
-  const loadWorkoutsData = useCallback(async (isManualSync = false) => {
-    setLoading(true);
-    try {
-      const response = await fetch('/api/workouts');
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      const text = await response.text();
-      const parsed = parseCSV(text);
-      if (parsed.length > 0) {
-        setRawData(parsed);
-        setIsOfflineFallback(false);
-        if (isManualSync) showToast('Planilha sincronizada com sucesso!');
-      } else {
-        throw new Error('CSV vazio');
-      }
-    } catch (err) {
-      console.warn('Usando dados de backup offline:', err);
-      const parsed = parseCSV(INITIAL_CSV_DATA);
-      setRawData(parsed);
-      setIsOfflineFallback(true);
-      if (isManualSync) showToast('Modo offline: usando base local.');
-    } finally {
-      setLoading(false);
-    }
-  }, [showToast]);
-
-  useEffect(() => {
-    if (currentUser) {
-      loadWorkoutsData(false);
-    }
-  }, [currentUser, loadWorkoutsData]);
-
-  // Meses ordenados cronologicamente (Janeiro -> Dezembro)
-  const availableMonths = useMemo(() => {
-    const months = new Set(rawData.map(d => d['Mês']?.trim()).filter(Boolean));
-    return sortMonthsChronologically(Array.from(months));
-  }, [rawData]);
-
-  useEffect(() => {
-    if (availableMonths.length > 0 && !availableMonths.includes(selectedMonth)) {
-      setSelectedMonth(availableMonths[0]);
-    }
-  }, [availableMonths, selectedMonth]);
-
-  // Reseta filtro de grupo muscular e exercício focado ao trocar mês ou treino
-  useEffect(() => {
-    setSelectedMuscleGroup('TODOS');
-    setFocusedExercise(null);
-    setIsScreensaverOpen(false);
-  }, [selectedMonth, selectedWorkout]);
-
-  // Auto-Dim do Screensaver OLED por inatividade quando há um exercício focado
-  useEffect(() => {
-    if (
-      !currentUser ||
-      !focusedExercise ||
-      screensaverDelay <= 0 ||
-      isScreensaverOpen ||
-      showPrinciplesModal ||
-      showResetConfirmModal ||
-      showUserMenu
-    ) {
-      return;
-    }
-
-    let timeoutId = null;
-    const resetInactivityTimer = () => {
-      if (timeoutId) clearTimeout(timeoutId);
-      timeoutId = setTimeout(() => {
-        setIsScreensaverOpen(true);
-      }, screensaverDelay * 1000);
-    };
-
-    const events = ['pointerdown', 'keydown', 'touchstart', 'scroll'];
-    events.forEach((ev) => window.addEventListener(ev, resetInactivityTimer, { passive: true }));
-    resetInactivityTimer();
-
-    return () => {
-      if (timeoutId) clearTimeout(timeoutId);
-      events.forEach((ev) => window.removeEventListener(ev, resetInactivityTimer));
-    };
-  }, [
-    currentUser,
+  useFocusAutoDim({
+    enabled: true,
     focusedExercise,
     screensaverDelay,
     isScreensaverOpen,
-    showPrinciplesModal,
-    showResetConfirmModal,
-    showUserMenu
-  ]);
+    isBlockedByModal:
+      principlesState.isOpen ||
+      showResultsModal ||
+      showUserMenu ||
+      Boolean(resetModalMode),
+    onTriggerScreensaver: () => setIsScreensaverOpen(true)
+  });
 
-  // Exercícios do mês e treino selecionados (antes do filtro de grupo/opcional)
+  // Metadados das abas A / B / C (resumo muscular dinâmico + badge concluído)
+  const workoutMetaByTab = useMemo(() => {
+    const result = {};
+    ['A', 'B', 'C'].forEach((w) => {
+      const items = rawData.filter((item) => {
+        const m = item['Mês']?.trim();
+        const t = item['Treino']?.trim();
+        return m === effectiveMonth && t && (t === w || t.includes(w));
+      });
+      const mandatory = items.filter((e) => !isOptionalExercise(e['Exercício']));
+      const uniqueGroups = Array.from(
+        new Set(items.map((e) => (e['Grupo muscular'] || '').trim()).filter(Boolean))
+      );
+      const musclesText =
+        uniqueGroups.length > 2
+          ? `${uniqueGroups.slice(0, 2).join(' + ')} +${uniqueGroups.length - 2}`
+          : uniqueGroups.join(' + ');
+
+      const completedKeys = logs.getCompletedForScope(effectiveMonth, w);
+      const isDone =
+        mandatory.length > 0 &&
+        mandatory.every((e) => completedKeys.includes(getCanonicalExerciseKey(e['Exercício'])));
+
+      result[w] = { musclesText, isDone };
+    });
+    return result;
+  }, [rawData, effectiveMonth, logs]);
+
+  // Exercícios do mês e treino selecionados
   const baseWorkoutExercises = useMemo(() => {
     return rawData.filter((item) => {
       const itemMonth = item['Mês']?.trim();
       const itemWorkout = item['Treino']?.trim();
-      const isMonthMatch = itemMonth === selectedMonth;
+      const isMonthMatch = itemMonth === effectiveMonth;
       const isWorkoutMatch =
         itemWorkout && (itemWorkout === selectedWorkout || itemWorkout.includes(selectedWorkout));
       return isMonthMatch && isWorkoutMatch;
     });
-  }, [rawData, selectedMonth, selectedWorkout]);
+  }, [rawData, effectiveMonth, selectedWorkout]);
 
-  // Grupos musculares disponíveis no treino atual
-  const workoutMuscleGroups = useMemo(() => {
-    const groups = new Set(baseWorkoutExercises.map(e => (e['Grupo muscular'] || '').trim()).filter(Boolean));
-    return Array.from(groups).sort((a, b) => a.localeCompare(b, 'pt-BR'));
-  }, [baseWorkoutExercises]);
+  // Contagem por grupo muscular (considera ocultação de opcionais)
+  const visibleBaseForGroups = useMemo(() => {
+    return hideOptionals
+      ? baseWorkoutExercises.filter((e) => !isOptionalExercise(e['Exercício']))
+      : baseWorkoutExercises;
+  }, [baseWorkoutExercises, hideOptionals]);
 
-  // Estatísticas de progresso do treino atual
+  const muscleGroupsWithCount = useMemo(() => {
+    const counts = new Map();
+    visibleBaseForGroups.forEach((e) => {
+      const g = (e['Grupo muscular'] || '').trim();
+      if (g) counts.set(g, (counts.get(g) || 0) + 1);
+    });
+    return Array.from(counts.entries())
+      .sort((a, b) => a[0].localeCompare(b[0], 'pt-BR'))
+      .map(([group, count]) => ({ group, count }));
+  }, [visibleBaseForGroups]);
+
+  // Estatísticas de progresso da sessão atual (escopo Mês::Treino)
   const progressStats = useMemo(() => {
     const total = baseWorkoutExercises.length;
-    const mandatory = baseWorkoutExercises.filter(e => !isOptionalExercise(e['Exercício']));
-    const completedTotal = baseWorkoutExercises.filter(e =>
-      completedExercises.includes(getCanonicalExerciseKey(e['Exercício']))
+    const mandatory = baseWorkoutExercises.filter((e) => !isOptionalExercise(e['Exercício']));
+    const completedTotal = baseWorkoutExercises.filter((e) =>
+      logs.completedInCurrentScope.includes(getCanonicalExerciseKey(e['Exercício']))
     ).length;
-    const completedMandatory = mandatory.filter(e =>
-      completedExercises.includes(getCanonicalExerciseKey(e['Exercício']))
+    const completedMandatory = mandatory.filter((e) =>
+      logs.completedInCurrentScope.includes(getCanonicalExerciseKey(e['Exercício']))
     ).length;
 
-    const pct = total > 0 ? Math.round((completedTotal / total) * 100) : 0;
     return {
       total,
       mandatoryCount: mandatory.length,
       optionalCount: total - mandatory.length,
       completedTotal,
-      completedMandatory,
-      pct
+      completedMandatory
     };
-  }, [baseWorkoutExercises, completedExercises]);
+  }, [baseWorkoutExercises, logs.completedInCurrentScope]);
 
-  // Exercícios filtrados e ordenados
+  // Lista filtrada e ordenada (pendentes primeiro -> Ordem biomecânica -> Grupo -> Obrigatório -> Nome)
   const filteredExercises = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
     const filtered = baseWorkoutExercises.filter((item) => {
       if (hideOptionals && isOptionalExercise(item['Exercício'])) return false;
-      if (selectedMuscleGroup !== 'TODOS' && item['Grupo muscular'] !== selectedMuscleGroup) return false;
+      if (selectedMuscleGroup !== 'TODOS' && item['Grupo muscular'] !== selectedMuscleGroup) {
+        return false;
+      }
+      if (statusFilter === 'PENDENTES') {
+        const key = getCanonicalExerciseKey(item['Exercício']);
+        if (logs.completedInCurrentScope.includes(key)) return false;
+      }
+      if (q) {
+        const haystack = [
+          item['Exercício'],
+          item['Grupo muscular'],
+          item['Especificação do grupo muscular'],
+          item['Técnica Avançada']
+        ]
+          .filter(Boolean)
+          .join(' ')
+          .toLowerCase();
+        if (!haystack.includes(q)) return false;
+      }
       return true;
     });
 
@@ -255,26 +244,17 @@ export default function App() {
       const keyA = getCanonicalExerciseKey(a['Exercício']);
       const keyB = getCanonicalExerciseKey(b['Exercício']);
 
-      // Critério 0: Concluídos vão para o final
-      const isCompletedA = completedExercises.includes(keyA);
-      const isCompletedB = completedExercises.includes(keyB);
-      if (isCompletedA !== isCompletedB) {
-        return isCompletedA ? 1 : -1;
-      }
+      const isCompletedA = logs.completedInCurrentScope.includes(keyA);
+      const isCompletedB = logs.completedInCurrentScope.includes(keyB);
+      if (isCompletedA !== isCompletedB) return isCompletedA ? 1 : -1;
 
-      // Critério 1: Ordem Biomecânica Prescrita na Planilha (Composto Primeiro vs. Pré-Exaustão HIT)
       const orderA = parseInt(a['Ordem'], 10);
       const orderB = parseInt(b['Ordem'], 10);
       const hasOrderA = !Number.isNaN(orderA);
       const hasOrderB = !Number.isNaN(orderB);
-      if (hasOrderA && hasOrderB && orderA !== orderB) {
-        return orderA - orderB;
-      }
-      if (hasOrderA !== hasOrderB) {
-        return hasOrderA ? -1 : 1;
-      }
+      if (hasOrderA && hasOrderB && orderA !== orderB) return orderA - orderB;
+      if (hasOrderA !== hasOrderB) return hasOrderA ? -1 : 1;
 
-      // Fallback: Grupo Muscular (A-Z) -> Obrigatórios antes dos Opcionais -> Nome (A-Z)
       const groupA = (a['Grupo muscular'] || '').trim();
       const groupB = (b['Grupo muscular'] || '').trim();
       const compareGroup = groupA.localeCompare(groupB, 'pt-BR');
@@ -284,556 +264,332 @@ export default function App() {
       const optB = isOptionalExercise(b['Exercício']);
       if (optA !== optB) return optA ? 1 : -1;
 
-      const cleanNameA = getDisplayExerciseName(a['Exercício']);
-      const cleanNameB = getDisplayExerciseName(b['Exercício']);
-      return cleanNameA.localeCompare(cleanNameB, 'pt-BR');
+      return getDisplayExerciseName(a['Exercício']).localeCompare(
+        getDisplayExerciseName(b['Exercício']),
+        'pt-BR'
+      );
     });
-  }, [baseWorkoutExercises, hideOptionals, selectedMuscleGroup, completedExercises]);
+  }, [
+    baseWorkoutExercises,
+    hideOptionals,
+    selectedMuscleGroup,
+    statusFilter,
+    searchQuery,
+    logs.completedInCurrentScope
+  ]);
 
-  const handleSaveLog = (canonicalKey, displayTitle, weight, reps) => {
-    const newLog = {
-      id: `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-      date: new Date().toISOString(),
-      weight: String(weight),
-      reps: reps ? String(reps) : '',
-      exerciseLabel: displayTitle
-    };
-
-    setWorkoutLogs((prev) => {
-      const currentLogs = prev[canonicalKey] || [];
-      return { ...prev, [canonicalKey]: [newLog, ...currentLogs] };
-    });
-
-    setCompletedExercises((prev) => {
-      if (!prev.includes(canonicalKey)) {
-        return [...prev, canonicalKey];
-      }
-      return prev;
-    });
-  };
-
-  const handleToggleComplete = (canonicalKey) => {
-    setCompletedExercises((prev) =>
-      prev.includes(canonicalKey)
-        ? prev.filter((k) => k !== canonicalKey)
-        : [...prev, canonicalKey]
-    );
-  };
-
-  const handleDeleteLog = (canonicalKey, logId, idx) => {
-    setWorkoutLogs((prev) => {
-      const current = prev[canonicalKey] || [];
-      const updated = current.filter((item, i) => (logId ? item.id !== logId : i !== idx));
-      return { ...prev, [canonicalKey]: updated };
-    });
-    showToast('Registro removido do histórico.');
-  };
-
-  const handleResetSession = () => {
-    if (window.confirm('Deseja iniciar uma nova sessão? Isso reabrirá todos os exercícios concluídos hoje.')) {
-      setCompletedExercises([]);
-      showToast('Nova sessão iniciada!');
+  const handleSaveSet = (canonicalKey, displayTitle, weight, reps, restSeconds, exerciseObj) => {
+    const saved = logs.logSet(canonicalKey, displayTitle, weight, reps);
+    if (!saved) return;
+    setFocusedExercise(exerciseObj);
+    if (autoStartTimer) {
+      timer.startTimer(restSeconds, true, displayTitle);
+      showToast(`Série #${saved.setNumber} salva • Descanso ${restSeconds}s iniciado!`);
+    } else {
+      showToast(`Série #${saved.setNumber} salva (${saved.weight}kg)!`);
     }
   };
 
-  const handleLogout = () => {
-    logoutUser();
-    setCurrentUser(null);
-    setShowUserMenu(false);
+  const handleToggleComplete = (canonicalKey, displayTitle) => {
+    const becameCompleted = logs.toggleComplete(canonicalKey);
+    if (becameCompleted) {
+      showToast(`${displayTitle} concluído`, () => {
+        logs.toggleComplete(canonicalKey);
+        setToast(null);
+      });
+    }
   };
 
-  const handleConfirmFullReset = () => {
-    if (!currentUser) return;
-    resetAllUserProgress(currentUser.username);
-    setWorkoutLogs({});
-    setCompletedExercises([]);
-    setShowResetConfirmModal(false);
-    showToast('Todo o progresso foi resetado!');
+  const handleDeleteLog = (canonicalKey, logId, idx) => {
+    logs.deleteLog(canonicalKey, logId, idx);
+    showToast('Registro removido do histórico.');
   };
 
-  const handleImportFile = (e) => {
+  const handleImportBackupFile = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
     const reader = new FileReader();
     reader.onload = (ev) => {
       try {
-        const importedLogs = parseImportedBackup(ev.target.result);
-        setWorkoutLogs((prev) => {
-          const merged = { ...prev };
-          Object.entries(importedLogs).forEach(([k, entries]) => {
-            merged[k] = [...entries, ...(merged[k] || [])];
-          });
-          return merged;
-        });
+        logs.importBackupText(ev.target.result);
         showToast('Backup importado com sucesso!');
-        setShowUserMenu(false);
       } catch {
-        alert('Não foi possível importar o arquivo. Verifique se é um JSON válido do IronTracker.');
+        showToast('Arquivo JSON inválido. Verifique se é um backup do IronTracker.');
       }
     };
     reader.readAsText(file);
     e.target.value = '';
   };
 
-  // Se não estiver autenticado, exibe tela de login
-  if (!currentUser) {
-    return <LoginScreen onLoginSuccess={(user) => setCurrentUser(user)} />;
-  }
+  const handleConfirmReset = () => {
+    if (resetModalMode === 'session') {
+      logs.resetCurrentSession();
+      showToast(`Nova sessão iniciada (${effectiveMonth} • Treino ${selectedWorkout})!`);
+    } else if (resetModalMode === 'full') {
+      logs.resetAllProgress();
+      showToast('Todo o progresso foi resetado!');
+    }
+    setResetModalMode(null);
+  };
+
+  const hasBackupAlert =
+    (logs.backupMeta?.logsSinceBackup || 0) >= 10 ||
+    (logs.summaryStats.totalLogs >= 10 && !logs.backupMeta?.lastExportedAt);
 
   if (loading && rawData.length === 0) {
     return (
-      <div className="flex h-screen items-center justify-center bg-slate-950 text-slate-100">
+      <div className="flex h-screen items-center justify-center bg-black text-zinc-100">
         <div className="text-center">
           <RefreshCw className="w-8 h-8 animate-spin text-blue-500 mx-auto mb-3" />
-          <p className="text-sm text-slate-400 font-medium">Carregando periodização anual...</p>
+          <p className="text-sm text-zinc-400 font-medium">Carregando periodização anual...</p>
         </div>
       </div>
     );
   }
 
-  const currentDocLink = MONTHLY_DOCS[selectedMonth];
+  const focusedLastLog = focusedExercise
+    ? (logs.workoutLogs[getCanonicalExerciseKey(focusedExercise['Exercício'])] || [])[0] || null
+    : null;
 
   return (
-    <div className="min-h-screen bg-slate-950 pb-24 font-sans text-slate-100">
-      {/* Toast Notification */}
-      {toastMessage && (
-        <div className="fixed top-16 left-1/2 -translate-x-1/2 z-50 bg-slate-800 border border-slate-700 text-slate-100 px-4 py-2 rounded-full shadow-xl text-xs font-semibold flex items-center gap-2 animate-in fade-in">
-          <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-          <span>{toastMessage}</span>
+    <div className="min-h-screen bg-black font-sans text-zinc-100">
+      {/* Toast Notification com suporte a "Desfazer" */}
+      {toast && (
+        <div
+          role="status"
+          aria-live="polite"
+          className="fixed top-[calc(4rem+env(safe-area-inset-top))] left-1/2 -translate-x-1/2 z-50 max-w-[92vw] bg-zinc-900 border border-zinc-700 text-zinc-100 px-3.5 py-2 rounded-2xl shadow-2xl text-xs font-semibold flex items-center gap-2.5 ui-fade-in"
+        >
+          <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+          <span className="truncate">{toast.message}</span>
+          {toast.undoAction && (
+            <button
+              type="button"
+              onClick={toast.undoAction}
+              className="min-h-[34px] px-2.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-blue-300 font-bold flex items-center gap-1 flex-shrink-0 cursor-pointer"
+            >
+              <Undo2 className="w-3.5 h-3.5" />
+              <span>Desfazer</span>
+            </button>
+          )}
         </div>
       )}
 
-      {/* Top Bar */}
-      <header className="bg-slate-900/95 backdrop-blur-md shadow-sm sticky top-0 z-20 border-b border-slate-800">
-        <div className="max-w-md mx-auto px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <div className="bg-blue-600 p-2 rounded-xl shadow-md shadow-blue-600/20">
-              <Dumbbell className="w-5 h-5 text-white" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h1 className="font-extrabold text-lg leading-none tracking-tight text-white">IronTracker</h1>
-                {isOfflineFallback && (
-                  <span className="text-[0.6rem] bg-amber-950 text-amber-400 border border-amber-800/60 px-1.5 py-0.5 rounded font-bold uppercase">
-                    Offline
-                  </span>
-                )}
-              </div>
-              <p className="text-[0.65rem] text-slate-400 font-semibold uppercase tracking-wider mt-0.5">
-                Hipertrofia Anual
-              </p>
-            </div>
-          </div>
+      {/* Header enxuto de 1 linha fixa (~56px + safe-area) */}
+      <HeaderBar
+        currentUser={currentUser}
+        selectedMonth={effectiveMonth}
+        isOfflineFallback={isOfflineFallback}
+        loading={loading}
+        showUserMenu={showUserMenu}
+        onSync={syncWorkouts}
+        onToggleUserMenu={() => setShowUserMenu((prev) => !prev)}
+        onOpenResults={() => setShowResultsModal(true)}
+        hasBackupAlert={hasBackupAlert}
+      />
 
-          <div className="flex items-center gap-1.5 relative">
-            {/* Botão Resetar Sessão */}
-            <button
-              onClick={handleResetSession}
-              className="p-2 text-slate-400 hover:text-amber-400 hover:bg-slate-800 rounded-lg transition-colors cursor-pointer"
-              title="Nova Sessão (Reabrir Exercícios)"
-            >
-              <RotateCcw className="w-4 h-4" />
-            </button>
+      {/* Barra rolável de Mês + Guia + Princípios (não ocupa espaço fixo durante o treino) */}
+      <MonthAndGuidesBar
+        availableMonths={availableMonths}
+        selectedMonth={effectiveMonth}
+        onSelectMonth={handleSelectMonth}
+        onOpenMonthGuide={() => openPrinciplesSection('guia-mes')}
+        onOpenPrinciples={() => openPrinciplesSection(null)}
+        uiScale={uiScale}
+      />
 
-            {/* Botão Sincronizar Planilha */}
-            <button
-              onClick={() => loadWorkoutsData(true)}
-              className="p-2 text-slate-400 hover:text-blue-400 hover:bg-slate-800 rounded-lg transition-colors cursor-pointer"
-              title="Sincronizar Planilha"
-            >
-              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin text-blue-400' : ''}`} />
-            </button>
+      {/* Conteúdo Principal com padding inferior dinâmico para nunca colidir com o RestTimer (Item 5.1) */}
+      <main
+        className={`max-w-md mx-auto px-3 pt-3.5 ${
+          timer.isOpen
+            ? 'pb-[calc(19.5rem+env(safe-area-inset-bottom))]'
+            : 'pb-[calc(6.5rem+env(safe-area-inset-bottom))]'
+        }`}
+      >
+        <WorkoutTabs
+          selectedWorkout={selectedWorkout}
+          onSelectWorkout={handleSelectWorkout}
+          workoutMetaByTab={workoutMetaByTab}
+        />
 
-            {/* Botão Perfil / Menu do Usuário */}
-            <button
-              onClick={() => setShowUserMenu(!showUserMenu)}
-              className="flex items-center gap-1.5 pl-2 pr-2.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-semibold text-slate-200 transition-colors cursor-pointer"
-              title="Conta e Backup"
-            >
-              <User className="w-3.5 h-3.5 text-blue-400" />
-              <span className="max-w-[85px] truncate">{currentUser.name.split(' ')[0]}</span>
-            </button>
+        <WorkoutFilters
+          selectedWorkout={selectedWorkout}
+          progressStats={progressStats}
+          hideOptionals={hideOptionals}
+          onToggleHideOptionals={() => setHideOptionals((prev) => !prev)}
+          muscleGroupsWithCount={muscleGroupsWithCount}
+          selectedMuscleGroup={selectedMuscleGroup}
+          onSelectMuscleGroup={setSelectedMuscleGroup}
+          statusFilter={statusFilter}
+          onStatusFilterChange={setStatusFilter}
+          searchQuery={searchQuery}
+          onSearchQueryChange={setSearchQuery}
+          totalBaseCount={visibleBaseForGroups.length}
+          uiScale={uiScale}
+        />
 
-            {/* Dropdown do Usuário */}
-            {showUserMenu && (
-              <div className="absolute right-0 top-12 w-64 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl p-2.5 z-40">
-                <div className="px-2.5 py-2 border-b border-slate-800 mb-2">
-                  <div className="text-xs font-bold text-white truncate">{currentUser.name}</div>
-                  <div className="text-[0.65rem] text-slate-400 uppercase tracking-wider">
-                    @{currentUser.username} • {currentUser.role}
-                  </div>
-                </div>
-
-                {/* Controle de Tamanho de Fonte e Elementos */}
-                <div className="px-2 py-2 mb-1.5 bg-slate-950/70 border border-slate-800 rounded-xl">
-                  <div className="flex items-center gap-1.5 text-[0.65rem] font-bold text-slate-400 uppercase tracking-wider mb-1.5">
-                    <Type className="w-3.5 h-3.5 text-blue-400" />
-                    <span>Tamanho da Fonte / Interface</span>
-                  </div>
-                  <div className="grid grid-cols-3 gap-1">
-                    {[
-                      { id: 'normal', label: 'A', desc: 'Padrão' },
-                      { id: 'large', label: 'A+', desc: 'Médio' },
-                      { id: 'xlarge', label: 'A++', desc: 'Grande' }
-                    ].map((opt) => (
-                      <button
-                        key={opt.id}
-                        type="button"
-                        onClick={() => handleUiScaleChange(opt.id)}
-                        className={`py-1.5 px-1 rounded-lg border text-center transition-all cursor-pointer ${
-                          uiScale === opt.id
-                            ? 'bg-blue-600 text-white border-blue-400 shadow-sm'
-                            : 'bg-slate-900 text-slate-300 border-slate-800 hover:bg-slate-800'
-                        }`}
-                      >
-                        <div className="text-xs font-extrabold leading-none">{opt.label}</div>
-                        <div className="text-[0.6rem] opacity-80 mt-0.5">{opt.desc}</div>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Controle de Screensaver OLED (Auto-Dim por Inatividade) */}
-                <div className="px-2 py-2 mb-1.5 bg-slate-950/70 border border-slate-800 rounded-xl">
-                  <div className="flex items-center gap-1.5 text-[0.65rem] font-bold text-slate-400 uppercase tracking-wider mb-1.5">
-                    <Moon className="w-3.5 h-3.5 text-sky-400" />
-                    <span>Screensaver OLED (Auto-Dim)</span>
-                  </div>
-                  <div className="grid grid-cols-5 gap-1">
-                    {[
-                      { val: 0, label: 'Off' },
-                      { val: 15, label: '15s' },
-                      { val: 20, label: '20s' },
-                      { val: 30, label: '30s' },
-                      { val: 45, label: '45s' }
-                    ].map((opt) => (
-                      <button
-                        key={opt.val}
-                        type="button"
-                        onClick={() => handleScreensaverDelayChange(opt.val)}
-                        className={`py-1.5 px-0.5 rounded-lg border text-center text-[0.65rem] font-bold transition-all cursor-pointer ${
-                          screensaverDelay === opt.val
-                            ? 'bg-sky-600 text-white border-sky-400 shadow-sm'
-                            : 'bg-slate-900 text-slate-300 border-slate-800 hover:bg-slate-800'
-                        }`}
-                      >
-                        {opt.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <button
-                  onClick={() => {
-                    exportUserBackup(currentUser.username, workoutLogs, completedExercises);
-                    setShowUserMenu(false);
-                    showToast('Backup exportado!');
-                  }}
-                  className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-slate-300 hover:bg-slate-800 rounded-lg transition-colors cursor-pointer"
-                >
-                  <Download className="w-3.5 h-3.5 text-blue-400" />
-                  Exportar Histórico (JSON)
-                </button>
-
-                <button
-                  onClick={() => fileInputRef.current?.click()}
-                  className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-slate-300 hover:bg-slate-800 rounded-lg transition-colors cursor-pointer"
-                >
-                  <Upload className="w-3.5 h-3.5 text-emerald-400" />
-                  Importar Histórico (JSON)
-                </button>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept=".json,application/json"
-                  onChange={handleImportFile}
-                  className="hidden"
-                />
-
-                <div className="border-t border-slate-800 my-1" />
-
-                <button
-                  onClick={() => {
-                    setShowUserMenu(false);
-                    setShowResetConfirmModal(true);
-                  }}
-                  className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-amber-400 hover:bg-amber-950/40 rounded-lg transition-colors cursor-pointer"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                  Resetar Todo o Progresso
-                </button>
-
-                <button
-                  onClick={handleLogout}
-                  className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-red-400 hover:bg-red-950/40 rounded-lg transition-colors cursor-pointer"
-                >
-                  <LogOut className="w-3.5 h-3.5" />
-                  Sair da Conta
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Seletor de Mês, Link do Guia & Botão Princípios (Relayout Adaptativo em Fonte Grande) */}
-        <div
-          className={`max-w-md mx-auto px-4 py-2.5 border-t border-slate-800/80 ${
-            uiScale === 'xlarge' ? 'space-y-2' : 'flex items-center gap-2'
-          }`}
-        >
-          <div className="relative flex-1 min-w-0">
-            <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-blue-400 pointer-events-none" />
-            <select
-              value={selectedMonth}
-              onChange={(e) => setSelectedMonth(e.target.value)}
-              className="w-full pl-9 pr-7 py-2 rounded-xl bg-slate-800/90 border border-slate-700 text-xs font-bold text-white focus:ring-2 focus:ring-blue-500 outline-none appearance-none cursor-pointer truncate"
-            >
-              {availableMonths.map((m) => (
-                <option key={m} value={m} className="bg-slate-900 text-white">
-                  {m}
-                </option>
-              ))}
-            </select>
-            <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
-          </div>
-
-          <div className={uiScale === 'xlarge' ? 'grid grid-cols-2 gap-2' : 'flex items-center gap-2 flex-shrink-0'}>
-            {currentDocLink && (
-              <a
-                href={currentDocLink}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center justify-center gap-1.5 px-3 py-2 bg-blue-950/60 text-blue-300 border border-blue-800/70 rounded-xl text-xs font-bold hover:bg-blue-900/50 transition-colors flex-shrink-0"
-                title={`Ler Guia Completo de ${selectedMonth}`}
-              >
-                <FileText className="w-3.5 h-3.5" />
-                <span>{uiScale === 'xlarge' ? `Guia de ${selectedMonth}` : 'Guia'}</span>
-              </a>
-            )}
-
-            <button
-              type="button"
-              onClick={() => setShowPrinciplesModal(true)}
-              className="flex items-center justify-center gap-1.5 px-3 py-2 bg-amber-950/60 text-amber-300 border border-amber-700/70 rounded-xl text-xs font-bold hover:bg-amber-900/50 hover:text-amber-200 transition-colors flex-shrink-0 cursor-pointer shadow-sm"
-              title="Princípios Básicos da Hipertrofia"
-            >
-              <BookOpen className="w-3.5 h-3.5 text-amber-400" />
-              <span>Princípios</span>
-            </button>
-          </div>
-        </div>
-      </header>
-
-      {/* Main Content */}
-      <main className="max-w-md mx-auto px-4 pt-4">
-        {/* Abas de Treino A / B / C */}
-        <div className="flex p-1 bg-slate-900 rounded-xl border border-slate-800 mb-3">
-          {['A', 'B', 'C'].map((workout) => (
-            <button
-              key={workout}
-              onClick={() => setSelectedWorkout(workout)}
-              className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all cursor-pointer ${
-                selectedWorkout === workout
-                  ? 'bg-blue-600 text-white shadow-md shadow-blue-600/20'
-                  : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'
-              }`}
-            >
-              Treino {workout}
-            </button>
-          ))}
-        </div>
-
-        {/* Barra de Progresso da Sessão */}
-        {progressStats.total > 0 && (
-          <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-3 mb-3">
-            <div className="flex items-center justify-between text-xs mb-1.5">
-              <span className="font-semibold text-slate-300">
-                Progresso do Treino {selectedWorkout}
-              </span>
-              <span className="font-bold text-blue-400">
-                {progressStats.completedTotal}/{progressStats.total} concluídos ({progressStats.pct}%)
-              </span>
-            </div>
-            <div className="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
-              <div
-                className={`h-full transition-all duration-300 ${
-                  progressStats.pct === 100 ? 'bg-emerald-500' : 'bg-blue-500'
-                }`}
-                style={{ width: `${progressStats.pct}%` }}
-              />
-            </div>
-            <div className="flex items-center justify-between text-[0.7rem] text-slate-400 mt-1.5">
-              <span>
-                Obrigatórios: <strong className="text-slate-200">{progressStats.completedMandatory}/{progressStats.mandatoryCount}</strong>
-              </span>
-              {progressStats.optionalCount > 0 && (
-                <button
-                  type="button"
-                  onClick={() => setHideOptionals(!hideOptionals)}
-                  className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[0.65rem] font-bold border transition-colors cursor-pointer ${
-                    hideOptionals
-                      ? 'bg-slate-800 text-slate-400 border-slate-700'
-                      : 'bg-purple-950/60 text-purple-300 border-purple-800/60'
-                  }`}
-                >
-                  <Sparkles className="w-2.5 h-2.5" />
-                  {hideOptionals ? `Mostrar Opcionais (${progressStats.optionalCount})` : 'Ocultar Opcionais'}
-                </button>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* Chips de Filtro Rápido por Grupo Muscular */}
-        {workoutMuscleGroups.length > 1 && (
-          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-2 mb-3">
-            <button
-              onClick={() => setSelectedMuscleGroup('TODOS')}
-              className={`px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap border transition-colors cursor-pointer ${
-                selectedMuscleGroup === 'TODOS'
-                  ? 'bg-blue-600 text-white border-blue-500'
-                  : 'bg-slate-900 text-slate-400 border-slate-800 hover:border-slate-700'
-              }`}
-            >
-              Todos ({baseWorkoutExercises.length})
-            </button>
-            {workoutMuscleGroups.map((group) => (
-              <button
-                key={group}
-                onClick={() => setSelectedMuscleGroup(group)}
-                className={`px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap border transition-colors cursor-pointer ${
-                  selectedMuscleGroup === group
-                    ? 'bg-blue-600 text-white border-blue-500'
-                    : 'bg-slate-900 text-slate-400 border-slate-800 hover:border-slate-700'
-                }`}
-              >
-                {group}
-              </button>
-            ))}
-          </div>
-        )}
-
-        {/* Lista de Exercícios */}
-        <div className="space-y-4">
+        {/* Lista de Exercícios (chave estável inclui nome bruto para evitar colisão em Julho|A) */}
+        <div>
           {filteredExercises.length > 0 ? (
-            filteredExercises.map((exercise, idx) => {
-              const canonicalKey = getCanonicalExerciseKey(exercise['Exercício']);
+            filteredExercises.map((exercise) => {
+              const rawName = exercise['Exercício'] || '';
+              const canonicalKey = getCanonicalExerciseKey(rawName);
               return (
                 <ExerciseCard
-                  key={`${canonicalKey}-${idx}`}
+                  key={`${effectiveMonth}-${selectedWorkout}-${rawName}`}
                   data={exercise}
-                  onSaveLog={handleSaveLog}
+                  onSaveSet={handleSaveSet}
                   onToggleComplete={handleToggleComplete}
                   onDeleteLog={handleDeleteLog}
-                  onTriggerTimer={(seconds) => timer.startTimer(seconds, true)}
-                  onFocusExercise={(ex) => setFocusedExercise(ex)}
-                  onOpenScreensaver={(ex, restSeconds) => {
-                    setFocusedExercise(ex);
+                  onTriggerTimer={(seconds, exObj, title) => {
+                    setFocusedExercise(exObj);
+                    timer.startTimer(seconds, true, title);
+                  }}
+                  onOpenScreensaver={(exObj, restSeconds) => {
+                    setFocusedExercise(exObj);
+                    const title = getDisplayExerciseName(exObj['Exercício']);
                     if (!timer.isRunning && timer.secondsLeft === 0) {
-                      timer.startTimer(restSeconds, false);
+                      timer.startTimer(restSeconds, false, title);
                     }
                     setIsScreensaverOpen(true);
                   }}
+                  onOpenPrincipleSection={openPrinciplesSection}
                   isFocused={
-                    focusedExercise &&
-                    getCanonicalExerciseKey(focusedExercise['Exercício']) === canonicalKey
+                    Boolean(focusedExercise) && focusedExercise['Exercício'] === rawName
                   }
-                  history={workoutLogs[canonicalKey] || []}
-                  isCompleted={completedExercises.includes(canonicalKey)}
+                  history={logs.workoutLogs[canonicalKey] || []}
+                  todaySetsCount={logs.getTodaySetsCount(canonicalKey)}
+                  isCompleted={logs.completedInCurrentScope.includes(canonicalKey)}
                   uiScale={uiScale}
                 />
               );
             })
           ) : (
-            <div className="text-center py-12 bg-slate-900/50 rounded-2xl border border-slate-800">
-              <div className="bg-slate-800 w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-3">
-                <Info className="w-7 h-7 text-slate-400" />
+            <div className="text-center py-10 px-4 bg-zinc-950 rounded-2xl border border-zinc-800 space-y-3">
+              <div className="bg-zinc-900 w-12 h-12 rounded-full flex items-center justify-center mx-auto">
+                <Info className="w-6 h-6 text-zinc-400" />
               </div>
-              <h3 className="text-slate-200 font-bold text-sm">Nenhum exercício exibido</h3>
-              <p className="text-xs text-slate-400 mt-1 px-6">
-                Não há exercícios para o filtro atual no Treino {selectedWorkout} de {selectedMonth}.
-              </p>
+              <div>
+                <h3 className="text-zinc-100 font-bold text-sm">Nenhum exercício exibido</h3>
+                <p className="text-xs text-zinc-400 mt-1">
+                  Nenhum exercício corresponde aos filtros ativos no Treino {selectedWorkout} de {effectiveMonth}.
+                </p>
+              </div>
+              <div className="flex flex-wrap items-center justify-center gap-2 pt-1">
+                {selectedMuscleGroup !== 'TODOS' && (
+                  <button
+                    type="button"
+                    onClick={() => setSelectedMuscleGroup('TODOS')}
+                    className="min-h-[44px] px-3.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold cursor-pointer"
+                  >
+                    Mostrar todos os grupos
+                  </button>
+                )}
+                {hideOptionals && (
+                  <button
+                    type="button"
+                    onClick={() => setHideOptionals(false)}
+                    className="min-h-[44px] px-3.5 rounded-xl bg-purple-950 border border-purple-700 text-purple-200 text-xs font-bold cursor-pointer"
+                  >
+                    Reexibir opcionais
+                  </button>
+                )}
+                {statusFilter !== 'TODOS' && (
+                  <button
+                    type="button"
+                    onClick={() => setStatusFilter('TODOS')}
+                    className="min-h-[44px] px-3.5 rounded-xl bg-zinc-900 border border-zinc-700 text-zinc-200 text-xs font-bold cursor-pointer"
+                  >
+                    Exibir concluídos
+                  </button>
+                )}
+                {searchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => setSearchQuery('')}
+                    className="min-h-[44px] px-3.5 rounded-xl bg-zinc-900 border border-zinc-700 text-zinc-200 text-xs font-bold cursor-pointer"
+                  >
+                    Limpar busca
+                  </button>
+                )}
+              </div>
             </div>
           )}
         </div>
 
-        <div className="mt-8 text-center pb-8">
-          <p className="text-xs text-slate-500">
-            Progresso salvo para <strong className="text-slate-400">@{currentUser.username}</strong> neste dispositivo.
+        <footer className="mt-6 text-center pb-4">
+          <p className="text-xs text-zinc-500">
+            Progresso salvo localmente para <strong className="text-zinc-400">@{currentUser.username}</strong>.
           </p>
-        </div>
+        </footer>
       </main>
 
-      {/* Modal de Confirmação de Reset de Todo o Progresso */}
-      {showResetConfirmModal && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/85 backdrop-blur-sm p-4 animate-in fade-in"
-          onClick={() => setShowResetConfirmModal(false)}
-        >
-          <div
-            className="w-full max-w-sm bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl p-5 text-slate-100"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center gap-3 mb-3">
-              <div className="bg-red-950 border border-red-800/70 p-2.5 rounded-xl text-red-400 flex-shrink-0">
-                <AlertTriangle className="w-6 h-6" />
-              </div>
-              <div>
-                <h3 className="text-base font-extrabold text-white leading-tight">
-                  Resetar Todo o Progresso?
-                </h3>
-                <p className="text-xs text-slate-400 mt-0.5">
-                  Conta: @{currentUser.username}
-                </p>
-              </div>
-            </div>
-
-            <p className="text-xs text-slate-300 leading-relaxed mb-4">
-              Esta ação apagará <strong className="text-red-300">todo o histórico de cargas registradas</strong> e os exercícios concluídos neste dispositivo. Essa operação não pode ser desfeita.
-            </p>
-
-            <button
-              type="button"
-              onClick={() => {
-                exportUserBackup(currentUser.username, workoutLogs, completedExercises);
-                showToast('Backup salvo antes do reset!');
-              }}
-              className="w-full mb-3 py-2 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-bold text-blue-300 flex items-center justify-center gap-2 transition-colors cursor-pointer"
-            >
-              <Download className="w-3.5 h-3.5" />
-              Baixar Backup (JSON) por Segurança
-            </button>
-
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={() => setShowResetConfirmModal(false)}
-                className="flex-1 py-2.5 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-bold text-slate-300 transition-colors cursor-pointer"
-              >
-                Cancelar
-              </button>
-              <button
-                type="button"
-                onClick={handleConfirmFullReset}
-                className="flex-1 py-2.5 px-3 rounded-xl bg-red-600 hover:bg-red-500 text-xs font-bold text-white shadow-lg shadow-red-600/20 transition-colors cursor-pointer"
-              >
-                Sim, Resetar Tudo
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Modal de Princípios Básicos da Hipertrofia */}
-      <PrinciplesModal
-        isOpen={showPrinciplesModal}
-        onClose={() => setShowPrinciplesModal(false)}
+      {/* Bottom Sheet de Perfil e Preferências */}
+      <ProfileDrawer
+        isOpen={showUserMenu}
+        onClose={() => setShowUserMenu(false)}
+        currentUser={currentUser}
+        selectedMonth={effectiveMonth}
+        selectedWorkout={selectedWorkout}
+        summaryStats={logs.summaryStats}
+        backupMeta={logs.backupMeta}
+        uiScale={uiScale}
+        onUiScaleChange={handleUiScaleChange}
+        screensaverDelay={screensaverDelay}
+        onScreensaverDelayChange={handleScreensaverDelayChange}
+        autoStartTimer={autoStartTimer}
+        onToggleAutoStartTimer={handleToggleAutoStartTimer}
+        onOpenResults={() => setShowResultsModal(true)}
+        onExportBackup={() => {
+          logs.exportBackup();
+          showToast('Backup JSON exportado!');
+        }}
+        onImportBackupFile={handleImportBackupFile}
+        onRequestResetSession={() => setResetModalMode('session')}
+        onRequestFullReset={() => setResetModalMode('full')}
+        onLogout={onLogout}
       />
 
-      {/* Screensaver Interativo OLED True Black */}
+      {/* Modal de Resultados & PRs */}
+      <ResultsModal
+        isOpen={showResultsModal}
+        onClose={() => setShowResultsModal(false)}
+        currentUser={currentUser}
+        summaryStats={logs.summaryStats}
+        backupMeta={logs.backupMeta}
+        onExportBackup={() => {
+          logs.exportBackup();
+          showToast('Backup JSON exportado!');
+        }}
+      />
+
+      {/* Modal de Confirmação de Nova Sessão ou Reset Total */}
+      <ConfirmResetModal
+        mode={resetModalMode}
+        username={currentUser.username}
+        selectedMonth={effectiveMonth}
+        selectedWorkout={selectedWorkout}
+        onBackupFirst={() => {
+          logs.exportBackup();
+          showToast('Backup salvo por segurança!');
+        }}
+        onConfirm={handleConfirmReset}
+        onCancel={() => setResetModalMode(null)}
+      />
+
+      {/* Modal de Princípios, Guia Offline do Mês e Glossário */}
+      <PrinciplesModal
+        isOpen={principlesState.isOpen}
+        onClose={() => setPrinciplesState({ isOpen: false, section: null })}
+        initialSection={principlesState.section}
+        selectedMonth={effectiveMonth}
+      />
+
+      {/* Modo Foco OLED (Screensaver Interativo) */}
       <FocusScreensaver
         isOpen={isScreensaverOpen}
         exercise={focusedExercise}
+        lastLog={focusedLastLog}
         timer={timer}
         onExit={() => setIsScreensaverOpen(false)}
       />
@@ -841,5 +597,29 @@ export default function App() {
       {/* Cronômetro de Descanso Flutuante */}
       {!isScreensaverOpen && <RestTimer timer={timer} />}
     </div>
+  );
+}
+
+export default function App() {
+  const [currentUser, setCurrentUser] = useState(() => {
+    const session = getCurrentSession();
+    return session ? session.user : null;
+  });
+
+  const handleLogout = () => {
+    logoutUser();
+    setCurrentUser(null);
+  };
+
+  if (!currentUser) {
+    return <LoginScreen onLoginSuccess={(user) => setCurrentUser(user)} />;
+  }
+
+  return (
+    <AuthenticatedWorkspace
+      key={currentUser.username}
+      currentUser={currentUser}
+      onLogout={handleLogout}
+    />
   );
 }
