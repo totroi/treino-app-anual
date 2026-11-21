@@ -13,13 +13,7 @@ import {
   saveBackupMeta
 } from '../services/storageService';
 import { normalizeWeightInput, parsePtBrNumber } from '../utils/numberFormat';
-
-function getLocalDateKey(date = new Date()) {
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, '0');
-  const d = String(date.getDate()).padStart(2, '0');
-  return `${y}-${m}-${d}`;
-}
+import { getLocalDateKey, matchesLogScope } from '../utils/logScope';
 
 export function useWorkoutLogs(username, selectedMonth, selectedWorkout) {
   const [workoutLogs, setWorkoutLogs] = useState(() =>
@@ -262,6 +256,113 @@ export function useWorkoutLogs(username, selectedMonth, selectedWorkout) {
     setBackupMeta({ lastExportedAt: null, logsSinceBackup: 0 });
   }, [username]);
 
+  // Conta quantos registros de séries existem no escopo escolhido (prévia ao vivo antes de apagar)
+  const countLogsInScope = useCallback(
+    ({ period, workoutScope, targetMonth, workoutExerciseKeysByTab }) => {
+      const now = new Date();
+      let count = 0;
+      Object.entries(workoutLogs).forEach(([canonicalKey, entries]) => {
+        if (!Array.isArray(entries)) return;
+        entries.forEach((item) => {
+          if (
+            matchesLogScope(canonicalKey, item, {
+              period,
+              workoutScope,
+              targetMonth: targetMonth || selectedMonth,
+              workoutExerciseKeysByTab,
+              now
+            })
+          ) {
+            count += 1;
+          }
+        });
+      });
+      return count;
+    },
+    [workoutLogs, selectedMonth]
+  );
+
+  // Limpeza granular de histórico por período (Semana / Mês / Tudo) e treino (A / B / C / ALL)
+  const deleteLogsInScope = useCallback(
+    ({ period, workoutScope, targetMonth, workoutExerciseKeysByTab }) => {
+      const month = targetMonth || selectedMonth;
+      if (period === 'all') {
+        const total = Object.values(workoutLogs).reduce(
+          (acc, arr) => acc + (Array.isArray(arr) ? arr.length : 0),
+          0
+        );
+        resetAllProgress();
+        return total;
+      }
+
+      const now = new Date();
+      const nowIso = now.toISOString();
+      let removedCount = 0;
+      const nextLogs = {};
+
+      Object.entries(workoutLogs).forEach(([canonicalKey, entries]) => {
+        if (!Array.isArray(entries)) return;
+        const kept = entries.filter((item) => {
+          const shouldRemove = matchesLogScope(canonicalKey, item, {
+            period,
+            workoutScope,
+            targetMonth: month,
+            workoutExerciseKeysByTab,
+            now
+          });
+          if (shouldRemove) removedCount += 1;
+          return !shouldRemove;
+        });
+        if (kept.length > 0) {
+          nextLogs[canonicalKey] = kept;
+        }
+      });
+
+      setWorkoutLogs(nextLogs);
+      if (username) saveUserWorkoutLogs(username, nextLogs);
+
+      // Também limpa os cards concluídos (verdinhas) e reinicia o contador da sessão no(s) treino(s) atingido(s)
+      const affectedWorkouts = workoutScope === 'ALL' ? ['A', 'B', 'C'] : [workoutScope];
+      setSessionV3((prev) => {
+        const nextCompleted = { ...(prev.completedByScope || {}) };
+        const nextStartedAt = { ...(prev.sessionStartedAtByScope || {}) };
+        affectedWorkouts.forEach((w) => {
+          const scopeKey = makeSessionScopeKey(month, w);
+          nextCompleted[scopeKey] = [];
+          nextStartedAt[scopeKey] = nowIso;
+        });
+        const nextSession = {
+          ...prev,
+          version: 3,
+          activeWeekKey: getLocalIsoWeekKey(now),
+          completedByScope: nextCompleted,
+          sessionStartedAtByScope: nextStartedAt
+        };
+        if (username) saveUserSessionV3(username, nextSession);
+        return nextSession;
+      });
+
+      return removedCount;
+    },
+    [workoutLogs, selectedMonth, username, resetAllProgress]
+  );
+
+  // Indica se há algum registro salvo na semana atual (mantém acesso ao botão Reiniciar mesmo sem verdinhos)
+  const hasLogsInCurrentWeek = useMemo(() => {
+    const now = new Date();
+    return Object.entries(workoutLogs).some(([canonicalKey, entries]) => {
+      if (!Array.isArray(entries)) return false;
+      return entries.some((item) =>
+        matchesLogScope(canonicalKey, item, {
+          period: 'week',
+          workoutScope: 'ALL',
+          targetMonth: selectedMonth,
+          now
+        })
+      );
+    });
+  }, [workoutLogs, selectedMonth]);
+
   const exportBackup = useCallback(() => {
     if (!username) return;
     exportUserBackup(username, workoutLogs, sessionV3, completedInCurrentScope);
@@ -375,6 +476,9 @@ export function useWorkoutLogs(username, selectedMonth, selectedWorkout) {
     resetMonthWeekStatus,
     resetCurrentSession: resetCurrentWorkoutStatus,
     resetAllProgress,
+    countLogsInScope,
+    deleteLogsInScope,
+    hasLogsInCurrentWeek,
     exportBackup,
     importBackupText,
     summaryStats

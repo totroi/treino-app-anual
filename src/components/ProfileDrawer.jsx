@@ -247,7 +247,7 @@ export default function ProfileDrawer({
               className="w-full min-h-[44px] flex items-center gap-3 px-3.5 py-2.5 text-sm font-semibold text-amber-400 hover:bg-amber-950/30 rounded-xl transition-colors cursor-pointer"
             >
               <Trash2 className="w-4 h-4 flex-shrink-0" />
-              <span>Resetar Todo o Progresso</span>
+              <span>Apagar Histórico / Resetar</span>
             </button>
 
             <button

@@ -44,7 +44,7 @@ function AuthenticatedWorkspace({ currentUser, onLogout }) {
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showResultsModal, setShowResultsModal] = useState(false);
   const [principlesState, setPrinciplesState] = useState({ isOpen: false, section: null });
-  const [resetModalMode, setResetModalMode] = useState(null); // 'status' | 'full' | null
+  const [resetModalTab, setResetModalTab] = useState(null); // 'status' | 'history' | null
 
   const [uiScale, setUiScale] = useState(() => loadUiScale());
   const [screensaverDelay, setScreensaverDelay] = useState(() => loadScreensaverDelay());
@@ -140,7 +140,7 @@ function AuthenticatedWorkspace({ currentUser, onLogout }) {
       principlesState.isOpen ||
       showResultsModal ||
       showUserMenu ||
-      Boolean(resetModalMode),
+      Boolean(resetModalTab),
     onTriggerScreensaver: () => setIsScreensaverOpen(true)
   });
 
@@ -171,6 +171,21 @@ function AuthenticatedWorkspace({ currentUser, onLogout }) {
     });
     return result;
   }, [rawData, effectiveMonth, logs]);
+
+  // Mapa de chaves canônicas por treino (A/B/C) do mês atual para fallback de logs legados v1/v2
+  const workoutExerciseKeysByTab = useMemo(() => {
+    const map = { A: new Set(), B: new Set(), C: new Set() };
+    ['A', 'B', 'C'].forEach((w) => {
+      rawData.forEach((item) => {
+        const m = item['Mês']?.trim();
+        const t = item['Treino']?.trim();
+        if (m === effectiveMonth && t && (t === w || t.includes(w))) {
+          map[w].add(getCanonicalExerciseKey(item['Exercício']));
+        }
+      });
+    });
+    return map;
+  }, [rawData, effectiveMonth]);
 
   // Exercícios do mês e treino selecionados
   const baseWorkoutExercises = useMemo(() => {
@@ -343,20 +358,34 @@ function AuthenticatedWorkspace({ currentUser, onLogout }) {
 
   const handleConfirmWorkoutReset = () => {
     logs.resetCurrentWorkoutStatus();
-    setResetModalMode(null);
+    setResetModalTab(null);
     showToast(`Treino ${selectedWorkout} reiniciado (histórico preservado)!`);
   };
 
   const handleConfirmWeekReset = () => {
     logs.resetMonthWeekStatus(effectiveMonth);
-    setResetModalMode(null);
+    setResetModalTab(null);
     showToast(`Nova semana iniciada em ${effectiveMonth} (A, B e C)!`);
   };
 
-  const handleConfirmFullReset = () => {
-    logs.resetAllProgress();
-    setResetModalMode(null);
-    showToast('Todo o progresso foi resetado!');
+  const handleConfirmDeleteHistory = ({ period, workoutScope }) => {
+    const removed = logs.deleteLogsInScope({
+      period,
+      workoutScope,
+      targetMonth: effectiveMonth,
+      workoutExerciseKeysByTab
+    });
+    setResetModalTab(null);
+    if (period === 'all') {
+      showToast('Todo o progresso foi resetado!');
+    } else {
+      const scopeDesc =
+        workoutScope === 'ALL' ? 'A+B+C' : `Treino ${workoutScope}`;
+      const periodDesc = period === 'week' ? 'Semana atual' : effectiveMonth;
+      showToast(
+        `${removed} ${removed === 1 ? 'registro apagado' : 'registros apagados'} (${scopeDesc} • ${periodDesc}).`
+      );
+    }
   };
 
   const hasCurrentWorkoutProgress = useMemo(() => {
@@ -366,7 +395,8 @@ function AuthenticatedWorkspace({ currentUser, onLogout }) {
     );
   }, [progressStats.completedTotal, baseWorkoutExercises, logs]);
 
-  const hasAnyWeekProgress = logs.hasAnyWeekProgressForMonth(effectiveMonth);
+  const hasAnyWeekProgress =
+    logs.hasAnyWeekProgressForMonth(effectiveMonth) || logs.hasLogsInCurrentWeek;
 
   const hasBackupAlert =
     (logs.backupMeta?.logsSinceBackup || 0) >= 10 ||
@@ -453,7 +483,7 @@ function AuthenticatedWorkspace({ currentUser, onLogout }) {
           progressStats={progressStats}
           hasCurrentWorkoutProgress={hasCurrentWorkoutProgress}
           hasAnyWeekProgress={hasAnyWeekProgress}
-          onRequestResetStatus={() => setResetModalMode('status')}
+          onRequestResetStatus={() => setResetModalTab('status')}
           hideOptionals={hideOptionals}
           onToggleHideOptionals={() => setHideOptionals((prev) => !prev)}
           muscleGroupsWithCount={muscleGroupsWithCount}
@@ -581,8 +611,8 @@ function AuthenticatedWorkspace({ currentUser, onLogout }) {
           showToast('Backup JSON exportado!');
         }}
         onImportBackupFile={handleImportBackupFile}
-        onRequestResetSession={() => setResetModalMode('status')}
-        onRequestFullReset={() => setResetModalMode('full')}
+        onRequestResetSession={() => setResetModalTab('status')}
+        onRequestFullReset={() => setResetModalTab('history')}
         onLogout={onLogout}
       />
 
@@ -599,20 +629,23 @@ function AuthenticatedWorkspace({ currentUser, onLogout }) {
         }}
       />
 
-      {/* Modal Unificado de Reinício de Status (Treino / Semana) ou Reset Total */}
+      {/* Modal Unificado de Reinício de Status (Aba 1) e Limpeza Granular de Histórico (Aba 2) */}
       <ConfirmResetModal
-        mode={resetModalMode}
+        key={`${resetModalTab || 'closed'}-${selectedWorkout}`}
+        initialTab={resetModalTab}
         username={currentUser.username}
         selectedMonth={effectiveMonth}
         selectedWorkout={selectedWorkout}
+        workoutExerciseKeysByTab={workoutExerciseKeysByTab}
+        countLogsInScope={logs.countLogsInScope}
         onBackupFirst={() => {
           logs.exportBackup();
           showToast('Backup salvo por segurança!');
         }}
         onConfirmWorkoutReset={handleConfirmWorkoutReset}
         onConfirmWeekReset={handleConfirmWeekReset}
-        onConfirmFullReset={handleConfirmFullReset}
-        onCancel={() => setResetModalMode(null)}
+        onConfirmDeleteHistory={handleConfirmDeleteHistory}
+        onCancel={() => setResetModalTab(null)}
       />
 
       {/* Modal de Princípios, Guia Offline do Mês e Glossário */}
