@@ -373,7 +373,7 @@ function AuthenticatedWorkspace({ currentUser, onLogout }) {
 
   if (loading && rawData.length === 0) {
     return (
-      <div className="flex h-screen items-center justify-center bg-black text-zinc-100">
+      <div className="flex h-[100dvh] items-center justify-center bg-black text-zinc-100">
         <div className="text-center">
           <RefreshCw className="w-8 h-8 animate-spin text-blue-500 mx-auto mb-3" />
           <p className="text-sm text-zinc-400 font-medium">Carregando periodização anual...</p>
@@ -387,13 +387,13 @@ function AuthenticatedWorkspace({ currentUser, onLogout }) {
     : null;
 
   return (
-    <div className="min-h-screen bg-black font-sans text-zinc-100">
+    <div className="min-h-[100dvh] bg-black font-sans text-zinc-100">
       {/* Toast Notification com suporte a "Desfazer" */}
       {toast && (
         <div
           role="status"
           aria-live="polite"
-          className="fixed top-[calc(4rem+env(safe-area-inset-top))] left-1/2 -translate-x-1/2 z-50 max-w-[92vw] bg-zinc-900 border border-zinc-700 text-zinc-100 px-3.5 py-2 rounded-2xl shadow-2xl text-xs font-semibold flex items-center gap-2.5 ui-fade-in"
+          className="fixed top-[calc(4.5rem+env(safe-area-inset-top,0px))] left-1/2 -translate-x-1/2 z-50 max-w-[92vw] bg-zinc-900 border border-zinc-700 text-zinc-100 px-3.5 py-2 rounded-2xl shadow-2xl text-xs font-semibold flex items-center gap-2.5 ui-fade-in"
         >
           <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0" />
           <span className="truncate">{toast.message}</span>

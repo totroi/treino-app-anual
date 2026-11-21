@@ -13,8 +13,8 @@ export default function HeaderBar({
   hasBackupAlert
 }) {
   return (
-    <header className="bg-black/95 backdrop-blur-md sticky top-0 z-20 border-b border-zinc-800/90 pt-safe">
-      <div className="max-w-md mx-auto px-3 py-1.5 flex items-center justify-between gap-2 min-h-[56px]">
+    <header className="bg-black/95 backdrop-blur-md sticky top-0 z-20 border-b border-zinc-800/90 pt-safe-header">
+      <div className="max-w-md mx-auto px-safe pb-1.5 flex items-center justify-between gap-2 min-h-[52px]">
         <div className="flex items-center gap-2 min-w-0">
           <div className="bg-blue-600 p-2 rounded-xl shadow-md shadow-blue-600/20 flex-shrink-0">
             <Dumbbell className="w-4 h-4 text-white" />

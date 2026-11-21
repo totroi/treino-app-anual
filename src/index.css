@@ -1,10 +1,18 @@
 @import "tailwindcss";
 
 @layer base {
+  :root {
+    --safe-top: env(safe-area-inset-top, 0px);
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+    --safe-left: env(safe-area-inset-left, 0px);
+    --safe-right: env(safe-area-inset-right, 0px);
+  }
+
   html,
   body {
     background-color: #000000;
     color: #f4f4f5;
+    overscroll-behavior-y: none;
   }
 
   button,
@@ -15,12 +23,27 @@
   }
 }
 
-/* Safe-area utilities para iPhone com Dynamic Island / Home Indicator */
-.pt-safe {
-  padding-top: env(safe-area-inset-top, 0px);
-}
-.pb-safe {
-  padding-bottom: env(safe-area-inset-bottom, 0px);
+/* Safe-area utilities responsivas para iPhone (SE / Notch / Dynamic Island) e Android */
+@layer utilities {
+  .pt-safe {
+    padding-top: var(--safe-top);
+  }
+  .pb-safe {
+    padding-bottom: var(--safe-bottom);
+  }
+  .pt-safe-header {
+    padding-top: calc(var(--safe-top) + 0.375rem);
+  }
+  .pt-safe-screen {
+    padding-top: calc(var(--safe-top) + 1.25rem);
+  }
+  .pb-safe-screen {
+    padding-bottom: calc(var(--safe-bottom) + 1.25rem);
+  }
+  .px-safe {
+    padding-left: max(0.75rem, var(--safe-left));
+    padding-right: max(0.75rem, var(--safe-right));
+  }
 }
 
 /* Custom scrollbar discreta para chips horizontais */
@@ -124,6 +147,10 @@
 .anim-neck-nod { animation: neck-nod 3.6s ease-in-out infinite; }
 .anim-vacuum { animation: vacuum-pulse 4.5s ease-in-out infinite; }
 .anim-oled-drift { animation: oled-drift 48s ease-in-out infinite; }
+
+.oled-anim-paused * {
+  animation-play-state: paused !important;
+}
 
 @media (prefers-reduced-motion: reduce) {
   .ui-fade-in,

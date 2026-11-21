@@ -24,6 +24,9 @@ import {
 } from '../utils/exerciseNormalizer';
 import { formatWeightDisplay, parsePtBrNumber } from '../utils/numberFormat';
 
+const ULTRA_ECO_IDLE_MS = 12 * 1000;
+const WAKELOCK_IDLE_RELEASE_MS = 90 * 1000;
+
 export default function FocusScreensaver({
   isOpen,
   exercise,
@@ -38,13 +41,36 @@ export default function FocusScreensaver({
   const [weight, setWeight] = useState('');
   const [reps, setReps] = useState('');
   const [savedSuccess, setSavedSuccess] = useState(false);
+  const [isUltraEco, setIsUltraEco] = useState(false);
+  const [isInputFocused, setIsInputFocused] = useState(false);
 
   const wakeLockRef = useRef(null);
   const graceTimeoutRef = useRef(null);
   const savedFeedbackRef = useRef(null);
 
-  // WakeLock inteligente: mantém a tela acesa enquanto o cronômetro corre ou apita,
-  // e libera automaticamente após 3 min parado para proteger a bateria OLED.
+  // Auto-Dim em 2 estágios (12s sem toque e sem input focado -> Ultra Eco >95% #000000 com luminância ~50%)
+  useEffect(() => {
+    if (!isOpen || isUltraEco || isInputFocused || timer.isAlarmRinging) return;
+
+    let idleId = null;
+    const armIdleTimer = () => {
+      if (idleId) clearTimeout(idleId);
+      idleId = setTimeout(() => {
+        setIsUltraEco(true);
+      }, ULTRA_ECO_IDLE_MS);
+    };
+
+    const events = ['pointerdown', 'keydown', 'touchstart'];
+    events.forEach((ev) => window.addEventListener(ev, armIdleTimer, { passive: true }));
+    armIdleTimer();
+
+    return () => {
+      if (idleId) clearTimeout(idleId);
+      events.forEach((ev) => window.removeEventListener(ev, armIdleTimer));
+    };
+  }, [isOpen, isUltraEco, isInputFocused, timer.isAlarmRinging]);
+
+  // WakeLock conservador: ativo durante descanso/alarme; libera automaticamente em 90s se parado
   useEffect(() => {
     const releaseWakeLock = () => {
       if (graceTimeoutRef.current) {
@@ -88,7 +114,7 @@ export default function FocusScreensaver({
       if (!graceTimeoutRef.current) {
         graceTimeoutRef.current = setTimeout(() => {
           releaseWakeLock();
-        }, 3 * 60 * 1000);
+        }, WAKELOCK_IDLE_RELEASE_MS);
       }
     }
 
@@ -117,7 +143,7 @@ export default function FocusScreensaver({
     };
   }, []);
 
-  // Fecha também com ESC (exceto quando o usuário está digitando no input)
+  // Fecha também com ESC
   useEffect(() => {
     if (!isOpen) return;
     const handleKey = (e) => {
@@ -163,7 +189,7 @@ export default function FocusScreensaver({
   const handleSaveSetInFocus = () => {
     if (!canSave || !onSaveSet) return;
     onSaveSet(canonicalKey, displayName, weight, reps, restSeconds, exercise);
-    // No Modo Foco, salvar a série significa que o usuário terminou a execução -> inicia o descanso automaticamente!
+    // Salvar a série no Modo Foco dispara o descanso automaticamente
     timer.startTimer(restSeconds, false, displayName);
     setReps('');
     setSavedSuccess(true);
@@ -178,50 +204,103 @@ export default function FocusScreensaver({
     onExit();
   };
 
+  const showUltraEcoView = isUltraEco && !timer.isAlarmRinging;
+
+  // ESTÁGIO 2: ULTRA ECO OLED (>95% pixels #000000 desligados + luminância reduzida ~50%)
+  if (showUltraEcoView) {
+    return (
+      <div
+        onClick={() => setIsUltraEco(false)}
+        className="fixed inset-0 z-50 min-h-[100dvh] bg-black text-zinc-500 flex flex-col items-center justify-between px-safe pt-safe-screen pb-safe-screen select-none cursor-pointer"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Modo Foco Ultra Eco OLED — toque para acordar controles"
+      >
+        <div className="w-full max-w-sm flex items-center justify-between text-[0.7rem] text-zinc-700 uppercase tracking-widest">
+          <span>Eco OLED</span>
+          <span>{todaySetsCount > 0 ? `${todaySetsCount} ${todaySetsCount === 1 ? 'série' : 'séries'}` : 'True Black'}</span>
+        </div>
+
+        <div className="w-full max-w-sm flex flex-col items-center text-center my-auto anim-oled-drift opacity-55">
+          <ExerciseSilhouette
+            exerciseName={displayName}
+            muscleGroup={exercise['Grupo muscular']}
+            accentColor="#0369a1"
+            sizeClass="w-32 h-32"
+            lowPower
+            paused={!timer.isRunning}
+          />
+
+          <h2 className="text-base font-bold text-zinc-400 leading-snug mt-2 px-4">
+            {displayName}
+          </h2>
+          <span className="text-xs text-zinc-600 mt-0.5">{exercise['Séries/Reps']}</span>
+
+          <div
+            className={`text-5xl font-mono font-bold tracking-tight mt-6 ${
+              timer.justFinished ? 'text-emerald-500/80' : 'text-zinc-400'
+            }`}
+          >
+            {formatTime(effectiveSeconds)}
+          </div>
+          <span className="text-xs text-zinc-600 uppercase tracking-widest mt-1.5">
+            {timer.isRunning ? 'Descansando' : timer.justFinished ? 'Pronto' : 'Aguardando série'}
+          </span>
+        </div>
+
+        <div className="text-xs text-zinc-700 tracking-wide">
+          Toque na tela para registrar série ou sair
+        </div>
+      </div>
+    );
+  }
+
+  // ESTÁGIO 1: INTERATIVO DIMMED (90%+ #000000, zero fills claros, paleta suave de baixo APL)
   return (
     <div
-      className="fixed inset-0 z-50 bg-black text-zinc-100 flex flex-col items-center justify-between px-4 pt-[max(1rem,env(safe-area-inset-top))] pb-[max(1rem,env(safe-area-inset-bottom))] overflow-y-auto overscroll-contain ui-fade-in"
+      className="fixed inset-0 z-50 min-h-[100dvh] bg-black text-zinc-400 flex flex-col items-center justify-between px-safe pt-safe-screen pb-safe-screen overflow-y-auto overscroll-contain ui-fade-in"
       role="dialog"
       aria-modal="true"
       aria-label="Modo Foco OLED"
     >
-      {/* Topo discreto com status da sessão */}
-      <div className="w-full max-w-sm flex items-center justify-between text-xs text-zinc-400 uppercase tracking-widest mb-1">
-        <span>Modo Foco OLED</span>
+      {/* Topo discreto com contraste apagado */}
+      <div className="w-full max-w-sm flex items-center justify-between text-xs text-zinc-600 uppercase tracking-widest mb-1">
+        <span>Modo Foco • Eco OLED</span>
         {todaySetsCount > 0 ? (
-          <span className="text-emerald-400 font-bold normal-case tracking-normal">
+          <span className="text-emerald-500/80 font-bold normal-case tracking-normal">
             {todaySetsCount} {todaySetsCount === 1 ? 'série feita' : 'séries feitas'}
           </span>
         ) : (
-          <span className="text-zinc-500">True Black</span>
+          <span className="text-zinc-700">90% True Black</span>
         )}
       </div>
 
       {/* Conteúdo central */}
-      <div className="w-full max-w-sm flex flex-col items-center text-center my-auto py-2 space-y-3.5">
+      <div className="w-full max-w-sm flex flex-col items-center text-center my-auto py-2 space-y-3">
         {/* Bloco visual com deslocamento anti-burn-in (±10px) — isolado dos inputs */}
         <div className="w-full flex flex-col items-center anim-oled-drift select-none">
           <ExerciseSilhouette
             exerciseName={displayName}
             muscleGroup={exercise['Grupo muscular']}
-            accentColor={timer.isAlarmRinging ? '#34d399' : '#38bdf8'}
-            sizeClass="w-28 h-28"
+            accentColor={timer.isAlarmRinging ? '#10b981' : '#0284c7'}
+            sizeClass="w-24 h-24"
+            lowPower
           />
 
-          <span className="text-xs font-bold uppercase tracking-widest text-sky-400 mt-1">
+          <span className="text-xs font-bold uppercase tracking-widest text-sky-600 mt-1">
             {exercise['Grupo muscular']}
           </span>
-          <h2 className="text-base sm:text-lg font-extrabold text-white leading-snug mt-0.5 px-2">
+          <h2 className="text-base font-bold text-zinc-300 leading-snug mt-0.5 px-2">
             {displayName}
           </h2>
 
-          {/* Badges essenciais + Última carga clicável para preencher em 1 toque */}
-          <div className="flex flex-wrap items-center justify-center gap-1.5 mt-2 text-xs font-semibold">
-            <span className="bg-zinc-950 border border-zinc-800 px-2.5 py-1 rounded-full text-zinc-100">
+          {/* Badges ultra-dim (fundo #000000 puro + borda fina) */}
+          <div className="flex flex-wrap items-center justify-center gap-1.5 mt-2 text-xs font-medium">
+            <span className="bg-black border border-zinc-900 px-2.5 py-1 rounded-full text-zinc-400">
               {exercise['Séries/Reps']}
             </span>
             {exercise['Cadência'] && (
-              <span className="bg-zinc-950 border border-zinc-800 px-2.5 py-1 rounded-full text-zinc-300">
+              <span className="bg-black border border-zinc-900 px-2.5 py-1 rounded-full text-zinc-500">
                 Cadência {exercise['Cadência']}
               </span>
             )}
@@ -230,7 +309,7 @@ export default function FocusScreensaver({
                 type="button"
                 onClick={handleQuickFillLast}
                 title="Toque para preencher carga e reps"
-                className="bg-emerald-950/60 hover:bg-emerald-900/60 border border-emerald-800/70 px-2.5 py-1 rounded-full text-emerald-300 font-mono transition-colors cursor-pointer"
+                className="bg-black hover:border-emerald-800 border border-emerald-950 px-2.5 py-1 rounded-full text-emerald-500/85 font-mono transition-colors cursor-pointer"
               >
                 Última: {formatWeightDisplay(lastLog.weight)}kg{lastLog.reps ? `×${lastLog.reps}` : ''}
               </button>
@@ -238,20 +317,20 @@ export default function FocusScreensaver({
           </div>
 
           {advancedTechnique && (
-            <div className="mt-2 inline-flex items-center gap-1.5 bg-amber-950/40 border border-amber-800/60 px-3 py-1 rounded-full text-xs text-amber-200 max-w-full">
-              <Zap className="w-3.5 h-3.5 text-amber-400 flex-shrink-0" />
+            <div className="mt-2 inline-flex items-center gap-1.5 bg-black border border-amber-950/90 px-3 py-1 rounded-full text-xs text-amber-500/80 max-w-full">
+              <Zap className="w-3.5 h-3.5 text-amber-600 flex-shrink-0" />
               <span className="truncate">{advancedTechnique}</span>
             </div>
           )}
         </div>
 
-        {/* Registro Rápido da Série no Modo Foco (salva e dispara o descanso automaticamente) */}
-        <div className="w-full bg-black border border-zinc-800/90 rounded-2xl p-3 text-left space-y-2.5">
+        {/* Registro Rápido True Black (zero preenchimentos acesos; outline suave) */}
+        <div className="w-full bg-black border border-zinc-900 rounded-2xl p-3 text-left space-y-2.5">
           <div className="grid grid-cols-2 gap-2">
             <div>
               <label
                 htmlFor="focus-weight"
-                className="text-xs text-zinc-400 font-semibold block mb-1"
+                className="text-xs text-zinc-500 font-semibold block mb-1"
               >
                 Carga (kg)
               </label>
@@ -262,16 +341,18 @@ export default function FocusScreensaver({
                 enterKeyHint="next"
                 placeholder={lastLog ? `${formatWeightDisplay(lastLog.weight)}` : 'ex: 80'}
                 value={weight}
+                onFocus={() => setIsInputFocused(true)}
+                onBlur={() => setIsInputFocused(false)}
                 onChange={(e) => setWeight(e.target.value)}
                 onKeyDown={(e) => { if (e.key === 'Enter') handleSaveSetInFocus(); }}
-                className="w-full min-h-[44px] px-3 py-2 rounded-xl border border-zinc-800 bg-zinc-950 text-white text-base placeholder-zinc-600 focus:ring-2 focus:ring-sky-500 outline-none"
+                className="w-full min-h-[44px] px-3 py-2 rounded-xl border border-zinc-800/90 bg-black text-zinc-200 text-base placeholder-zinc-700 focus:border-sky-700 outline-none"
               />
             </div>
 
             <div>
               <label
                 htmlFor="focus-reps"
-                className="text-xs text-zinc-400 font-semibold block mb-1"
+                className="text-xs text-zinc-500 font-semibold block mb-1"
               >
                 Reps
               </label>
@@ -282,9 +363,11 @@ export default function FocusScreensaver({
                 enterKeyHint="done"
                 placeholder={`ex: ${defaultRepsPlaceholder}`}
                 value={reps}
+                onFocus={() => setIsInputFocused(true)}
+                onBlur={() => setIsInputFocused(false)}
                 onChange={(e) => setReps(e.target.value)}
                 onKeyDown={(e) => { if (e.key === 'Enter') handleSaveSetInFocus(); }}
-                className="w-full min-h-[44px] px-3 py-2 rounded-xl border border-zinc-800 bg-zinc-950 text-white text-base placeholder-zinc-600 focus:ring-2 focus:ring-sky-500 outline-none"
+                className="w-full min-h-[44px] px-3 py-2 rounded-xl border border-zinc-800/90 bg-black text-zinc-200 text-base placeholder-zinc-700 focus:border-sky-700 outline-none"
               />
             </div>
           </div>
@@ -294,10 +377,10 @@ export default function FocusScreensaver({
               type="button"
               onClick={handleSaveSetInFocus}
               disabled={!canSave}
-              className={`flex-1 min-h-[44px] px-3 py-2 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+              className={`flex-1 min-h-[44px] px-3 py-2 rounded-xl font-bold text-xs sm:text-sm border flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
                 savedSuccess
-                  ? 'bg-emerald-600 text-white'
-                  : 'bg-sky-600 hover:bg-sky-500 text-white disabled:opacity-35 disabled:cursor-not-allowed'
+                  ? 'bg-black border-emerald-700 text-emerald-400'
+                  : 'bg-black border-sky-800/80 hover:border-sky-600 text-sky-400/90 disabled:opacity-30 disabled:cursor-not-allowed'
               }`}
             >
               {savedSuccess ? <CheckCircle2 className="w-4 h-4" /> : <Save className="w-4 h-4" />}
@@ -316,7 +399,7 @@ export default function FocusScreensaver({
                 onClick={handleCompleteInFocus}
                 aria-label="Concluir exercício e sair do modo foco"
                 title="Marcar exercício como concluído"
-                className="min-h-[44px] px-3 rounded-xl border border-emerald-800/80 bg-emerald-950/50 hover:bg-emerald-900/70 text-emerald-300 text-xs font-bold flex items-center justify-center gap-1 transition-colors cursor-pointer flex-shrink-0"
+                className="min-h-[44px] px-3 rounded-xl border border-emerald-900/80 bg-black hover:border-emerald-700 text-emerald-500/85 text-xs font-bold flex items-center justify-center gap-1 transition-colors cursor-pointer flex-shrink-0"
               >
                 <Check className="w-4 h-4" />
                 <span>Concluir</span>
@@ -325,12 +408,12 @@ export default function FocusScreensaver({
           </div>
         </div>
 
-        {/* Bloco Interativo do Cronômetro (pronto/pausado ao entrar; inicia ao salvar ou tocar Iniciar) */}
-        <div className="w-full bg-black border border-zinc-800 rounded-2xl p-3.5 select-none">
-          <div className="w-full h-1.5 bg-zinc-900 rounded-full overflow-hidden mb-2.5">
+        {/* Cronômetro Ultra-Low-APL (outline puro sobre #000000) */}
+        <div className="w-full bg-black border border-zinc-900 rounded-2xl p-3.5 select-none">
+          <div className="w-full h-1 bg-zinc-950 rounded-full overflow-hidden mb-2.5">
             <div
               className={`h-full transition-all duration-300 ${
-                timer.isAlarmRinging || timer.justFinished ? 'bg-emerald-500' : 'bg-sky-500'
+                timer.isAlarmRinging || timer.justFinished ? 'bg-emerald-600/80' : 'bg-sky-700/80'
               }`}
               style={{ width: `${progressPct}%` }}
             />
@@ -340,7 +423,7 @@ export default function FocusScreensaver({
             <button
               type="button"
               onClick={timer.dismissAlarm}
-              className="w-full min-h-[52px] py-3 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-sm flex items-center justify-center gap-2 border border-emerald-400 animate-pulse cursor-pointer"
+              className="w-full min-h-[52px] py-3 px-4 rounded-xl bg-black hover:bg-emerald-950/40 text-emerald-400 font-extrabold text-sm flex items-center justify-center gap-2 border-2 border-emerald-600/80 animate-pulse cursor-pointer"
             >
               <BellOff className="w-5 h-5" />
               PARAR ALARME
@@ -348,30 +431,34 @@ export default function FocusScreensaver({
           ) : (
             <>
               <div className="flex items-center justify-between mb-1">
-                <span className="text-xs font-bold uppercase tracking-widest text-zinc-400">
+                <span className="text-xs font-semibold uppercase tracking-widest text-zinc-500">
                   {timer.isRunning
                     ? 'Descansando'
                     : timer.justFinished
                     ? 'Pronto para a série!'
-                    : 'Descanso (Aguardando série)'}
+                    : 'Aguardando série'}
                 </span>
                 <button
                   type="button"
                   onClick={timer.toggleSound}
                   aria-label={timer.soundEnabled ? 'Silenciar alarme' : 'Ativar alarme'}
-                  className="min-w-[44px] min-h-[44px] -my-2 -mr-2 flex items-center justify-center text-zinc-400 hover:text-zinc-200 rounded-xl cursor-pointer"
+                  className="min-w-[44px] min-h-[44px] -my-2 -mr-2 flex items-center justify-center text-zinc-500 hover:text-zinc-300 rounded-xl cursor-pointer"
                 >
                   {timer.soundEnabled ? (
-                    <Volume2 className="w-5 h-5 text-sky-400" />
+                    <Volume2 className="w-4 h-4 text-sky-600" />
                   ) : (
-                    <VolumeX className="w-5 h-5 text-zinc-500" />
+                    <VolumeX className="w-4 h-4 text-zinc-700" />
                   )}
                 </button>
               </div>
 
               <div
-                className={`text-3xl font-mono font-extrabold tracking-tight mb-3 ${
-                  timer.justFinished ? 'text-emerald-400' : timer.isRunning ? 'text-white' : 'text-zinc-300'
+                className={`text-3xl font-mono font-bold tracking-tight mb-3 ${
+                  timer.justFinished
+                    ? 'text-emerald-400/85'
+                    : timer.isRunning
+                    ? 'text-zinc-200'
+                    : 'text-zinc-400'
                 }`}
               >
                 {formatTime(effectiveSeconds)}
@@ -382,7 +469,7 @@ export default function FocusScreensaver({
                   type="button"
                   onClick={() => timer.addSeconds(-15)}
                   aria-label="Subtrair 15 segundos"
-                  className="min-w-[44px] min-h-[44px] px-2.5 rounded-xl bg-zinc-950 hover:bg-zinc-900 border border-zinc-800 text-zinc-200 text-xs font-bold flex items-center justify-center gap-0.5 cursor-pointer"
+                  className="min-w-[44px] min-h-[44px] px-2.5 rounded-xl bg-black hover:border-zinc-700 border border-zinc-900 text-zinc-400 text-xs font-bold flex items-center justify-center gap-0.5 cursor-pointer"
                 >
                   <Minus className="w-3.5 h-3.5" />
                   <span>15s</span>
@@ -392,7 +479,7 @@ export default function FocusScreensaver({
                   type="button"
                   onClick={() => timer.addSeconds(15)}
                   aria-label="Adicionar 15 segundos"
-                  className="min-w-[44px] min-h-[44px] px-2.5 rounded-xl bg-zinc-950 hover:bg-zinc-900 border border-zinc-800 text-zinc-200 text-xs font-bold flex items-center justify-center gap-0.5 cursor-pointer"
+                  className="min-w-[44px] min-h-[44px] px-2.5 rounded-xl bg-black hover:border-zinc-700 border border-zinc-900 text-zinc-400 text-xs font-bold flex items-center justify-center gap-0.5 cursor-pointer"
                 >
                   <Plus className="w-3.5 h-3.5" />
                   <span>15s</span>
@@ -407,10 +494,10 @@ export default function FocusScreensaver({
                       timer.togglePlayPause();
                     }
                   }}
-                  className={`flex-1 min-h-[44px] px-3 rounded-xl font-bold text-xs text-white flex items-center justify-center gap-1.5 transition-colors cursor-pointer ${
+                  className={`flex-1 min-h-[44px] px-3 rounded-xl font-bold text-xs bg-black border flex items-center justify-center gap-1.5 transition-colors cursor-pointer ${
                     timer.isRunning
-                      ? 'bg-amber-600 hover:bg-amber-500'
-                      : 'bg-sky-600 hover:bg-sky-500'
+                      ? 'border-amber-900/80 text-amber-500/90 hover:border-amber-700'
+                      : 'border-sky-900/80 text-sky-400/90 hover:border-sky-700'
                   }`}
                 >
                   {timer.isRunning ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
@@ -421,7 +508,7 @@ export default function FocusScreensaver({
                   type="button"
                   onClick={timer.resetTimer}
                   aria-label="Reiniciar cronômetro"
-                  className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl bg-zinc-950 hover:bg-zinc-900 border border-zinc-800 text-zinc-300 cursor-pointer"
+                  className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl bg-black hover:border-zinc-700 border border-zinc-900 text-zinc-500 cursor-pointer"
                 >
                   <RotateCcw className="w-4 h-4" />
                 </button>
@@ -431,12 +518,12 @@ export default function FocusScreensaver({
         </div>
       </div>
 
-      {/* Botão explícito de saída (evita fechamento acidental no bolso) */}
+      {/* Botão explícito de saída em outline True Black */}
       <div className="w-full max-w-sm pt-2">
         <button
           type="button"
           onClick={onExit}
-          className="w-full min-h-[48px] px-4 py-3 rounded-2xl bg-zinc-950 hover:bg-zinc-900 border border-zinc-700 text-zinc-100 text-sm font-bold flex items-center justify-center gap-2 transition-colors cursor-pointer"
+          className="w-full min-h-[48px] px-4 py-3 rounded-2xl bg-black hover:border-zinc-700 border border-zinc-900 text-zinc-400 text-sm font-bold flex items-center justify-center gap-2 transition-colors cursor-pointer"
         >
           <ArrowLeft className="w-4 h-4" />
           <span>Sair do Modo Foco</span>

@@ -9,13 +9,6 @@ const FALLBACK_USERS = [
     nome: "Dan Castro",
     ativo: "SIM",
     perfil: "admin"
-  },
-  {
-    usuario: "convidado",
-    senha: "sha256:7e1e2eecc06fc17bcd97a31f7fb410f56fe5814e8eb31be2fc4908f5fbf9954e",
-    nome: "Atleta Convidado",
-    ativo: "SIM",
-    perfil: "user"
   }
 ];
 

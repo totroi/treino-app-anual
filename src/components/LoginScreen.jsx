@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Dumbbell, Lock, User, Eye, EyeOff, ArrowRight, ShieldCheck, AlertCircle, Loader2, Sparkles } from 'lucide-react';
+import { Dumbbell, Lock, User, Eye, EyeOff, ArrowRight, ShieldCheck, AlertCircle, Loader2 } from 'lucide-react';
 import { loginUser } from '../services/authService';
 
 export default function LoginScreen({ onLoginSuccess }) {
@@ -29,14 +29,8 @@ export default function LoginScreen({ onLoginSuccess }) {
     }
   };
 
-  const handleDemoFill = () => {
-    setUsername('convidado');
-    setPassword('treino2026');
-    setError('');
-  };
-
   return (
-    <div className="min-h-screen bg-black text-zinc-100 flex flex-col justify-start sm:justify-center items-center px-4 pt-[max(2rem,env(safe-area-inset-top))] pb-[max(2rem,env(safe-area-inset-bottom))] overflow-y-auto">
+    <div className="min-h-[100dvh] bg-black text-zinc-100 flex flex-col justify-start sm:justify-center items-center px-safe pt-safe-screen pb-safe-screen overflow-y-auto">
       <div className="w-full max-w-sm bg-zinc-950 border border-zinc-800 rounded-2xl shadow-2xl p-6 ui-fade-in">
         {/* Cabeçalho / Logo */}
         <div className="flex flex-col items-center text-center mb-6">
@@ -153,22 +147,10 @@ export default function LoginScreen({ onLoginSuccess }) {
           </button>
         </form>
 
-        {/* Descoberta Demo para iniciantes e avaliadores (Item 1.4) */}
-        <div className="mt-4">
-          <button
-            type="button"
-            onClick={handleDemoFill}
-            className="w-full min-h-[44px] py-2 px-3 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-xs font-semibold text-zinc-300 hover:text-white flex items-center justify-center gap-2 transition-colors cursor-pointer"
-          >
-            <Sparkles className="w-4 h-4 text-amber-400" />
-            Explorar em Modo Demonstração (convidado)
-          </button>
-        </div>
-
         {/* Rodapé informativo */}
         <div className="mt-5 pt-4 border-t border-zinc-800/80 flex items-center justify-center gap-1.5 text-xs text-zinc-400">
           <ShieldCheck className="w-4 h-4 text-emerald-500 flex-shrink-0" />
-          <span>Acesso restrito a atletas autorizados na planilha</span>
+          <span>Acesso restrito a atletas autorizados</span>
         </div>
       </div>
     </div>

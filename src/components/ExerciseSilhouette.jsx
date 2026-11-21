@@ -122,31 +122,39 @@ export default function ExerciseSilhouette({
   exerciseName,
   muscleGroup,
   accentColor = '#38bdf8',
-  sizeClass = 'w-40 h-40'
+  sizeClass = 'w-40 h-40',
+  lowPower = false,
+  paused = false
 }) {
   const archetype = detectArchetype(exerciseName, muscleGroup);
 
   const strokeProps = {
     fill: 'none',
     stroke: accentColor,
-    strokeWidth: '3',
+    strokeWidth: lowPower ? '2.2' : '3',
     strokeLinecap: 'round',
     strokeLinejoin: 'round'
   };
 
   const dimStroke = {
     fill: 'none',
-    stroke: '#3f3f46',
-    strokeWidth: '2.5',
+    stroke: lowPower ? '#27272a' : '#3f3f46',
+    strokeWidth: lowPower ? '2' : '2.5',
     strokeLinecap: 'round'
   };
 
+  const barColor = lowPower ? '#52525b' : '#f8fafc';
+
   return (
-    <div className={`${sizeClass} flex items-center justify-center select-none pointer-events-none`}>
+    <div
+      className={`${sizeClass} flex items-center justify-center select-none pointer-events-none ${
+        paused ? 'oled-anim-paused' : ''
+      }`}
+    >
       <svg
         viewBox="0 0 180 180"
         className="w-full h-full"
-        style={{ filter: `drop-shadow(0 0 12px ${accentColor}59)` }}
+        style={lowPower ? undefined : { filter: `drop-shadow(0 0 12px ${accentColor}59)` }}
         aria-hidden="true"
       >
         {archetype === 'bench' && (
@@ -159,7 +167,7 @@ export default function ExerciseSilhouette({
             <polyline points="118,118 140,126 144,148" {...strokeProps} />
             <g className="anim-lift-y">
               <line x1="78" y1="115" x2="78" y2="76" {...strokeProps} />
-              <line x1="46" y1="76" x2="110" y2="76" stroke="#f8fafc" strokeWidth="3.5" strokeLinecap="round" />
+              <line x1="46" y1="76" x2="110" y2="76" stroke={barColor} strokeWidth="3.5" strokeLinecap="round" />
               <rect x="42" y="66" width="6" height="20" rx="2" fill={accentColor} />
               <rect x="108" y="66" width="6" height="20" rx="2" fill={accentColor} />
             </g>
@@ -188,7 +196,7 @@ export default function ExerciseSilhouette({
             <line x1="30" y1="152" x2="150" y2="152" {...dimStroke} />
             <g className="anim-lift-y-deep">
               <circle cx="90" cy="44" r="10" {...strokeProps} />
-              <line x1="42" y1="58" x2="138" y2="58" stroke="#f8fafc" strokeWidth="3.5" strokeLinecap="round" />
+              <line x1="42" y1="58" x2="138" y2="58" stroke={barColor} strokeWidth="3.5" strokeLinecap="round" />
               <rect x="38" y="48" width="6" height="20" rx="2" fill={accentColor} />
               <rect x="136" y="48" width="6" height="20" rx="2" fill={accentColor} />
               <line x1="90" y1="54" x2="90" y2="100" {...strokeProps} />
@@ -207,7 +215,7 @@ export default function ExerciseSilhouette({
             <line x1="56" y1="116" x2="84" y2="134" {...strokeProps} />
             <g className="anim-press-diag">
               <polyline points="84,134 102,102 126,86" {...strokeProps} />
-              <line x1="118" y1="68" x2="144" y2="96" stroke="#f8fafc" strokeWidth="4" strokeLinecap="round" />
+              <line x1="118" y1="68" x2="144" y2="96" stroke={barColor} strokeWidth="4" strokeLinecap="round" />
               <rect x="132" y="60" width="10" height="22" rx="2" fill={accentColor} transform="rotate(-42 132 60)" />
             </g>
           </g>
@@ -221,7 +229,7 @@ export default function ExerciseSilhouette({
               <line x1="104" y1="73" x2="72" y2="104" {...strokeProps} />
               <polyline points="72,104 82,128 78,150" {...strokeProps} />
               <line x1="98" y1="78" x2="104" y2="132" {...strokeProps} />
-              <circle cx="104" cy="138" r="14" stroke="#f8fafc" strokeWidth="3" fill="none" />
+              <circle cx="104" cy="138" r="14" stroke={barColor} strokeWidth="3" fill="none" />
               <circle cx="104" cy="138" r="4" fill={accentColor} />
             </g>
           </g>
@@ -229,7 +237,7 @@ export default function ExerciseSilhouette({
 
         {archetype === 'pullup' && (
           <g>
-            <line x1="34" y1="36" x2="146" y2="36" stroke="#f8fafc" strokeWidth="4" strokeLinecap="round" />
+            <line x1="34" y1="36" x2="146" y2="36" stroke={barColor} strokeWidth="4" strokeLinecap="round" />
             <g className="anim-lift-y">
               <circle cx="90" cy="82" r="10" {...strokeProps} />
               <line x1="90" y1="92" x2="90" y2="132" {...strokeProps} />
@@ -250,7 +258,7 @@ export default function ExerciseSilhouette({
             <polyline points="66,96 92,124 90,150" {...strokeProps} />
             <g className="anim-lift-y">
               <line x1="104" y1="80" x2="104" y2="128" {...strokeProps} />
-              <circle cx="104" cy="132" r="11" stroke="#f8fafc" strokeWidth="3" fill="none" />
+              <circle cx="104" cy="132" r="11" stroke={barColor} strokeWidth="3" fill="none" />
               <circle cx="104" cy="132" r="3.5" fill={accentColor} />
             </g>
           </g>
@@ -267,7 +275,7 @@ export default function ExerciseSilhouette({
             {/* Braço abrindo em abdução horizontal para trás */}
             <g style={{ transformOrigin: '108px 82px' }} className="anim-lateral-right">
               <line x1="108" y1="82" x2="108" y2="126" {...strokeProps} />
-              <rect x="101" y="124" width="14" height="6" rx="2" fill="#f8fafc" />
+              <rect x="101" y="124" width="14" height="6" rx="2" fill={barColor} />
             </g>
           </g>
         )}
@@ -280,11 +288,11 @@ export default function ExerciseSilhouette({
             <line x1="90" y1="112" x2="102" y2="152" {...strokeProps} />
             <g style={{ transformOrigin: '90px 68px' }} className="anim-lateral-left">
               <line x1="90" y1="68" x2="90" y2="114" {...strokeProps} />
-              <rect x="83" y="112" width="14" height="6" rx="2" fill="#f8fafc" />
+              <rect x="83" y="112" width="14" height="6" rx="2" fill={barColor} />
             </g>
             <g style={{ transformOrigin: '90px 68px' }} className="anim-lateral-right">
               <line x1="90" y1="68" x2="90" y2="114" {...strokeProps} />
-              <rect x="83" y="112" width="14" height="6" rx="2" fill="#f8fafc" />
+              <rect x="83" y="112" width="14" height="6" rx="2" fill={barColor} />
             </g>
           </g>
         )}
@@ -298,7 +306,7 @@ export default function ExerciseSilhouette({
             <line x1="84" y1="64" x2="90" y2="96" {...strokeProps} />
             <g style={{ transformOrigin: '90px 96px' }} className="anim-swing-curl">
               <line x1="90" y1="96" x2="124" y2="96" {...strokeProps} />
-              <circle cx="128" cy="96" r="7" stroke="#f8fafc" strokeWidth="3" fill={accentColor} />
+              <circle cx="128" cy="96" r="7" stroke={barColor} strokeWidth="3" fill={accentColor} />
             </g>
           </g>
         )}
@@ -314,7 +322,7 @@ export default function ExerciseSilhouette({
             <g style={{ transformOrigin: '84px 96px' }} className="anim-swing-pushdown">
               <line x1="84" y1="96" x2="118" y2="96" {...strokeProps} />
               <line x1="118" y1="96" x2="138" y2="34" stroke="#71717a" strokeWidth="1.5" strokeDasharray="3 3" />
-              <circle cx="118" cy="96" r="5" fill="#f8fafc" />
+              <circle cx="118" cy="96" r="5" fill={barColor} />
             </g>
           </g>
         )}
@@ -328,7 +336,7 @@ export default function ExerciseSilhouette({
             <line x1="68" y1="104" x2="104" y2="104" {...strokeProps} />
             <g style={{ transformOrigin: '104px 104px' }} className="anim-leg-ext">
               <line x1="104" y1="104" x2="104" y2="144" {...strokeProps} />
-              <circle cx="109" cy="138" r="6" fill="#f8fafc" />
+              <circle cx="109" cy="138" r="6" fill={barColor} />
             </g>
           </g>
         )}
@@ -350,7 +358,7 @@ export default function ExerciseSilhouette({
         {archetype === 'hanging_leg' && (
           <g>
             {/* Barra fixa */}
-            <line x1="40" y1="30" x2="140" y2="30" stroke="#f8fafc" strokeWidth="4" strokeLinecap="round" />
+            <line x1="40" y1="30" x2="140" y2="30" stroke={barColor} strokeWidth="4" strokeLinecap="round" />
             {/* Atleta pendurado */}
             <line x1="80" y1="30" x2="80" y2="62" {...strokeProps} />
             <circle cx="84" cy="60" r="9" {...strokeProps} />
@@ -358,7 +366,7 @@ export default function ExerciseSilhouette({
             {/* Pernas elevando até o plano horizontal */}
             <g style={{ transformOrigin: '82px 106px' }} className="anim-leg-hang">
               <line x1="82" y1="106" x2="82" y2="152" {...strokeProps} />
-              <circle cx="86" cy="152" r="4" fill="#f8fafc" />
+              <circle cx="86" cy="152" r="4" fill={barColor} />
             </g>
           </g>
         )}
@@ -384,7 +392,7 @@ export default function ExerciseSilhouette({
             <line x1="114" y1="90" x2="114" y2="144" {...strokeProps} />
             <polyline points="64,90 64,144 46,144" {...strokeProps} />
             <g style={{ transformOrigin: '90px 90px' }} className="anim-vacuum">
-              <path d="M 68 96 Q 90 118 112 96" stroke="#f8fafc" strokeWidth="3" fill="none" strokeDasharray="4 3" />
+              <path d="M 68 96 Q 90 118 112 96" stroke={barColor} strokeWidth="3" fill="none" strokeDasharray="4 3" />
             </g>
           </g>
         )}
