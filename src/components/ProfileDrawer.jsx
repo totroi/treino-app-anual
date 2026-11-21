@@ -16,8 +16,6 @@ export default function ProfileDrawer({
   isOpen,
   onClose,
   currentUser,
-  selectedMonth,
-  selectedWorkout,
   summaryStats,
   backupMeta,
   uiScale,
@@ -197,7 +195,7 @@ export default function ProfileDrawer({
               className="w-full min-h-[44px] flex items-center gap-3 px-3.5 py-2.5 text-sm font-semibold text-zinc-200 bg-zinc-900 hover:bg-zinc-800 rounded-xl transition-colors cursor-pointer"
             >
               <RotateCcw className="w-4 h-4 text-sky-400 flex-shrink-0" />
-              <span>Nova Sessão ({selectedMonth} • Treino {selectedWorkout})</span>
+              <span>Reiniciar Status (Treino / Semana)</span>
             </button>
 
             <button

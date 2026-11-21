@@ -44,7 +44,7 @@ function AuthenticatedWorkspace({ currentUser, onLogout }) {
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showResultsModal, setShowResultsModal] = useState(false);
   const [principlesState, setPrinciplesState] = useState({ isOpen: false, section: null });
-  const [resetModalMode, setResetModalMode] = useState(null); // 'session' | 'full' | null
+  const [resetModalMode, setResetModalMode] = useState(null); // 'status' | 'full' | null
 
   const [uiScale, setUiScale] = useState(() => loadUiScale());
   const [screensaverDelay, setScreensaverDelay] = useState(() => loadScreensaverDelay());
@@ -74,6 +74,15 @@ function AuthenticatedWorkspace({ currentUser, onLogout }) {
   const { rawData, loading, isOfflineFallback, syncWorkouts } = useWorkoutsData(true, showToast);
   const logs = useWorkoutLogs(currentUser.username, selectedMonth, selectedWorkout);
   const timer = useRestTimer();
+
+  // Notifica discretamente quando a virada semanal automática (ISO-8601) limpar o ciclo anterior
+  useEffect(() => {
+    if (!logs.weekRolledOver) return;
+    const id = setTimeout(() => {
+      showToast('Nova semana iniciada! Treinos A, B e C prontos.');
+    }, 150);
+    return () => clearTimeout(id);
+  }, [logs.weekRolledOver, showToast]);
 
   const availableMonths = useMemo(() => {
     const months = new Set(rawData.map((d) => d['Mês']?.trim()).filter(Boolean));
@@ -321,16 +330,32 @@ function AuthenticatedWorkspace({ currentUser, onLogout }) {
     e.target.value = '';
   };
 
-  const handleConfirmReset = () => {
-    if (resetModalMode === 'session') {
-      logs.resetCurrentSession();
-      showToast(`Nova sessão iniciada (${effectiveMonth} • Treino ${selectedWorkout})!`);
-    } else if (resetModalMode === 'full') {
-      logs.resetAllProgress();
-      showToast('Todo o progresso foi resetado!');
-    }
+  const handleConfirmWorkoutReset = () => {
+    logs.resetCurrentWorkoutStatus();
     setResetModalMode(null);
+    showToast(`Treino ${selectedWorkout} reiniciado (histórico preservado)!`);
   };
+
+  const handleConfirmWeekReset = () => {
+    logs.resetMonthWeekStatus(effectiveMonth);
+    setResetModalMode(null);
+    showToast(`Nova semana iniciada em ${effectiveMonth} (A, B e C)!`);
+  };
+
+  const handleConfirmFullReset = () => {
+    logs.resetAllProgress();
+    setResetModalMode(null);
+    showToast('Todo o progresso foi resetado!');
+  };
+
+  const hasCurrentWorkoutProgress = useMemo(() => {
+    if (progressStats.completedTotal > 0) return true;
+    return baseWorkoutExercises.some(
+      (ex) => logs.getTodaySetsCount(getCanonicalExerciseKey(ex['Exercício'])) > 0
+    );
+  }, [progressStats.completedTotal, baseWorkoutExercises, logs]);
+
+  const hasAnyWeekProgress = logs.hasAnyWeekProgressForMonth(effectiveMonth);
 
   const hasBackupAlert =
     (logs.backupMeta?.logsSinceBackup || 0) >= 10 ||
@@ -415,6 +440,9 @@ function AuthenticatedWorkspace({ currentUser, onLogout }) {
         <WorkoutFilters
           selectedWorkout={selectedWorkout}
           progressStats={progressStats}
+          hasCurrentWorkoutProgress={hasCurrentWorkoutProgress}
+          hasAnyWeekProgress={hasAnyWeekProgress}
+          onRequestResetStatus={() => setResetModalMode('status')}
           hideOptionals={hideOptionals}
           onToggleHideOptionals={() => setHideOptionals((prev) => !prev)}
           muscleGroupsWithCount={muscleGroupsWithCount}
@@ -529,8 +557,6 @@ function AuthenticatedWorkspace({ currentUser, onLogout }) {
         isOpen={showUserMenu}
         onClose={() => setShowUserMenu(false)}
         currentUser={currentUser}
-        selectedMonth={effectiveMonth}
-        selectedWorkout={selectedWorkout}
         summaryStats={logs.summaryStats}
         backupMeta={logs.backupMeta}
         uiScale={uiScale}
@@ -545,7 +571,7 @@ function AuthenticatedWorkspace({ currentUser, onLogout }) {
           showToast('Backup JSON exportado!');
         }}
         onImportBackupFile={handleImportBackupFile}
-        onRequestResetSession={() => setResetModalMode('session')}
+        onRequestResetSession={() => setResetModalMode('status')}
         onRequestFullReset={() => setResetModalMode('full')}
         onLogout={onLogout}
       />
@@ -563,7 +589,7 @@ function AuthenticatedWorkspace({ currentUser, onLogout }) {
         }}
       />
 
-      {/* Modal de Confirmação de Nova Sessão ou Reset Total */}
+      {/* Modal Unificado de Reinício de Status (Treino / Semana) ou Reset Total */}
       <ConfirmResetModal
         mode={resetModalMode}
         username={currentUser.username}
@@ -573,7 +599,9 @@ function AuthenticatedWorkspace({ currentUser, onLogout }) {
           logs.exportBackup();
           showToast('Backup salvo por segurança!');
         }}
-        onConfirm={handleConfirmReset}
+        onConfirmWorkoutReset={handleConfirmWorkoutReset}
+        onConfirmWeekReset={handleConfirmWeekReset}
+        onConfirmFullReset={handleConfirmFullReset}
         onCancel={() => setResetModalMode(null)}
       />
 

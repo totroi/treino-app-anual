@@ -16,6 +16,18 @@ const getBackupMetaKey = (username) => `irontracker_backup_meta_${(username || '
 export const makeSessionScopeKey = (month, workout) => `${(month || '').trim()}::${(workout || '').trim()}`;
 
 /**
+ * Retorna a chave da semana ISO-8601 no fuso local (Segunda -> Domingo), ex.: "2026-W47".
+ */
+export function getLocalIsoWeekKey(date = new Date()) {
+  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  const dayNum = d.getUTCDay() || 7;
+  d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+  const weekNo = Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+  return `${d.getUTCFullYear()}-W${String(weekNo).padStart(2, '0')}`;
+}
+
+/**
  * Normaliza logs v1/v2/v3 mantendo chaves canônicas unificadas e preservando metadados v3 (month, workout, setNumber)
  */
 export function normalizeLogsMap(rawLogsMap) {
@@ -90,22 +102,56 @@ export function saveUserWorkoutLogs(username, logsMap) {
 }
 
 /**
- * Schema v3.0: Conclusão escopada por `${month}::${workout}` + histórico de sessões,
+ * Schema v3.0: Conclusão escopada por `${month}::${workout}`, controle de virada semanal ISO
+ * (`activeWeekKey`), timestamp de início de sessão (`sessionStartedAtByScope`) e histórico de sessões,
  * com migração automática retrocompatível a partir de v2 (`irontracker_session_<user>`) ou v1.
  */
-export function loadUserSessionV3(username, currentMonth, currentWorkout) {
-  const empty = { version: 3, completedByScope: {}, sessionHistory: {} };
+export function loadUserSessionV3(username, currentMonth, currentWorkout, now = new Date()) {
+  const currentWeekKey = getLocalIsoWeekKey(now);
+  const empty = {
+    version: 3,
+    activeWeekKey: currentWeekKey,
+    completedByScope: {},
+    sessionStartedAtByScope: {},
+    sessionHistory: {},
+    weekRolledOver: false
+  };
   try {
     const v3Key = getSessionV3Key(username);
     const savedV3 = localStorage.getItem(v3Key);
     if (savedV3) {
       const parsed = JSON.parse(savedV3);
       if (parsed && typeof parsed === 'object') {
-        return {
+        const savedWeekKey = typeof parsed.activeWeekKey === 'string' && parsed.activeWeekKey ? parsed.activeWeekKey : null;
+        const hadAnyCompleted = Object.values(parsed.completedByScope || {}).some(
+          (arr) => Array.isArray(arr) && arr.length > 0
+        );
+
+        // Virada semanal automática (Segunda-feira 00h no fuso local): limpa status mantendo histórico intacto
+        if (savedWeekKey && savedWeekKey !== currentWeekKey) {
+          const rolled = {
+            version: 3,
+            activeWeekKey: currentWeekKey,
+            completedByScope: {},
+            sessionStartedAtByScope: {},
+            sessionHistory: parsed.sessionHistory || {}
+          };
+          localStorage.setItem(v3Key, JSON.stringify(rolled));
+          return { ...rolled, weekRolledOver: hadAnyCompleted };
+        }
+
+        const loaded = {
           version: 3,
+          activeWeekKey: savedWeekKey || currentWeekKey,
           completedByScope: parsed.completedByScope || {},
-          sessionHistory: parsed.sessionHistory || {}
+          sessionStartedAtByScope: parsed.sessionStartedAtByScope || {},
+          sessionHistory: parsed.sessionHistory || {},
+          weekRolledOver: false
         };
+        if (!savedWeekKey) {
+          saveUserSessionV3(username, loaded);
+        }
+        return loaded;
       }
     }
 
@@ -117,13 +163,15 @@ export function loadUserSessionV3(username, currentMonth, currentWorkout) {
         const scopeKey = makeSessionScopeKey(currentMonth, currentWorkout);
         const migrated = {
           version: 3,
+          activeWeekKey: currentWeekKey,
           completedByScope: {
             [scopeKey]: [...new Set(arr.map(getCanonicalExerciseKey))]
           },
+          sessionStartedAtByScope: {},
           sessionHistory: {}
         };
         localStorage.setItem(v3Key, JSON.stringify(migrated));
-        return migrated;
+        return { ...migrated, weekRolledOver: false };
       }
     }
   } catch {
@@ -136,7 +184,9 @@ export function saveUserSessionV3(username, sessionState) {
   try {
     localStorage.setItem(getSessionV3Key(username), JSON.stringify({
       version: 3,
+      activeWeekKey: sessionState.activeWeekKey || getLocalIsoWeekKey(),
       completedByScope: sessionState.completedByScope || {},
+      sessionStartedAtByScope: sessionState.sessionStartedAtByScope || {},
       sessionHistory: sessionState.sessionHistory || {}
     }));
   } catch {
@@ -170,7 +220,9 @@ export function exportUserBackup(username, logsMap, sessionV3, currentScopeCompl
     username,
     workoutLogs: logsMap,
     completedExercises: currentScopeCompleted,
+    activeWeekKey: sessionV3?.activeWeekKey || getLocalIsoWeekKey(),
     completedByScope: sessionV3?.completedByScope || {},
+    sessionStartedAtByScope: sessionV3?.sessionStartedAtByScope || {},
     sessionHistory: sessionV3?.sessionHistory || {}
   };
 
@@ -196,7 +248,9 @@ export function parseImportedBackup(jsonText) {
   const rawLogs = parsed.workoutLogs || parsed;
   return {
     workoutLogs: normalizeLogsMap(rawLogs),
+    activeWeekKey: typeof parsed.activeWeekKey === 'string' ? parsed.activeWeekKey : null,
     completedByScope: parsed.completedByScope && typeof parsed.completedByScope === 'object' ? parsed.completedByScope : null,
+    sessionStartedAtByScope: parsed.sessionStartedAtByScope && typeof parsed.sessionStartedAtByScope === 'object' ? parsed.sessionStartedAtByScope : null,
     sessionHistory: parsed.sessionHistory && typeof parsed.sessionHistory === 'object' ? parsed.sessionHistory : null
   };
 }

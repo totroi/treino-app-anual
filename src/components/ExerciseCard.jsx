@@ -124,7 +124,7 @@ export default function ExerciseCard({
             </span>
             {todaySetsCount > 0 && (
               <span className="text-xs font-bold bg-emerald-950 text-emerald-300 border border-emerald-800/70 px-2 py-0.5 rounded-full">
-                {todaySetsCount} {todaySetsCount === 1 ? 'série hoje' : 'séries hoje'}
+                {todaySetsCount} {todaySetsCount === 1 ? 'série' : 'séries'}
               </span>
             )}
             {isOptional && (

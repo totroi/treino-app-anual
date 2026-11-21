@@ -1,9 +1,12 @@
 import React, { useState } from 'react';
-import { Sparkles, Search, X } from 'lucide-react';
+import { Sparkles, Search, X, RotateCcw } from 'lucide-react';
 
 export default function WorkoutFilters({
   selectedWorkout,
   progressStats,
+  hasCurrentWorkoutProgress = false,
+  hasAnyWeekProgress = false,
+  onRequestResetStatus,
   hideOptionals,
   onToggleHideOptionals,
   muscleGroupsWithCount,
@@ -60,25 +63,43 @@ export default function WorkoutFilters({
               )}
             </span>
 
-            {progressStats.optionalCount > 0 && (
-              <button
-                type="button"
-                onClick={onToggleHideOptionals}
-                className={`min-h-[38px] px-3 py-1 rounded-xl text-xs font-bold border flex items-center gap-1.5 transition-colors cursor-pointer ${
-                  hideOptionals
-                    ? 'bg-zinc-900 text-zinc-300 border-zinc-700 hover:bg-zinc-800'
-                    : 'bg-purple-950/60 text-purple-200 border-purple-700/70 hover:bg-purple-900/60'
-                }`}
-                title="Opcionais são exercícios extras para usar quando houver tempo e energia"
-              >
-                <Sparkles className="w-3.5 h-3.5" />
-                <span>
-                  {hideOptionals
-                    ? `Exibir Opcionais (${progressStats.optionalCount})`
-                    : 'Ocultar Opcionais'}
-                </span>
-              </button>
-            )}
+            <div className="flex items-center gap-1.5 flex-wrap">
+              {progressStats.optionalCount > 0 && (
+                <button
+                  type="button"
+                  onClick={onToggleHideOptionals}
+                  className={`min-h-[38px] px-2.5 py-1 rounded-xl text-xs font-bold border flex items-center gap-1.5 transition-colors cursor-pointer ${
+                    hideOptionals
+                      ? 'bg-zinc-900 text-zinc-300 border-zinc-700 hover:bg-zinc-800'
+                      : 'bg-purple-950/60 text-purple-200 border-purple-700/70 hover:bg-purple-900/60'
+                  }`}
+                  title="Opcionais são exercícios extras para usar quando houver tempo e energia"
+                >
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span>
+                    {hideOptionals
+                      ? `Opcionais (${progressStats.optionalCount})`
+                      : 'Ocultar Opc.'}
+                  </span>
+                </button>
+              )}
+
+              {(hasCurrentWorkoutProgress || hasAnyWeekProgress) && onRequestResetStatus && (
+                <button
+                  type="button"
+                  onClick={onRequestResetStatus}
+                  className={`min-h-[38px] px-2.5 py-1 rounded-xl text-xs font-bold border flex items-center gap-1.5 transition-colors cursor-pointer ${
+                    displayedPct === 100
+                      ? 'bg-emerald-950/70 text-emerald-200 border-emerald-700/70 hover:bg-emerald-900/70'
+                      : 'bg-zinc-900 text-zinc-200 border-zinc-700 hover:border-sky-600 hover:text-sky-200'
+                  }`}
+                  title="Reiniciar status do treino ou da semana (sem apagar histórico)"
+                >
+                  <RotateCcw className="w-3.5 h-3.5" />
+                  <span>{displayedPct === 100 ? 'Novo Ciclo' : 'Reiniciar'}</span>
+                </button>
+              )}
+            </div>
           </div>
         </div>
       )}

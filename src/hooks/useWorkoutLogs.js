@@ -5,6 +5,7 @@ import {
   loadUserSessionV3,
   saveUserSessionV3,
   makeSessionScopeKey,
+  getLocalIsoWeekKey,
   exportUserBackup,
   parseImportedBackup,
   resetAllUserProgress,
@@ -17,11 +18,30 @@ export function useWorkoutLogs(username, selectedMonth, selectedWorkout) {
   const [workoutLogs, setWorkoutLogs] = useState(() =>
     username ? loadUserWorkoutLogs(username) : {}
   );
-  const [sessionV3, setSessionV3] = useState(() =>
+
+  const [initialSession] = useState(() =>
     username
       ? loadUserSessionV3(username, selectedMonth, selectedWorkout)
-      : { version: 3, completedByScope: {}, sessionHistory: {} }
+      : {
+          version: 3,
+          activeWeekKey: getLocalIsoWeekKey(),
+          completedByScope: {},
+          sessionStartedAtByScope: {},
+          sessionHistory: {},
+          weekRolledOver: false
+        }
   );
+
+  const [sessionV3, setSessionV3] = useState(() => ({
+    version: 3,
+    activeWeekKey: initialSession.activeWeekKey || getLocalIsoWeekKey(),
+    completedByScope: initialSession.completedByScope || {},
+    sessionStartedAtByScope: initialSession.sessionStartedAtByScope || {},
+    sessionHistory: initialSession.sessionHistory || {}
+  }));
+
+  const [weekRolledOver] = useState(() => Boolean(initialSession.weekRolledOver));
+
   const [backupMeta, setBackupMeta] = useState(() =>
     username
       ? loadBackupMeta(username)
@@ -52,6 +72,13 @@ export function useWorkoutLogs(username, selectedMonth, selectedWorkout) {
     return sessionV3.completedByScope?.[currentScopeKey] || [];
   }, [sessionV3, currentScopeKey]);
 
+  const currentSessionStartMs = useMemo(() => {
+    const raw = sessionV3.sessionStartedAtByScope?.[currentScopeKey];
+    if (!raw) return null;
+    const ms = new Date(raw).getTime();
+    return Number.isNaN(ms) ? null : ms;
+  }, [sessionV3, currentScopeKey]);
+
   const getCompletedForScope = useCallback(
     (month, workout) => {
       return sessionV3.completedByScope?.[makeSessionScopeKey(month, workout)] || [];
@@ -59,14 +86,33 @@ export function useWorkoutLogs(username, selectedMonth, selectedWorkout) {
     [sessionV3]
   );
 
-  // Conta quantas séries o atleta já salvou HOJE para este exercício
+  const hasAnyWeekProgressForMonth = useCallback(
+    (month) => {
+      return ['A', 'B', 'C'].some((w) => {
+        const list = sessionV3.completedByScope?.[makeSessionScopeKey(month, w)];
+        return Array.isArray(list) && list.length > 0;
+      });
+    },
+    [sessionV3]
+  );
+
+  // Conta quantas séries o atleta salvou na SESSÃO ATIVA de hoje para este exercício.
+  // Se a sessão/semana foi reiniciada hoje, logs anteriores ao reinício continuam no histórico
+  // mas não inflam o contador da nova sessão.
   const getTodaySetsCount = useCallback(
     (canonicalKey) => {
       const entries = workoutLogs[canonicalKey] || [];
       const todayStr = new Date().toLocaleDateString('pt-BR');
-      return entries.filter((item) => new Date(item.date).toLocaleDateString('pt-BR') === todayStr).length;
+      return entries.filter((item) => {
+        const itemDate = new Date(item.date);
+        if (itemDate.toLocaleDateString('pt-BR') !== todayStr) return false;
+        if (currentSessionStartMs !== null && itemDate.getTime() < currentSessionStartMs) {
+          return false;
+        }
+        return true;
+      }).length;
     },
-    [workoutLogs]
+    [workoutLogs, currentSessionStartMs]
   );
 
   // Salva uma série SEM colapsar/concluir o card automaticamente (Item 4.1)
@@ -75,7 +121,7 @@ export function useWorkoutLogs(username, selectedMonth, selectedWorkout) {
       const cleanWeight = normalizeWeightInput(rawWeight);
       if (!cleanWeight && cleanWeight !== '0') return null;
 
-      const todayCount = getTodaySetsCount(canonicalKey);
+      const activeCount = getTodaySetsCount(canonicalKey);
       const newLog = {
         id: `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
         date: new Date().toISOString(),
@@ -84,7 +130,7 @@ export function useWorkoutLogs(username, selectedMonth, selectedWorkout) {
         exerciseLabel: displayTitle,
         month: selectedMonth,
         workout: selectedWorkout,
-        setNumber: todayCount + 1
+        setNumber: activeCount + 1
       };
 
       setWorkoutLogs((prev) => {
@@ -114,7 +160,9 @@ export function useWorkoutLogs(username, selectedMonth, selectedWorkout) {
         const histKey = `${todayIso}::${currentScopeKey}`;
 
         return {
+          ...prev,
           version: 3,
+          activeWeekKey: prev.activeWeekKey || getLocalIsoWeekKey(),
           completedByScope: {
             ...prev.completedByScope,
             [currentScopeKey]: nextList
@@ -141,23 +189,62 @@ export function useWorkoutLogs(username, selectedMonth, selectedWorkout) {
     });
   }, []);
 
-  // Reseta apenas a sessão do Treino/Mês atual (sem apagar outros treinos nem o histórico)
-  const resetCurrentSession = useCallback(() => {
+  // Reinicia apenas o status do Treino atual (reabre cards e zera contador da sessão, sem apagar histórico)
+  const resetCurrentWorkoutStatus = useCallback(() => {
+    const nowIso = new Date().toISOString();
     setSessionV3((prev) => ({
       ...prev,
+      version: 3,
+      activeWeekKey: getLocalIsoWeekKey(),
       completedByScope: {
         ...prev.completedByScope,
         [currentScopeKey]: []
+      },
+      sessionStartedAtByScope: {
+        ...(prev.sessionStartedAtByScope || {}),
+        [currentScopeKey]: nowIso
       }
     }));
   }, [currentScopeKey]);
 
-  // Reseta todo o progresso local do usuário
+  // Reinicia o status semanal completo (Treinos A, B e C do mês selecionado), preservando 100% do histórico
+  const resetMonthWeekStatus = useCallback(
+    (monthOverride = null) => {
+      const targetMonth = monthOverride || selectedMonth;
+      const nowIso = new Date().toISOString();
+      setSessionV3((prev) => {
+        const nextCompleted = { ...(prev.completedByScope || {}) };
+        const nextStartedAt = { ...(prev.sessionStartedAtByScope || {}) };
+        ['A', 'B', 'C'].forEach((w) => {
+          const scopeKey = makeSessionScopeKey(targetMonth, w);
+          nextCompleted[scopeKey] = [];
+          nextStartedAt[scopeKey] = nowIso;
+        });
+
+        return {
+          ...prev,
+          version: 3,
+          activeWeekKey: getLocalIsoWeekKey(),
+          completedByScope: nextCompleted,
+          sessionStartedAtByScope: nextStartedAt
+        };
+      });
+    },
+    [selectedMonth]
+  );
+
+  // Reseta todo o progresso local do usuário (ação destrutiva)
   const resetAllProgress = useCallback(() => {
     if (!username) return;
     resetAllUserProgress(username);
     setWorkoutLogs({});
-    setSessionV3({ version: 3, completedByScope: {}, sessionHistory: {} });
+    setSessionV3({
+      version: 3,
+      activeWeekKey: getLocalIsoWeekKey(),
+      completedByScope: {},
+      sessionStartedAtByScope: {},
+      sessionHistory: {}
+    });
     setBackupMeta({ lastExportedAt: null, logsSinceBackup: 0 });
   }, [username]);
 
@@ -186,12 +273,17 @@ export function useWorkoutLogs(username, selectedMonth, selectedWorkout) {
       return merged;
     });
 
-    if (imported.completedByScope || imported.sessionHistory) {
+    if (imported.completedByScope || imported.sessionHistory || imported.sessionStartedAtByScope) {
       setSessionV3((prev) => ({
         version: 3,
+        activeWeekKey: imported.activeWeekKey || prev.activeWeekKey || getLocalIsoWeekKey(),
         completedByScope: {
           ...prev.completedByScope,
           ...(imported.completedByScope || {})
+        },
+        sessionStartedAtByScope: {
+          ...(prev.sessionStartedAtByScope || {}),
+          ...(imported.sessionStartedAtByScope || {})
         },
         sessionHistory: {
           ...prev.sessionHistory,
@@ -256,14 +348,18 @@ export function useWorkoutLogs(username, selectedMonth, selectedWorkout) {
   return {
     workoutLogs,
     sessionV3,
+    weekRolledOver,
     backupMeta,
     completedInCurrentScope,
     getCompletedForScope,
+    hasAnyWeekProgressForMonth,
     getTodaySetsCount,
     logSet,
     toggleComplete,
     deleteLog,
-    resetCurrentSession,
+    resetCurrentWorkoutStatus,
+    resetMonthWeekStatus,
+    resetCurrentSession: resetCurrentWorkoutStatus,
     resetAllProgress,
     exportBackup,
     importBackupText,
