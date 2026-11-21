@@ -243,7 +243,9 @@ const CANONICAL_EXERCISE_ALIASES = {
   "elevacoes laterais": "elevacao_lateral",
   "elevacao lateral com halteres": "elevacao_lateral",
   "lateral raises (elevacao lateral)": "elevacao_lateral",
+  "elevacao lateral (lateral raises)": "elevacao_lateral",
   "elevacoes laterais pesadas": "elevacao_lateral",
+  "crucifixo inverso / elevacao lateral curvado": "crucifixo_inverso_posterior",
   "desenvolvimento com halteres (sentado)": "desenvolvimento_halteres",
   "desenvolvimento com halteres": "desenvolvimento_halteres",
   "desenvolvimento (military press)": "desenvolvimento_militar",
@@ -300,6 +302,7 @@ const CANONICAL_EXERCISE_ALIASES = {
   "elevacao de gemeos em pe / toe presses": "elevacao_gemeos",
   "elevacao de gemeos (pe)": "elevacao_gemeos",
   "donkey / standing calf raises": "elevacao_gemeos",
+  "gemeos sentado (soleo)": "gemeos_sentado_soleo",
 
   // Abdômen
   "vacuum (vacuo)": "stomach_vacuum",

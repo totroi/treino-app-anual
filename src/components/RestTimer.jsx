@@ -7,7 +7,8 @@ const PRESETS = [
   { label: '30s', seconds: 30, desc: 'Curto' },
   { label: '60s', seconds: 60, desc: 'Padrão' },
   { label: '90s', seconds: 90, desc: 'Composto' },
-  { label: '120s', seconds: 120, desc: 'Pesado' }
+  { label: '120s', seconds: 120, desc: 'Pesado' },
+  { label: '180s', seconds: 180, desc: 'HIT / PCr' }
 ];
 
 export default function RestTimer({ timer }) {
@@ -176,8 +177,8 @@ export default function RestTimer({ timer }) {
         </div>
       )}
 
-      {/* Presets rápidos */}
-      <div className="grid grid-cols-5 gap-1.5">
+      {/* Presets rápidos (6 opções em 2x3 no mobile para toque confortável) */}
+      <div className="grid grid-cols-3 sm:grid-cols-6 gap-1.5">
         {PRESETS.map((p) => (
           <button
             key={p.seconds}

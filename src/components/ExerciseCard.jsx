@@ -140,6 +140,11 @@ export default function ExerciseCard({
       <div className={`p-4 border-b flex justify-between items-start gap-2 ${headerStyles}`}>
         <div className="flex-1 min-w-0">
           <div className="flex items-center flex-wrap gap-2 mb-1">
+            {data['Ordem'] && data['Ordem'] !== '99' && (
+              <span className="text-[0.65rem] font-extrabold bg-slate-800 text-slate-300 border border-slate-700 px-1.5 py-0.5 rounded-md font-mono">
+                #{data['Ordem']}
+              </span>
+            )}
             <span className="text-xs font-bold text-blue-400 uppercase tracking-wider">
               {data['Grupo muscular']}
             </span>
@@ -216,10 +221,13 @@ export default function ExerciseCard({
           </div>
         </div>
 
-        <div className="flex items-start gap-2 bg-slate-950/40 p-2.5 rounded-lg border border-slate-800/60">
+        <div
+          className="flex items-start gap-2 bg-slate-950/40 p-2.5 rounded-lg border border-slate-800/60"
+          title="Cadência padrão E-F-C-T: Excêntrica - Pausa Fundo - Concêntrica - Pausa Topo (em segundos)"
+        >
           <Clock className={`w-4 h-4 mt-0.5 flex-shrink-0 ${isOptional ? 'text-purple-400' : 'text-blue-400'}`} />
           <div className="min-w-0">
-            <span className="block text-slate-400 text-[0.7rem]">Cadência</span>
+            <span className="block text-slate-400 text-[0.7rem]">Cadência (E-F-C-T)</span>
             <span className="font-semibold text-slate-100 text-xs">{data['Cadência']}</span>
           </div>
         </div>

@@ -262,18 +262,28 @@ export default function App() {
         return isCompletedA ? 1 : -1;
       }
 
-      // Critério 1: Grupo Muscular (A-Z)
+      // Critério 1: Ordem Biomecânica Prescrita na Planilha (Composto Primeiro vs. Pré-Exaustão HIT)
+      const orderA = parseInt(a['Ordem'], 10);
+      const orderB = parseInt(b['Ordem'], 10);
+      const hasOrderA = !Number.isNaN(orderA);
+      const hasOrderB = !Number.isNaN(orderB);
+      if (hasOrderA && hasOrderB && orderA !== orderB) {
+        return orderA - orderB;
+      }
+      if (hasOrderA !== hasOrderB) {
+        return hasOrderA ? -1 : 1;
+      }
+
+      // Fallback: Grupo Muscular (A-Z) -> Obrigatórios antes dos Opcionais -> Nome (A-Z)
       const groupA = (a['Grupo muscular'] || '').trim();
       const groupB = (b['Grupo muscular'] || '').trim();
       const compareGroup = groupA.localeCompare(groupB, 'pt-BR');
       if (compareGroup !== 0) return compareGroup;
 
-      // Critério 2: Obrigatórios antes dos Opcionais dentro do mesmo grupo
       const optA = isOptionalExercise(a['Exercício']);
       const optB = isOptionalExercise(b['Exercício']);
       if (optA !== optB) return optA ? 1 : -1;
 
-      // Critério 3: Nome do Exercício (A-Z)
       const cleanNameA = getDisplayExerciseName(a['Exercício']);
       const cleanNameB = getDisplayExerciseName(b['Exercício']);
       return cleanNameA.localeCompare(cleanNameB, 'pt-BR');

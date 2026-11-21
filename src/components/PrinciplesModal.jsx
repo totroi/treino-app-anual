@@ -327,6 +327,19 @@ export default function PrinciplesModal({ isOpen, onClose }) {
                 Nunca pause para descansar nas extremidades e nunca "gingue" o corpo, <strong className="text-white">a não ser que a descrição específica do exercício na planilha permita expressamente</strong> esse comportamento (como em técnicas de <em>Rest-Pause</em>, <em>Breathing Squats</em>, <em>Contração Estática</em> ou <em>Cheating planejado</em>). A tensão mecânica não zera só porque você contou uma repetição — ela é um fluxo único do início ao fim da série.
               </p>
             </div>
+
+            {/* Legenda da Cadência Padronizada E-F-C-T */}
+            <div className="bg-slate-900 border border-slate-800 rounded-xl p-2.5 text-[0.7rem] text-slate-300">
+              <span className="font-bold text-amber-300 block mb-1">
+                Como ler a Cadência padronizada (E-F-C-T em segundos):
+              </span>
+              <span className="font-mono text-white font-bold">2-0-2-0</span> ={' '}
+              <strong className="text-slate-100">E</strong>xcêntrica (2s descendo) •{' '}
+              <strong className="text-slate-100">F</strong>undo (0s pausa) •{' '}
+              <strong className="text-slate-100">C</strong>oncêntrica (2s subindo) •{' '}
+              <strong className="text-slate-100">T</strong>opo (0s pausa).{' '}
+              <span className="text-slate-400">Ex.: 4-0-1-0 = 4s descida controlada e 1s subida explosiva sem pausas.</span>
+            </div>
           </section>
 
           {/* PRINCÍPIO 3: DESCANSO ADEQUADO */}
@@ -353,8 +366,33 @@ export default function PrinciplesModal({ isOpen, onClose }) {
             </p>
 
             <p className="text-xs sm:text-sm leading-relaxed text-slate-300">
-              Ao longo dos 12 meses, a periodização é viva: <strong className="text-white">damos foco maior e mais agressivo em determinados grupos musculares em alguns meses</strong> para forçar adaptação, mas nos meses seguintes <strong className="text-blue-300">esse foco muda ou cessa estrategicamente</strong>. Respeite essa ondulação para consolidar os ganhos e blindar tendões, articulações e sistema nervoso central.
+              Ao longo dos 12 meses, a periodização é viva: <strong className="text-white">damos foco maior e mais agressivo em determinados grupos musculares em alguns meses</strong> para forçar adaptação, mas nos meses seguintes <strong className="text-blue-300">esse foco muda ou cessa estrategicamente</strong>. Alternar blocos de volume com blocos HIT (1–2 séries com pausas de 120–180s para ressíntese plena de fosfocreatina) estanca o cortisol crônico e abre espaço para a biogênese ribossomal.
             </p>
+
+            {/* Sono Profundo + 5 Sinais Objetivos de Overtraining */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
+              <div className="bg-slate-900 border border-blue-900/50 rounded-xl p-3 space-y-1.5">
+                <div className="text-[0.7rem] font-extrabold uppercase tracking-wider text-blue-300">
+                  Sono Profundo = Acelerador Anabólico
+                </div>
+                <p className="text-[0.7rem] text-slate-300 leading-relaxed">
+                  A privação de sono mantém o <strong className="text-white">cortisol noturno alto</strong> (proteólise via FOXO), induz <strong className="text-white">resistência aguda à insulina</strong> (queda de GLUT-4 via JNK/PKC), reduz os <strong className="text-blue-200">pulsos de GH em ondas lentas (NREM)</strong> e bloqueia a fosforilação da via mTORC1.
+                </p>
+              </div>
+
+              <div className="bg-slate-900 border border-rose-900/50 rounded-xl p-3 space-y-1">
+                <div className="text-[0.7rem] font-extrabold uppercase tracking-wider text-rose-300">
+                  5 Sinais de Esgotamento (Overtraining)
+                </div>
+                <ul className="text-[0.68rem] text-slate-300 space-y-0.5 leading-snug list-none">
+                  <li>• Queda de força nos básicos (fadiga do SNC);</li>
+                  <li>• Músculo "murcho" sem pump (glicogênio zerado);</li>
+                  <li>• Dor muscular &gt; 72h ou dor persistente em tendões;</li>
+                  <li>• Frequência cardíaca de repouso matinal elevada;</li>
+                  <li>• Sonolência anormal após refeições com carboidratos.</li>
+                </ul>
+              </div>
+            </div>
           </section>
 
           {/* PRINCÍPIO 4: ALIMENTAÇÃO CONTEXTUALIZADA */}
@@ -448,7 +486,21 @@ export default function PrinciplesModal({ isOpen, onClose }) {
               </ul>
 
               <p className="text-[0.65rem] italic text-cyan-200/80 bg-slate-950/60 p-2 rounded-lg border border-cyan-900/40">
-                <strong className="not-italic text-cyan-300">Adaptação prática:</strong> Beba em goles distribuídos (iniciando ~30 min antes e seguindo durante o treino). Se nunca utilizou bicarbonato no treino, inicie com ½ colher nos primeiros dias para testar tolerância gástrica (respeitando eventuais restrições médicas de sódio).
+                <strong className="not-italic text-cyan-300">Fracionamento inteligente (zero desconforto gástrico):</strong> Para evitar reação súbita com o HCl estomacal (gases) ou diarreia osmótica, consuma ~60% junto com a refeição pré-treino leve (45–60 min antes) e dilua o restante com o sal integral na garrafa intra-treino em goles espaçados de 100–150ml entre as séries.
+              </p>
+            </div>
+
+            {/* Shake Hipercalórico "Get Big Drink — Liga Leve" */}
+            <div className="bg-emerald-950/20 border border-emerald-800/40 rounded-xl p-3 space-y-1.5">
+              <div className="text-[0.7rem] font-extrabold uppercase tracking-wider text-emerald-300">
+                Shake Hipercalórico "Get Big Drink — Liga Leve" (Superávit Limpo)
+              </div>
+              <p className="text-[0.7rem] text-slate-300 leading-relaxed">
+                Para quem precisa bater calorias sem degradar a sensibilidade à insulina (evitando a frutose livre do xarope de milho e a gordura saturada do sorvete do shake original de 1968, que ativam lipogênese hepática e bloqueio TLR-4/JNK):{' '}
+                <strong className="text-white">60–80g aveia fina</strong> (polímeros de glicose + beta-glucanas) +{' '}
+                <strong className="text-white">1 banana</strong> +{' '}
+                <strong className="text-white">30–40g Whey/Albumina</strong> (≥3g leucina) +{' '}
+                <strong className="text-white">15–20g pasta de amendoim integral</strong> (gorduras mono/poli-insaturadas).
               </p>
             </div>
           </section>
@@ -480,14 +532,22 @@ export default function PrinciplesModal({ isOpen, onClose }) {
               </p>
             </div>
 
-            <div className="bg-slate-900 border border-slate-800 rounded-xl p-3 text-xs space-y-1">
+            <div className="bg-slate-900 border border-slate-800 rounded-xl p-3 text-xs space-y-2">
               <div className="font-bold text-white flex items-center gap-1.5">
                 <CheckCircle2 className="w-4 h-4 text-purple-400 flex-shrink-0" />
                 Protocolo Diário: 4 séries × Máximas Repetições (Todos os Dias)
               </div>
               <p className="text-slate-300 leading-relaxed">
-                Ao final do seu treino diário, escolha <strong className="text-purple-300">1 exercício bem isolado</strong> para o grupo em déficit e faça <strong className="text-white">4 séries até a exaustão com repetições curtas (parciais na zona de maior tensão/alongamento)</strong>, sem bloqueio articular, apenas para hiper-irrigar a musculatura e expandir a fáscia.
+                Ao final do seu treino diário, escolha <strong className="text-purple-300">1 exercício bem isolado</strong> para o grupo em déficit e faça <strong className="text-white">4 séries até a exaustão com repetições curtas (parciais na zona de maior tensão/alongamento)</strong>, sem bloqueio articular, visando <strong className="text-purple-200">fluxo sanguíneo, hiperemia e expansão fascial sem dano excêntrico pesado</strong>.
               </p>
+              <div className="bg-slate-950/70 border border-purple-900/50 rounded-lg p-2 text-[0.7rem] text-slate-300 space-y-1">
+                <p>
+                  <strong className="text-rose-300">Regra de Corte Imediato (Mentzer / Arnold):</strong> Se a força no exercício principal desse músculo cair na sessão primária seguinte, sua reserva de recuperação foi ultrapassada — suspenda os Pumpers imediatamente.
+                </p>
+                <p>
+                  <strong className="text-purple-300">Princípio da Prioridade (Arnold):</strong> Na sessão principal do grupo fraco, você também pode movê-lo para ser o <strong>1º exercício do dia</strong>, com glicogênio e foco neural no máximo.
+                </p>
+              </div>
             </div>
 
             {/* Seletor de Grupo Muscular para ver os 2 exemplos de Pumper */}
