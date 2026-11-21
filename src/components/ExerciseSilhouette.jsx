@@ -118,7 +118,12 @@ function detectArchetype(exerciseName = '', muscleGroup = '') {
   return 'bench';
 }
 
-export default function ExerciseSilhouette({ exerciseName, muscleGroup, accentColor = '#38bdf8' }) {
+export default function ExerciseSilhouette({
+  exerciseName,
+  muscleGroup,
+  accentColor = '#38bdf8',
+  sizeClass = 'w-40 h-40'
+}) {
   const archetype = detectArchetype(exerciseName, muscleGroup);
 
   const strokeProps = {
@@ -137,7 +142,7 @@ export default function ExerciseSilhouette({ exerciseName, muscleGroup, accentCo
   };
 
   return (
-    <div className="w-40 h-40 flex items-center justify-center select-none pointer-events-none">
+    <div className={`${sizeClass} flex items-center justify-center select-none pointer-events-none`}>
       <svg
         viewBox="0 0 180 180"
         className="w-full h-full"

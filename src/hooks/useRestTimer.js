@@ -102,6 +102,20 @@ export function useRestTimer() {
     [stopAlarm]
   );
 
+  // Prepara o cronômetro com o tempo do exercício SEM iniciar a contagem (ex.: ao entrar no Modo Foco antes da série)
+  const prepareTimer = useCallback(
+    (secs, exerciseLabel = '') => {
+      if (isRunning || isAlarmRinging) return;
+      const duration = Math.max(5, secs || 60);
+      endTimeRef.current = null;
+      setTotalSeconds(duration);
+      setSecondsLeft(duration);
+      setJustFinished(false);
+      if (exerciseLabel) setActiveExerciseName(exerciseLabel);
+    },
+    [isRunning, isAlarmRinging]
+  );
+
   const togglePlayPause = useCallback(() => {
     unlockTimerAudio();
     stopAlarm();
@@ -176,6 +190,7 @@ export function useRestTimer() {
     isAlarmRinging,
     activeExerciseName,
     startTimer,
+    prepareTimer,
     togglePlayPause,
     addSeconds,
     resetTimer,

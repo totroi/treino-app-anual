@@ -287,15 +287,25 @@ function AuthenticatedWorkspace({ currentUser, onLogout }) {
     logs.completedInCurrentScope
   ]);
 
-  const handleSaveSet = (canonicalKey, displayTitle, weight, reps, restSeconds, exerciseObj) => {
+  const handleSaveSet = (
+    canonicalKey,
+    displayTitle,
+    weight,
+    reps,
+    restSeconds,
+    exerciseObj,
+    options = {}
+  ) => {
     const saved = logs.logSet(canonicalKey, displayTitle, weight, reps);
     if (!saved) return;
     setFocusedExercise(exerciseObj);
-    if (autoStartTimer) {
-      timer.startTimer(restSeconds, true, displayTitle);
-      showToast(`Série #${saved.setNumber} salva • Descanso ${restSeconds}s iniciado!`);
-    } else {
-      showToast(`Série #${saved.setNumber} salva (${saved.weight}kg)!`);
+    if (!options.suppressTimerAndToast) {
+      if (autoStartTimer) {
+        timer.startTimer(restSeconds, true, displayTitle);
+        showToast(`Série #${saved.setNumber} salva • Descanso ${restSeconds}s iniciado!`);
+      } else {
+        showToast(`Série #${saved.setNumber} salva (${saved.weight}kg)!`);
+      }
     }
   };
 
@@ -476,9 +486,8 @@ function AuthenticatedWorkspace({ currentUser, onLogout }) {
                   onOpenScreensaver={(exObj, restSeconds) => {
                     setFocusedExercise(exObj);
                     const title = getDisplayExerciseName(exObj['Exercício']);
-                    if (!timer.isRunning && timer.secondsLeft === 0) {
-                      timer.startTimer(restSeconds, false, title);
-                    }
+                    // Prepara o tempo de descanso sem disparar a contagem antes da série ser executada
+                    timer.prepareTimer(restSeconds, title);
                     setIsScreensaverOpen(true);
                   }}
                   onOpenPrincipleSection={openPrinciplesSection}
@@ -613,12 +622,29 @@ function AuthenticatedWorkspace({ currentUser, onLogout }) {
         selectedMonth={effectiveMonth}
       />
 
-      {/* Modo Foco OLED (Screensaver Interativo) */}
+      {/* Modo Foco OLED (Screensaver Interativo com registro de série integrado) */}
       <FocusScreensaver
+        key={focusedExercise ? focusedExercise['Exercício'] : 'focus-idle'}
         isOpen={isScreensaverOpen}
         exercise={focusedExercise}
         lastLog={focusedLastLog}
+        todaySetsCount={
+          focusedExercise
+            ? logs.getTodaySetsCount(getCanonicalExerciseKey(focusedExercise['Exercício']))
+            : 0
+        }
+        isCompleted={
+          focusedExercise
+            ? logs.completedInCurrentScope.includes(getCanonicalExerciseKey(focusedExercise['Exercício']))
+            : false
+        }
         timer={timer}
+        onSaveSet={(canonicalKey, displayTitle, weight, reps, restSeconds, exerciseObj) =>
+          handleSaveSet(canonicalKey, displayTitle, weight, reps, restSeconds, exerciseObj, {
+            suppressTimerAndToast: true
+          })
+        }
+        onToggleComplete={handleToggleComplete}
         onExit={() => setIsScreensaverOpen(false)}
       />
 
