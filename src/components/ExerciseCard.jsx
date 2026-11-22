@@ -34,12 +34,14 @@ function explainCadence(cadenceText) {
 
 export default function ExerciseCard({
   data,
+  cardRef = null,
   onSaveSet,
   onToggleComplete,
   onDeleteLog,
   onTriggerTimer,
   onOpenScreensaver,
   onOpenPrincipleSection,
+  onOpenTechniqueHelp,
   isFocused = false,
   history,
   todaySetsCount = 0,
@@ -90,10 +92,10 @@ export default function ExerciseCard({
 
   const cardStyles = isOptional
     ? isFocused
-      ? 'bg-purple-950/20 border-sky-500/80 border-dashed ring-1 ring-sky-500/30'
+      ? 'bg-purple-950/20 border-sky-500/90 border-dashed ring-2 ring-sky-500/35'
       : 'bg-purple-950/15 border-purple-800/70 border-dashed'
     : isFocused
-    ? 'bg-zinc-950 border-sky-500/80 ring-1 ring-sky-500/30'
+    ? 'bg-zinc-950 border-sky-500/90 ring-2 ring-sky-500/35'
     : 'bg-zinc-950 border-zinc-800/90';
 
   const headerStyles = isOptional
@@ -109,7 +111,10 @@ export default function ExerciseCard({
   const isLongText = execText.length + obsText.length > 170;
 
   return (
-    <article className={`rounded-2xl border overflow-hidden mb-4 transition-all ${cardStyles}`}>
+    <article
+      ref={cardRef}
+      className={`scroll-mt-20 rounded-2xl border overflow-hidden mb-4 transition-all ${cardStyles}`}
+    >
       {/* Cabeçalho */}
       <div className={`p-3.5 border-b flex justify-between items-start gap-2 ${headerStyles}`}>
         <div className="flex-1 min-w-0">
@@ -259,9 +264,21 @@ export default function ExerciseCard({
           )}
         </div>
 
-        {/* Técnica Avançada (apenas quando preenchida) com deep-link '?' */}
+        {/* Técnica Avançada clicável por inteiro -> abre diretamente o termo exato no glossário */}
         {advancedTechnique && (
-          <div className={`${stackMetrics ? 'col-span-1' : 'col-span-2'} flex items-center justify-between gap-2 bg-amber-950/25 p-2.5 rounded-xl border border-amber-800/50`}>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              if (onOpenTechniqueHelp) {
+                onOpenTechniqueHelp(advancedTechnique);
+              } else if (onOpenPrincipleSection) {
+                onOpenPrincipleSection('glossario');
+              }
+            }}
+            aria-label={`Entender técnica avançada: ${advancedTechnique}`}
+            className={`${stackMetrics ? 'col-span-1' : 'col-span-2'} w-full min-h-[48px] text-left flex items-center justify-between gap-2 bg-amber-950/25 hover:bg-amber-950/45 p-2.5 rounded-xl border border-amber-800/50 hover:border-amber-600/70 transition-colors cursor-pointer`}
+          >
             <div className="flex items-start gap-2 min-w-0">
               <Zap className="w-4 h-4 text-amber-400 mt-0.5 flex-shrink-0" />
               <div className="min-w-0">
@@ -271,20 +288,10 @@ export default function ExerciseCard({
                 <span className="text-amber-100 text-sm font-medium">{advancedTechnique}</span>
               </div>
             </div>
-            {onOpenPrincipleSection && (
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onOpenPrincipleSection('glossario');
-                }}
-                aria-label="Entender esta técnica no glossário"
-                className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl text-amber-300 hover:bg-amber-900/40 flex-shrink-0 cursor-pointer"
-              >
-                <HelpCircle className="w-4 h-4" />
-              </button>
-            )}
-          </div>
+            <span className="w-8 h-8 flex items-center justify-center rounded-lg text-amber-300 flex-shrink-0">
+              <HelpCircle className="w-4 h-4" />
+            </span>
+          </button>
         )}
       </div>
 

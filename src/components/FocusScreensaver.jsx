@@ -12,7 +12,8 @@ import {
   Zap,
   Save,
   Check,
-  CheckCircle2
+  CheckCircle2,
+  HelpCircle
 } from 'lucide-react';
 import ExerciseSilhouette from './ExerciseSilhouette';
 import {
@@ -22,6 +23,7 @@ import {
   parseRestSeconds,
   cleanAdvancedTechnique
 } from '../utils/exerciseNormalizer';
+import { findGlossaryEntriesForTechnique } from '../utils/glossaryData';
 import { formatWeightDisplay, parsePtBrNumber } from '../utils/numberFormat';
 
 const ULTRA_ECO_IDLE_MS = 12 * 1000;
@@ -38,15 +40,29 @@ export default function FocusScreensaver({
   onToggleComplete,
   onExit
 }) {
-  const [weight, setWeight] = useState('');
+  // Pré-preenche carga se já houver série ativa nesta sessão (continuidade rápida entre séries)
+  const [weight, setWeight] = useState(() =>
+    todaySetsCount > 0 && lastLog ? formatWeightDisplay(lastLog.weight) : ''
+  );
   const [reps, setReps] = useState('');
   const [savedSuccess, setSavedSuccess] = useState(false);
   const [isUltraEco, setIsUltraEco] = useState(false);
   const [isInputFocused, setIsInputFocused] = useState(false);
+  const [showTechTip, setShowTechTip] = useState(false);
 
   const wakeLockRef = useRef(null);
   const graceTimeoutRef = useRef(null);
   const savedFeedbackRef = useRef(null);
+
+  // Trava o scroll da tela principal enquanto o Modo Foco está aberto (impede iOS de deslocar o fundo)
+  useEffect(() => {
+    if (!isOpen) return;
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [isOpen]);
 
   // Auto-Dim em 2 estágios (12s sem toque e sem input focado -> Ultra Eco >95% #000000 com luminância ~50%)
   useEffect(() => {
@@ -147,7 +163,7 @@ export default function FocusScreensaver({
   useEffect(() => {
     if (!isOpen) return;
     const handleKey = (e) => {
-      if (e.key === 'Escape') onExit();
+      if (e.key === 'Escape') onExit(false);
     };
     window.addEventListener('keydown', handleKey);
     return () => window.removeEventListener('keydown', handleKey);
@@ -208,8 +224,12 @@ export default function FocusScreensaver({
     if (onToggleComplete && !isCompleted) {
       onToggleComplete(canonicalKey, displayName);
     }
-    onExit();
+    onExit(true);
   };
+
+  const techniqueMatches = advancedTechnique
+    ? findGlossaryEntriesForTechnique(advancedTechnique)
+    : [];
 
   const showUltraEcoView = isUltraEco && !timer.isAlarmRinging;
 
@@ -324,9 +344,28 @@ export default function FocusScreensaver({
           </div>
 
           {advancedTechnique && (
-            <div className="mt-2 inline-flex items-center gap-1.5 bg-black border border-amber-950/90 px-3 py-1 rounded-full text-xs text-amber-500/80 max-w-full">
-              <Zap className="w-3.5 h-3.5 text-amber-600 flex-shrink-0" />
-              <span className="truncate">{advancedTechnique}</span>
+            <div className="mt-2 w-full flex flex-col items-center">
+              <button
+                type="button"
+                onClick={() => setShowTechTip((prev) => !prev)}
+                aria-expanded={showTechTip}
+                className="min-h-[36px] inline-flex items-center gap-1.5 bg-black hover:border-amber-700 border border-amber-950/90 px-3 py-1 rounded-full text-xs text-amber-500/85 max-w-full transition-colors cursor-pointer"
+              >
+                <Zap className="w-3.5 h-3.5 text-amber-600 flex-shrink-0" />
+                <span className="truncate">{advancedTechnique}</span>
+                <HelpCircle className="w-3.5 h-3.5 text-amber-600/80 flex-shrink-0" />
+              </button>
+
+              {showTechTip && techniqueMatches.length > 0 && (
+                <div className="mt-2 w-full bg-black border border-amber-950 rounded-xl p-2.5 text-left space-y-1.5 ui-fade-in">
+                  {techniqueMatches.map((entry) => (
+                    <div key={entry.id} className="text-xs leading-relaxed">
+                      <span className="font-bold text-amber-500/90">{entry.term}: </span>
+                      <span className="text-zinc-400">{entry.shortDesc}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -549,7 +588,7 @@ export default function FocusScreensaver({
       <div className="w-full max-w-sm mt-auto pt-3">
         <button
           type="button"
-          onClick={onExit}
+          onClick={() => onExit(false)}
           className="w-full min-h-[48px] px-4 py-3 rounded-2xl bg-black hover:border-zinc-700 border border-zinc-900 text-zinc-400 text-sm font-bold flex items-center justify-center gap-2 transition-colors cursor-pointer"
         >
           <ArrowLeft className="w-4 h-4" />

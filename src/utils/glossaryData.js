@@ -1,0 +1,207 @@
+/**
+ * Base completa do Glossário Golden Era em Liga Leve + matcher inteligente
+ * para deep-link exato a partir de qualquer célula de "Técnica Avançada".
+ */
+
+function normalizeForMatch(str = '') {
+  return String(str)
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim();
+}
+
+export const GLOSSARY_ITEMS = [
+  {
+    id: 'glossario-falha',
+    term: 'Falha Muscular Momentânea (Concêntrica Estrita)',
+    shortDesc: 'Tentar completar mais uma repetição com técnica íntegra até o músculo travar no trajeto.',
+    desc: 'Ponto em que você tenta completar mais uma repetição com técnica estrita e o músculo simplesmente trava na fase concêntrica (subida). Na planilha, as repetições são régua de carga — nunca um freio para parar antes da falha real.',
+    matchers: ['falha concentrica', 'falha muscular', 'falha estrita']
+  },
+  {
+    id: 'glossario-cadencia',
+    term: 'Cadência E-F-C-T (ex.: 4-0-2-0)',
+    shortDesc: 'Segundos de cada fase: Excêntrica (descida), Fundo, Concêntrica (subida) e Topo.',
+    desc: 'Indica o tempo em segundos de cada fase da repetição: Excêntrica (descida), Fundo (pausa no alongamento), Concêntrica (subida) e Topo (pausa na contração). Ex.: 4-0-1-0 = 4s descendo controlado e 1s subindo firme sem descansar nos extremos.',
+    matchers: ['cadencia', 'e-f-c-t']
+  },
+  {
+    id: 'glossario-tensao',
+    term: 'Tensão Contínua & Sobrecarga Progressiva',
+    shortDesc: 'Fluxo ininterrupto de carga nas fibras aliado ao aumento gradual de peso ou reps.',
+    desc: 'Manter a carga sustentada 100% pelas fibras do início ao fim da série (sem relaxar no fundo nem travar articulações no topo), somado à regra clássica de registrar e superar gradualmente carga ou repetições ao longo das semanas.',
+    matchers: ['tensao continua', 'sobrecarga progressiva']
+  },
+  {
+    id: 'glossario-rest-pause',
+    term: 'Rest-Pause (Pausa-Descanso)',
+    shortDesc: 'Atingiu a falha → apoia o peso por 10–15s → extrai mais 2–3 reps até nova falha.',
+    desc: 'Ao atingir a falha muscular com carga pesada, apoie o peso, respire por 10–15 segundos para ressíntese parcial de fosfocreatina e execute imediatamente mais 2–3 repetições máximas até a nova falha.',
+    matchers: ['rest-pause', 'rest pause', 'pausa-descanso', 'pausa descanso']
+  },
+  {
+    id: 'glossario-dropset',
+    term: 'Drop-Set / Séries Descendentes (Stripping)',
+    shortDesc: 'Ao falhar, reduz a carga em 20–30% sem descanso e continua até falhar de novo.',
+    desc: 'Na última série, assim que atingir a falha concêntrica, reduza imediatamente a carga em 20–30% (sem pausa) e siga até nova falha. No método Stripping (Arnold), podem ser feitas 2 a 3 reduções consecutivas de anilhas.',
+    matchers: ['drop-set', 'dropset', 'drop set', 'stripping', 'series descendentes']
+  },
+  {
+    id: 'glossario-pre-exaustao',
+    term: 'Pré-Exaustão (Pre-Exhaustion — Mentzer)',
+    shortDesc: 'Isolador até a falha seguido imediatamente de um exercício composto.',
+    desc: 'Executar um exercício monoarticular até a falha (ex.: Pec Deck ou Extensora) e passar sem descanso para um composto (ex.: Supino ou Leg Press). Assim os sinergistas (tríceps/ombros) ainda estão frescos para esgotar totalmente o músculo-alvo.',
+    matchers: ['pre-exaustao']
+  },
+  {
+    id: 'glossario-negativas',
+    term: 'Repetições Negativas (Excêntricas Lentas / Forçadas)',
+    shortDesc: 'Frear a descida em 4–8 segundos aproveitando a maior força excêntrica das fibras.',
+    desc: 'Como o músculo suporta mais carga na fase excêntrica (descida) do que na subida, você controla a descida em 4–8s resistindo ao máximo. Em Negativas Forçadas ou Somente Negativas, sobe-se com ajuda (ou com as duas pernas/braços) e desce-se lentamente sozinho.',
+    matchers: ['negativa', 'negative', 'excentrica']
+  },
+  {
+    id: 'glossario-isometria',
+    term: 'Contração Isométrica / Estática & Pico de Contração',
+    shortDesc: 'Sustentar 1–4 segundos esmagando o músculo no ponto de contração máxima.',
+    desc: 'Manter a carga parada no ponto de maior encurtamento muscular (Pico de Contração / Peak Contraction) por 1 a 4 segundos, ou segurar até a Falha Estática (quando não consegue mais sustentar o peso na posição). Recruta fibras profundas e melhora densidade.',
+    matchers: [
+      'isometric',
+      'isometria',
+      'estatica',
+      'pico de contracao',
+      'peak contraction',
+      'contracao de pico',
+      'contracao maxima',
+      'no pico',
+      'pose isometrica'
+    ]
+  },
+  {
+    id: 'glossario-cheating',
+    term: 'Roubo Consciente (Cheating / Leve Hitch)',
+    shortDesc: 'Pequeno impulso controlado apenas nas 1–2 reps finais após a falha estrita.',
+    desc: 'Usado exclusivamente após atingir a falha com técnica limpa: aplica-se um leve balanço controlado do corpo (ou pequeno "hitch" no final da puxada/rosca) apenas para vencer o ponto morto e controlar a descida lenta sob tensão. Nunca serve para carregar peso de ego desde a 1ª rep.',
+    matchers: ['roubo', 'cheating', 'hitch']
+  },
+  {
+    id: 'glossario-parciais',
+    term: 'Movimentos 3/4, Repetições Parciais & Burns',
+    shortDesc: 'Cortar o bloqueio articular (3/4) ou pulsar na zona de tensão após a falha (Burns).',
+    desc: 'Nos Movimentos 3/4 (estilo Sergio Oliva), interrompe-se a subida antes de travar cotovelos/joelhos para nunca aliviar a tensão. Nas Repetições Parciais / Burns (pós-falha), executam-se micro-pulsos curtos na faixa de maior queimação até a exaustão total.',
+    matchers: ['parciais', 'tres quartos', '3/4', 'burns', 'sergio oliva']
+  },
+  {
+    id: 'glossario-superset',
+    term: 'Super-Série & Bi-Set',
+    shortDesc: 'Dois exercícios executados em sequência imediata, sem descanso entre eles.',
+    desc: 'Combinação de dois exercícios seguidos sem intervalo: Super-Série normalmente alterna antagonistas (ex.: Bíceps + Tríceps, acelerando recuperação recíproca e pump brutal) e Bi-Set combina dois movimentos para o mesmo grupo muscular.',
+    matchers: ['super-serie', 'super-set', 'superserie', 'bi-set']
+  },
+  {
+    id: 'glossario-igoyougo',
+    term: 'I Go / You Go (Alternância Contínua)',
+    shortDesc: 'Alternar direto entre um lado/exercício e outro com descanso mínimo.',
+    desc: 'Clássico da Golden Era: você executa um braço/lado (ou um exercício do par) e vai imediatamente para o outro sem parar; o "descanso" de um lado é apenas o tempo de execução do outro, gerando densidade metabólica altíssima.',
+    matchers: ['i go']
+  },
+  {
+    id: 'glossario-alongamento',
+    term: 'Alongamento Profundo, Pausa no Fundo & Forward Bends',
+    shortDesc: 'Amplitude máxima com 1–2s de pausa controlada no estiramento (sem quicar).',
+    desc: 'Levar o músculo ao estiramento máximo seguro com pausa isométrica de 1–2s no fundo (eliminando reflexo elástico/quique — crucial em Sóleo, Pullover e Hack). Forward Bends pós-treino descomprimem a coluna e alongam posteriores após séries pesadas.',
+    matchers: ['alongamento', 'amplitude maxima', 'forward bends', 'no fundo']
+  },
+  {
+    id: 'glossario-breathing',
+    term: 'Breathing Squats & Respiração Profunda (McCallum)',
+    shortDesc: 'Série única de 20–25 reps com 3 a 10 respirações profundas entre as repetições finais.',
+    desc: 'Protocolo lendário de John McCallum: com carga para ~10–12 reps, executa-se 1 série de 20–25 repetições fazendo 3 respirações profundas entre cada rep no início e 6–10 respirações nas últimas, expandindo caixa torácica e disparando estímulo sistêmico brutal.',
+    matchers: ['breathing', 'mccallum', 'respiracao profunda', 'respiracao progressiva']
+  },
+  {
+    id: 'glossario-forced-reps',
+    term: 'Repetições Forçadas (Forced Reps) & Resistência Manual',
+    shortDesc: 'Ajuda mínima de parceiro (ou mão livre) apenas para concluir 1–2 reps pós-falha.',
+    desc: 'Quando a barra trava na falha, um parceiro aplica a mínima assistência necessária (ou você usa o braço livre em unilaterais / resistência manual na fase negativa) para extrair mais 1–2 repetições profundas sem roubar a carga.',
+    matchers: ['forced reps', 'resistencia manual']
+  },
+  {
+    id: 'glossario-hit',
+    term: 'HIT (Heavy Duty — Mike Mentzer)',
+    shortDesc: '1–2 séries no limite absoluto com cadência lenta e descanso de 120–180s.',
+    desc: 'Filosofia de altíssima intensidade e baixíssimo volume: após aquecimento progressivo, executam-se 1 a 2 séries levadas além da falha com cadência rigorosa e descanso amplo (120–180s) para ressíntese total de fosfocreatina.',
+    matchers: ['heavy duty', ' hit ']
+  },
+  {
+    id: 'glossario-mind-muscle',
+    term: 'Visualização (Mind-Muscle Connection)',
+    shortDesc: 'Foco intencional no encurtamento e alongamento exato da fibra-alvo.',
+    desc: 'Em vez de apenas mover peso do ponto A ao B, direcione atenção total para sentir a contração da cabeça muscular alvo (técnica central de Arnold e Frank Zane), maximizando o recrutamento neural do músculo certo.',
+    matchers: ['visualizacao', 'mind-muscle']
+  },
+  {
+    id: 'glossario-prioridade',
+    term: 'Princípio da Prioridade & Princípio do Choque (Arnold)',
+    shortDesc: 'Treinar o ponto fraco primeiro no dia ou variar o estímulo para quebrar platôs.',
+    desc: 'Princípio da Prioridade coloca o músculo mais atrasado como 1º exercício da sessão (glicogênio e foco no auge). Princípio do Choque introduz técnicas inesperadas (dropsets, super-séries, ângulos novos) para forçar nova adaptação.',
+    matchers: ['prioridade', 'priority', 'principio do choque']
+  },
+  {
+    id: 'glossario-pumping',
+    term: 'Pumping 24h, Saturação, Alto Volume & Pausas Curtas',
+    shortDesc: 'Alta densidade sanguínea (hiperemia) com descansos curtos (<60s) e alta frequência.',
+    desc: 'Estratégias voltadas a saturar o músculo de sangue e metabólitos — seja por pausas curtas (<60s), alto volume controlado ou alta frequência diária (Pumping 24h / Pumpers) para grupos teimosos como panturrilhas e braços.',
+    matchers: [
+      'pumping',
+      'pump/saturacao',
+      'saturacao',
+      'alto volume',
+      'volume brutal',
+      'alta frequencia',
+      'pausas curtas',
+      'under 60s'
+    ]
+  },
+  {
+    id: 'glossario-vacuum',
+    term: 'Stomach Vacuum (Vácuo Abdominal)',
+    shortDesc: 'Expiração total + sucção do umbigo à coluna (15–30s) para ativar o transverso.',
+    desc: 'Expire 100% do ar, faça uma "falsa inspiração" sugando o abdômen para dentro e para cima em direção à coluna e sustente 15–30 segundos. Fortalece o transverso abdominal (cinta natural) e afina a linha de cintura.',
+    matchers: ['vacuum', 'vacuo']
+  },
+  {
+    id: 'glossario-biomecanica',
+    term: 'Ajustes Biomecânicos Golden Era (Alavancas & Alinhamento)',
+    shortDesc: 'Microajustes de pegada, cotovelos, rotação ou pé para isolar a cabeça muscular certa.',
+    desc: 'Diretrizes precisas de alavanca usadas na Golden Era: Rotação Interna ("derramando jarra" no deltoide lateral/posterior), Supinação Forçada (girar o mindinho para cima na rosca), Cotovelos Fixos / Tronco Estável (evitar ajuda de ombro/lombar), Esterno na Barra (ativação total de dorsais), Foco no Dedão / Pés para Fora (direcionar gastrocnêmio) e Towel Pulls (ativação prévia de pegada/dorsais).',
+    matchers: [
+      'rotacao interna',
+      'jarra',
+      'supinacao',
+      'towel pulls',
+      'tronco estavel',
+      'cotovelos fixos',
+      'cotovelos imoveis',
+      'esterno toca',
+      'dedos dos pes',
+      'foco no dedao'
+    ]
+  }
+];
+
+/**
+ * Encontra todos os itens do glossário correspondentes a um texto de "Técnica Avançada".
+ * Suporta células compostas (ex.: "Pré-Exaustão e Dropset" retorna ambos os termos!).
+ */
+export function findGlossaryEntriesForTechnique(rawTechniqueText = '') {
+  const norm = ` ${normalizeForMatch(rawTechniqueText)} `;
+  if (!norm.trim()) return [];
+
+  const matches = GLOSSARY_ITEMS.filter((item) =>
+    item.matchers.some((m) => norm.includes(m))
+  );
+
+  return matches;
+}

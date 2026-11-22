@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   X,
   Flame,
@@ -17,9 +17,11 @@ import {
   ChevronUp,
   ExternalLink,
   FileText,
-  HelpCircle
+  HelpCircle,
+  Search
 } from 'lucide-react';
 import { MONTHLY_DOCS, MONTHLY_SUMMARIES } from '../utils/exerciseNormalizer';
+import { GLOSSARY_ITEMS } from '../utils/glossaryData';
 
 const PUMPER_EXAMPLES = [
   {
@@ -122,41 +124,6 @@ const PUMPER_EXAMPLES = [
   }
 ];
 
-const GLOSSARY_ITEMS = [
-  {
-    term: 'Falha Muscular Momentânea',
-    desc: 'Ponto em que você tenta completar mais uma repetição com técnica íntegra e o músculo simplesmente trava no meio do trajeto.'
-  },
-  {
-    term: 'Cadência E-F-C-T (ex.: 4-0-2-0)',
-    desc: 'Tempo em segundos de cada fase: Excêntrica (descida), Fundo (pausa alongado), Concêntrica (subida) e Topo (pausa contraído).'
-  },
-  {
-    term: 'Rest-Pause',
-    desc: 'Após atingir a falha, apoie o peso, respire 10–15 segundos e execute mais 2–3 repetições pesadas até a nova falha.'
-  },
-  {
-    term: 'Drop-Set / Stripping',
-    desc: 'Ao falhar na última série, reduza imediatamente a carga em 20–30% (sem descanso) e continue até falhar novamente.'
-  },
-  {
-    term: 'HIT (Heavy Duty)',
-    desc: 'Alta intensidade com baixíssimo volume (1–2 séries de trabalho no limite absoluto), cadência lenta e descanso de 120–180s.'
-  },
-  {
-    term: 'Pré-Exaustão',
-    desc: 'Executar um exercício isolador até a falha (ex.: Pec Deck) e ir imediatamente para um composto (ex.: Supino) para esgotar o músculo-alvo.'
-  },
-  {
-    term: 'Movimento 3/4 (Sem Lockout)',
-    desc: 'Interromper a subida antes de travar os cotovelos/joelhos, mantendo a carga sustentada 100% pelas fibras musculares o tempo todo.'
-  },
-  {
-    term: 'Stomach Vacuum (Vácuo)',
-    desc: 'Expiração total seguida de sucção do umbigo em direção à coluna (15–30s) para fortalecer o transverso abdominal e afinar a cintura.'
-  }
-];
-
 const NAV_ITEMS = [
   { id: 'guia-mes', label: 'Guia Mês', color: 'text-sky-300 border-sky-800/70 bg-sky-950/50' },
   { id: 'principio-1', label: '1. Falha', color: 'text-rose-300 border-rose-800/70 bg-rose-950/50' },
@@ -188,10 +155,13 @@ export default function PrinciplesModal({
   isOpen,
   onClose,
   initialSection = null,
+  highlightIds = [],
+  contextLabel = '',
   selectedMonth = 'Fevereiro'
 }) {
   const [selectedPumperGroup, setSelectedPumperGroup] = useState('Peitoral');
   const [expandedSections, setExpandedSections] = useState({});
+  const [glossaryQuery, setGlossaryQuery] = useState('');
   const scrollContainerRef = useRef(null);
 
   const toggleSection = (key) => {
@@ -215,26 +185,43 @@ export default function PrinciplesModal({
     };
   }, [isOpen, onClose]);
 
-  // Deep-link para seção específica (ex.: 'guia-mes', 'principio-2', 'glossario')
+  // Deep-link exato para seção ou termo específico do glossário (ex.: 'glossario-cheating')
   useEffect(() => {
     if (!isOpen || !initialSection) return;
     const timer = setTimeout(() => {
       const el = document.getElementById(initialSection);
       if (el) {
-        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        const isSpecificTerm = initialSection.startsWith('glossario-');
+        el.scrollIntoView({
+          behavior: 'smooth',
+          block: isSpecificTerm ? 'center' : 'start'
+        });
       }
-    }, 60);
+    }, 80);
     return () => clearTimeout(timer);
   }, [isOpen, initialSection]);
 
+  const filteredGlossary = useMemo(() => {
+    const q = glossaryQuery.trim().toLowerCase();
+    if (!q) return GLOSSARY_ITEMS;
+    return GLOSSARY_ITEMS.filter(
+      (item) =>
+        item.term.toLowerCase().includes(q) ||
+        item.desc.toLowerCase().includes(q)
+    );
+  }, [glossaryQuery]);
+
   if (!isOpen) return null;
 
-  const scrollToSection = (id) => {
+  const scrollToSection = (id, block = 'start') => {
     const el = document.getElementById(id);
     if (el) {
-      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      el.scrollIntoView({ behavior: 'smooth', block });
     }
   };
+
+  const highlightSet = new Set(highlightIds);
+  const highlightedEntries = GLOSSARY_ITEMS.filter((item) => highlightSet.has(item.id));
 
   const activePumper = PUMPER_EXAMPLES.find((p) => p.group === selectedPumperGroup) || PUMPER_EXAMPLES[0];
   const monthSummary = MONTHLY_SUMMARIES[selectedMonth];
@@ -688,32 +675,98 @@ export default function PrinciplesModal({
             </ScienceAccordion>
           </section>
 
-          {/* MINI-GLOSSÁRIO DE SIGLAS E TÉCNICAS (Item 7.2) */}
+          {/* GLOSSÁRIO COMPLETO DE SIGLAS E TÉCNICAS (100% de cobertura dos 248 exercícios) */}
           <section
             id="glossario"
             className="bg-black border border-zinc-800 rounded-2xl p-4 space-y-3 scroll-mt-4"
           >
-            <div className="flex items-center gap-2.5">
-              <div className="bg-zinc-900 border border-zinc-700 p-2 rounded-xl text-blue-400 flex-shrink-0">
-                <HelpCircle className="w-5 h-5" />
-              </div>
-              <div>
-                <span className="text-xs font-extrabold uppercase tracking-wider text-blue-400">
-                  Referência Rápida
-                </span>
-                <h3 className="text-base font-bold text-white leading-tight">
-                  Glossário de Siglas e Técnicas
-                </h3>
+            <div className="flex items-center justify-between gap-2.5">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="bg-zinc-900 border border-zinc-700 p-2 rounded-xl text-blue-400 flex-shrink-0">
+                  <HelpCircle className="w-5 h-5" />
+                </div>
+                <div className="min-w-0">
+                  <span className="text-xs font-extrabold uppercase tracking-wider text-blue-400">
+                    Referência Completa • {GLOSSARY_ITEMS.length} termos
+                  </span>
+                  <h3 className="text-base font-bold text-white leading-tight">
+                    Glossário de Siglas e Técnicas
+                  </h3>
+                </div>
               </div>
             </div>
 
-            <div className="space-y-2">
-              {GLOSSARY_ITEMS.map((item) => (
-                <div key={item.term} className="bg-zinc-950 border border-zinc-800/90 rounded-xl p-3">
-                  <div className="text-sm font-bold text-white">{item.term}</div>
-                  <p className="text-sm text-zinc-300 leading-relaxed mt-0.5">{item.desc}</p>
+            {/* Banner contextual quando aberto a partir de um card de exercício */}
+            {contextLabel && highlightedEntries.length > 0 && (
+              <div className="bg-amber-950/30 border border-amber-700/60 rounded-xl p-3 space-y-2">
+                <div className="text-xs text-amber-200 leading-snug">
+                  <span className="text-amber-400 font-bold uppercase tracking-wider block text-[0.7rem]">
+                    Técnica consultada no exercício
+                  </span>
+                  <strong className="text-white">{contextLabel}</strong>
                 </div>
-              ))}
+                {highlightedEntries.length > 1 && (
+                  <div className="flex flex-wrap gap-1.5">
+                    {highlightedEntries.map((entry) => (
+                      <button
+                        key={entry.id}
+                        type="button"
+                        onClick={() => scrollToSection(entry.id, 'center')}
+                        className="min-h-[36px] px-2.5 rounded-lg bg-amber-900/50 hover:bg-amber-800/60 border border-amber-600/60 text-amber-100 text-xs font-bold cursor-pointer"
+                      >
+                        Ir para: {entry.term.split(' (')[0]}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Busca rápida no glossário */}
+            <div className="relative">
+              <Search className="w-4 h-4 text-zinc-500 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <input
+                type="search"
+                value={glossaryQuery}
+                onChange={(e) => setGlossaryQuery(e.target.value)}
+                placeholder="Buscar técnica (ex.: Cheating, Negativas, Drop-Set...)"
+                className="w-full min-h-[44px] pl-9 pr-3 py-2 rounded-xl bg-zinc-950 border border-zinc-800 text-base text-white placeholder-zinc-500 focus:ring-2 focus:ring-blue-500 outline-none"
+              />
+            </div>
+
+            <div className="space-y-2.5">
+              {filteredGlossary.length > 0 ? (
+                filteredGlossary.map((item) => {
+                  const isHighlighted = highlightSet.has(item.id);
+                  return (
+                    <div
+                      key={item.id}
+                      id={item.id}
+                      className={`rounded-xl p-3.5 scroll-mt-6 transition-all border ${
+                        isHighlighted
+                          ? 'bg-amber-950/30 border-amber-500/80 ring-1 ring-amber-500/35'
+                          : 'bg-zinc-950 border-zinc-800/90'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="text-sm font-bold text-white leading-snug">
+                          {item.term}
+                        </div>
+                        {isHighlighted && (
+                          <span className="text-[0.68rem] font-extrabold uppercase tracking-wider bg-amber-500/20 text-amber-300 border border-amber-500/50 px-2 py-0.5 rounded-full whitespace-nowrap flex-shrink-0">
+                            Seu exercício
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-sm text-zinc-300 leading-relaxed mt-1">{item.desc}</p>
+                    </div>
+                  );
+                })
+              ) : (
+                <p className="text-sm text-zinc-400 text-center py-4">
+                  Nenhum termo encontrado para &ldquo;{glossaryQuery}&rdquo;.
+                </p>
+              )}
             </div>
           </section>
         </div>

@@ -7,6 +7,7 @@ import {
   getDisplayExerciseName,
   getCanonicalExerciseKey
 } from './utils/exerciseNormalizer';
+import { findGlossaryEntriesForTechnique } from './utils/glossaryData';
 import { getCurrentSession, logoutUser } from './services/authService';
 import {
   loadUiScale,
@@ -43,7 +44,12 @@ function AuthenticatedWorkspace({ currentUser, onLogout }) {
 
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showResultsModal, setShowResultsModal] = useState(false);
-  const [principlesState, setPrinciplesState] = useState({ isOpen: false, section: null });
+  const [principlesState, setPrinciplesState] = useState({
+    isOpen: false,
+    section: null,
+    highlightIds: [],
+    contextLabel: ''
+  });
   const [resetModalTab, setResetModalTab] = useState(null); // 'status' | 'history' | null
 
   const [uiScale, setUiScale] = useState(() => loadUiScale());
@@ -51,6 +57,22 @@ function AuthenticatedWorkspace({ currentUser, onLogout }) {
   const [autoStartTimer, setAutoStartTimer] = useState(() => loadAutoStartTimer());
   const [focusedExercise, setFocusedExercise] = useState(null);
   const [isScreensaverOpen, setIsScreensaverOpen] = useState(false);
+  const [autoDimPaused, setAutoDimPaused] = useState(false);
+
+  // Mapa de refs dos cards para retorno preciso ao exercício em foco após sair do Modo Foco
+  const exerciseCardRefs = useRef(new Map());
+
+  const scrollToExerciseByRawName = useCallback((rawName) => {
+    if (!rawName) return;
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        const el = exerciseCardRefs.current.get(rawName);
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      });
+    });
+  }, []);
 
   // Toast com suporte opcional a ação "Desfazer"
   const [toast, setToast] = useState(null);
@@ -128,11 +150,27 @@ function AuthenticatedWorkspace({ currentUser, onLogout }) {
   };
 
   const openPrinciplesSection = useCallback((section = null) => {
-    setPrinciplesState({ isOpen: true, section });
+    setPrinciplesState({
+      isOpen: true,
+      section,
+      highlightIds: [],
+      contextLabel: ''
+    });
+  }, []);
+
+  const openTechniqueHelp = useCallback((techniqueText) => {
+    const matches = findGlossaryEntriesForTechnique(techniqueText);
+    const highlightIds = matches.map((m) => m.id);
+    setPrinciplesState({
+      isOpen: true,
+      section: highlightIds[0] || 'glossario',
+      highlightIds,
+      contextLabel: techniqueText
+    });
   }, []);
 
   useFocusAutoDim({
-    enabled: true,
+    enabled: !autoDimPaused,
     focusedExercise,
     screensaverDelay,
     isScreensaverOpen,
@@ -314,6 +352,7 @@ function AuthenticatedWorkspace({ currentUser, onLogout }) {
     const saved = logs.logSet(canonicalKey, displayTitle, weight, reps);
     if (!saved) return null;
     setFocusedExercise(exerciseObj);
+    setAutoDimPaused(false);
     if (!options.suppressTimerAndToast) {
       if (autoStartTimer) {
         timer.startTimer(restSeconds, true, displayTitle);
@@ -385,6 +424,33 @@ function AuthenticatedWorkspace({ currentUser, onLogout }) {
       showToast(
         `${removed} ${removed === 1 ? 'registro apagado' : 'registros apagados'} (${scopeDesc} • ${periodDesc}).`
       );
+    }
+  };
+
+  const handleExitFocusMode = (completedOnExit = false) => {
+    const prevRawName = focusedExercise?.['Exercício'] || '';
+    setIsScreensaverOpen(false);
+    // Pausa o auto-dim após saída explícita para não "puxar" o usuário de volta 20s depois
+    setAutoDimPaused(true);
+
+    if (completedOnExit) {
+      const nextPending = filteredExercises.find((ex) => {
+        const exRaw = ex['Exercício'] || '';
+        if (exRaw === prevRawName) return false;
+        return !logs.completedInCurrentScope.includes(getCanonicalExerciseKey(exRaw));
+      });
+      if (nextPending) {
+        setFocusedExercise(nextPending);
+        scrollToExerciseByRawName(nextPending['Exercício']);
+      } else {
+        setFocusedExercise(null);
+      }
+      return;
+    }
+
+    // Retorno normal: mantém o exercício em foco e centraliza o card na tela principal
+    if (prevRawName) {
+      scrollToExerciseByRawName(prevRawName);
     }
   };
 
@@ -506,22 +572,29 @@ function AuthenticatedWorkspace({ currentUser, onLogout }) {
               return (
                 <ExerciseCard
                   key={`${effectiveMonth}-${selectedWorkout}-${rawName}`}
+                  cardRef={(el) => {
+                    if (el) exerciseCardRefs.current.set(rawName, el);
+                    else exerciseCardRefs.current.delete(rawName);
+                  }}
                   data={exercise}
                   onSaveSet={handleSaveSet}
                   onToggleComplete={handleToggleComplete}
                   onDeleteLog={handleDeleteLog}
                   onTriggerTimer={(seconds, exObj, title) => {
                     setFocusedExercise(exObj);
+                    setAutoDimPaused(false);
                     timer.startTimer(seconds, true, title);
                   }}
                   onOpenScreensaver={(exObj, restSeconds) => {
                     setFocusedExercise(exObj);
+                    setAutoDimPaused(false);
                     const title = getDisplayExerciseName(exObj['Exercício']);
                     // Prepara o tempo de descanso sem disparar a contagem antes da série ser executada
                     timer.prepareTimer(restSeconds, title);
                     setIsScreensaverOpen(true);
                   }}
                   onOpenPrincipleSection={openPrinciplesSection}
+                  onOpenTechniqueHelp={openTechniqueHelp}
                   isFocused={
                     Boolean(focusedExercise) && focusedExercise['Exercício'] === rawName
                   }
@@ -648,17 +721,27 @@ function AuthenticatedWorkspace({ currentUser, onLogout }) {
         onCancel={() => setResetModalTab(null)}
       />
 
-      {/* Modal de Princípios, Guia Offline do Mês e Glossário */}
+      {/* Modal de Princípios, Guia Offline do Mês e Glossário com Deep-Link Exato */}
       <PrinciplesModal
+        key={principlesState.isOpen ? `${principlesState.section || 'top'}-${principlesState.contextLabel}` : 'principles-closed'}
         isOpen={principlesState.isOpen}
-        onClose={() => setPrinciplesState({ isOpen: false, section: null })}
+        onClose={() =>
+          setPrinciplesState({
+            isOpen: false,
+            section: null,
+            highlightIds: [],
+            contextLabel: ''
+          })
+        }
         initialSection={principlesState.section}
+        highlightIds={principlesState.highlightIds}
+        contextLabel={principlesState.contextLabel}
         selectedMonth={effectiveMonth}
       />
 
       {/* Modo Foco OLED (Screensaver Interativo com registro de série integrado) */}
       <FocusScreensaver
-        key={focusedExercise ? focusedExercise['Exercício'] : 'focus-idle'}
+        key={isScreensaverOpen && focusedExercise ? `${focusedExercise['Exercício']}-open` : 'focus-idle'}
         isOpen={isScreensaverOpen}
         exercise={focusedExercise}
         lastLog={focusedLastLog}
@@ -679,7 +762,7 @@ function AuthenticatedWorkspace({ currentUser, onLogout }) {
           })
         }
         onToggleComplete={handleToggleComplete}
-        onExit={() => setIsScreensaverOpen(false)}
+        onExit={handleExitFocusMode}
       />
 
       {/* Cronômetro de Descanso Flutuante */}
