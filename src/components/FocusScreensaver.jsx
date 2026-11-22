@@ -13,7 +13,9 @@ import {
   Save,
   Check,
   CheckCircle2,
-  HelpCircle
+  HelpCircle,
+  Link2,
+  ArrowRight
 } from 'lucide-react';
 import ExerciseSilhouette from './ExerciseSilhouette';
 import {
@@ -32,6 +34,7 @@ const WAKELOCK_IDLE_RELEASE_MS = 90 * 1000;
 export default function FocusScreensaver({
   isOpen,
   exercise,
+  pairContext = null,
   lastLog,
   todaySetsCount = 0,
   isCompleted = false,
@@ -202,6 +205,8 @@ export default function FocusScreensaver({
     if (lastLog.reps) setReps(String(lastLog.reps));
   };
 
+  const isPairFirstStep = Boolean(pairContext && pairContext.step === 1 && pairContext.onSwitchToPartner);
+
   const handleSaveSetInFocus = (e) => {
     if (e) e.preventDefault();
     if (!canSave || !onSaveSet) return;
@@ -212,7 +217,15 @@ export default function FocusScreensaver({
       document.activeElement.blur();
     }
     setIsInputFocused(false);
-    // Salvar a série confirmada no Modo Foco dispara o descanso automaticamente
+
+    // Se for o exercício 1/2 de um par conectado, NÃO inicia descanso -> alterna direto para o 2/2 (0s)!
+    if (isPairFirstStep) {
+      setReps('');
+      pairContext.onSwitchToPartner();
+      return;
+    }
+
+    // Salvar o exercício normal ou 2/2 do par dispara o descanso completo automaticamente
     timer.startTimer(restSeconds, false, displayName);
     setReps('');
     setSavedSuccess(true);
@@ -315,11 +328,28 @@ export default function FocusScreensaver({
           />
 
           <span className="text-xs font-bold uppercase tracking-widest text-sky-600 mt-1">
+            {pairContext ? `${pairContext.pairType} ${pairContext.step}/${pairContext.total} • ` : ''}
             {exercise['Grupo muscular']}
           </span>
           <h2 className="text-base font-bold text-zinc-300 leading-snug mt-0.5 px-2">
             {displayName}
           </h2>
+
+          {pairContext && pairContext.onSwitchToPartner && (
+            <button
+              type="button"
+              onClick={pairContext.onSwitchToPartner}
+              className="mt-1.5 min-h-[34px] inline-flex items-center gap-1.5 bg-black hover:border-amber-700 border border-amber-950 px-3 py-1 rounded-full text-xs text-amber-400/90 max-w-full transition-colors cursor-pointer"
+            >
+              <Link2 className="w-3.5 h-3.5 flex-shrink-0" />
+              <span className="truncate">
+                {pairContext.step === 1
+                  ? `Próximo (0s): ${pairContext.partnerName}`
+                  : `Voltar p/ 1/2: ${pairContext.partnerName}`}
+              </span>
+              <ArrowRight className="w-3.5 h-3.5 flex-shrink-0" />
+            </button>
+          )}
 
           {/* Badges ultra-dim (fundo #000000 puro + borda fina) */}
           <div className="flex flex-wrap items-center justify-center gap-1.5 mt-2 text-xs font-medium">
@@ -437,6 +467,10 @@ export default function FocusScreensaver({
               <span>
                 {savedSuccess
                   ? 'Salva • Descansando!'
+                  : isPairFirstStep
+                  ? todaySetsCount > 0
+                    ? `Salvar #${todaySetsCount + 1} & Ir p/ 2/2`
+                    : 'Salvar & Ir p/ 2/2 (0s)'
                   : todaySetsCount > 0
                   ? `Salvar #${todaySetsCount + 1} & Descansar`
                   : 'Salvar & Descansar'}

@@ -334,12 +334,19 @@ const CANONICAL_EXERCISE_ALIASES = {
   "rosca direta (refinamento)": "rosca_direta_barra",
   "rosca direta (barra w)": "rosca_direta_barra_w",
   "rosca direta com barra w": "rosca_direta_barra_w",
+  "rosca alternada (halteres)": "rosca_alternada",
+  "rosca alternada": "rosca_alternada",
+  "rosca concentrada": "rosca_concentrada",
+  "rosca concentracao": "rosca_concentrada",
   "rosca martelo": "rosca_martelo",
   "rosca martelo (hammer curls)": "rosca_martelo",
   "triceps testa": "triceps_testa",
+  "triceps testa (barra)": "triceps_testa",
   "triceps testa (skull crushers)": "triceps_testa",
   "rosca testa": "triceps_testa",
+  "supino fechado (triceps supinado)": "supino_fechado_triceps",
   "triceps no pulley (barra reta)": "triceps_pulley",
+  "triceps no pulley (polia alta)": "triceps_pulley",
   "triceps pulley (refinamento)": "triceps_pulley",
   "triceps no pulley (cabo)": "triceps_pulley",
   "extensao de triceps no pulley": "triceps_pulley",
@@ -449,4 +456,103 @@ export const parseCSV = (text) => {
     }
   }
   return result;
+};
+
+/**
+ * Faz o parse determinístico da coluna M ("Conexão"), ex.: "PAR-1 | Pré-Exaustão (1/2)".
+ * Retorna { pairId, pairType, step, total } ou null se não conectado.
+ */
+export const parseExerciseConnection = (rawConnection = "") => {
+  const txt = String(rawConnection || "").trim();
+  if (!txt) return null;
+  const match = txt.match(/^(PAR-\d+)\s*\|\s*(.+?)\s*\((\d+)\s*\/\s*(\d+)\)$/i);
+  if (!match) return null;
+  return {
+    pairId: match[1].toUpperCase(),
+    pairType: match[2].trim(),
+    step: parseInt(match[3], 10),
+    total: parseInt(match[4], 10)
+  };
+};
+
+/**
+ * Agrupa exercícios visíveis em unidades de renderização ("single" ou "pair"):
+ * - Pares completos ficam unidos em um único bloco (1/2 -> 2/2) enquanto ao menos 1 estiver pendente;
+ * - Se um filtro (ex.: Ocultar Opcionais ou busca) esconder um dos lados, o remanescente degrada limpo para "single".
+ */
+export const buildExerciseRenderUnits = (exercises = [], completedKeys = []) => {
+  const completedSet = new Set(completedKeys || []);
+  const pairBuckets = new Map();
+  const singles = [];
+
+  exercises.forEach((exercise) => {
+    const conn = parseExerciseConnection(exercise['Conexão']);
+    if (conn) {
+      if (!pairBuckets.has(conn.pairId)) {
+        pairBuckets.set(conn.pairId, { pairId: conn.pairId, pairType: conn.pairType, entries: [] });
+      }
+      pairBuckets.get(conn.pairId).entries.push({ exercise, conn });
+    } else {
+      singles.push(exercise);
+    }
+  });
+
+  const units = [];
+
+  const getOrderNum = (ex) => {
+    const n = parseInt(ex['Ordem'], 10);
+    return Number.isNaN(n) ? 999 : n;
+  };
+
+  pairBuckets.forEach(({ pairId, pairType, entries }) => {
+    if (entries.length >= 2) {
+      const sortedEntries = [...entries].sort((a, b) => a.conn.step - b.conn.step);
+      const pairExercises = sortedEntries.map((e) => e.exercise);
+      const allCompleted = pairExercises.every((ex) =>
+        completedSet.has(getCanonicalExerciseKey(ex['Exercício']))
+      );
+      units.push({
+        type: 'pair',
+        pairId,
+        pairType,
+        exercises: pairExercises,
+        connections: sortedEntries.map((e) => e.conn),
+        allCompleted,
+        sortOrder: Math.min(...pairExercises.map(getOrderNum)),
+        primaryExercise: pairExercises[0]
+      });
+    } else if (entries.length === 1) {
+      singles.push(entries[0].exercise);
+    }
+  });
+
+  singles.forEach((exercise) => {
+    const isCompleted = completedSet.has(getCanonicalExerciseKey(exercise['Exercício']));
+    units.push({
+      type: 'single',
+      exercise,
+      allCompleted: isCompleted,
+      sortOrder: getOrderNum(exercise),
+      primaryExercise: exercise
+    });
+  });
+
+  return units.sort((a, b) => {
+    if (a.allCompleted !== b.allCompleted) return a.allCompleted ? 1 : -1;
+    if (a.sortOrder !== b.sortOrder) return a.sortOrder - b.sortOrder;
+
+    const groupA = (a.primaryExercise['Grupo muscular'] || '').trim();
+    const groupB = (b.primaryExercise['Grupo muscular'] || '').trim();
+    const cmpGroup = groupA.localeCompare(groupB, 'pt-BR');
+    if (cmpGroup !== 0) return cmpGroup;
+
+    const optA = isOptionalExercise(a.primaryExercise['Exercício']);
+    const optB = isOptionalExercise(b.primaryExercise['Exercício']);
+    if (optA !== optB) return optA ? 1 : -1;
+
+    return getDisplayExerciseName(a.primaryExercise['Exercício']).localeCompare(
+      getDisplayExerciseName(b.primaryExercise['Exercício']),
+      'pt-BR'
+    );
+  });
 };

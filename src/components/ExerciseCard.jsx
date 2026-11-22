@@ -8,7 +8,8 @@ import {
   Moon,
   HelpCircle,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  ArrowRight
 } from 'lucide-react';
 import {
   isOptionalExercise,
@@ -35,6 +36,7 @@ function explainCadence(cadenceText) {
 export default function ExerciseCard({
   data,
   cardRef = null,
+  pairMeta = null,
   onSaveSet,
   onToggleComplete,
   onDeleteLog,
@@ -79,6 +81,8 @@ export default function ExerciseCard({
     return (
       <ExerciseCardCompleted
         data={data}
+        cardRef={cardRef}
+        pairMeta={pairMeta}
         displayTitle={displayTitle}
         isOptional={isOptional}
         canonicalKey={canonicalKey}
@@ -119,6 +123,11 @@ export default function ExerciseCard({
       <div className={`p-3.5 border-b flex justify-between items-start gap-2 ${headerStyles}`}>
         <div className="flex-1 min-w-0">
           <div className="flex items-center flex-wrap gap-1.5 mb-1">
+            {pairMeta && (
+              <span className="text-xs font-extrabold bg-amber-950/80 text-amber-300 border border-amber-700/70 px-1.5 py-0.5 rounded-md font-mono">
+                {pairMeta.step}/{pairMeta.total}
+              </span>
+            )}
             {data['Ordem'] && data['Ordem'] !== '99' && (
               <span className="text-xs font-extrabold bg-zinc-800 text-zinc-200 border border-zinc-700 px-1.5 py-0.5 rounded-md font-mono">
                 #{data['Ordem']}
@@ -233,34 +242,63 @@ export default function ExerciseCard({
           </div>
         )}
 
-        {/* Descanso Recomendado + Botão Iniciar >= 44px */}
+        {/* Descanso Recomendado (ou Transição 0s quando for 1/2 de um par conectado) */}
         <div
           className={`${stackMetrics ? 'col-span-1' : 'col-span-2'} flex ${
             isExtraLarge ? 'flex-col items-stretch' : 'items-center justify-between'
           } gap-2.5 bg-black/70 p-2.5 rounded-xl border border-zinc-800/80`}
         >
           <div className="flex items-start gap-2 min-w-0">
-            <Timer className={`w-4 h-4 mt-0.5 flex-shrink-0 ${isOptional ? 'text-purple-400' : 'text-blue-400'}`} />
+            <Timer
+              className={`w-4 h-4 mt-0.5 flex-shrink-0 ${
+                pairMeta?.step === 1
+                  ? 'text-amber-400'
+                  : isOptional
+                  ? 'text-purple-400'
+                  : 'text-blue-400'
+              }`}
+            />
             <div className="min-w-0">
-              <span className="block text-zinc-400 text-xs font-semibold">Descanso</span>
+              <span className="block text-zinc-400 text-xs font-semibold">
+                {pairMeta?.step === 1
+                  ? 'Transição do Par'
+                  : pairMeta?.step === 2
+                  ? 'Descanso pós-par'
+                  : 'Descanso'}
+              </span>
               <span className="text-zinc-200 text-xs font-medium leading-snug">{restDescription}</span>
             </div>
           </div>
 
-          {onTriggerTimer && (
+          {pairMeta?.step === 1 && pairMeta.onJumpToPartner ? (
             <button
               type="button"
               onClick={(e) => {
                 e.stopPropagation();
-                unlockTimerAudio();
-                onTriggerTimer(restSeconds, data, displayTitle);
+                pairMeta.onJumpToPartner();
               }}
-              className="min-h-[44px] px-3.5 py-2 flex items-center justify-center gap-1.5 rounded-xl bg-blue-950/80 hover:bg-blue-900 border border-blue-700/70 text-blue-200 hover:text-white text-xs font-extrabold flex-shrink-0 transition-colors cursor-pointer"
-              title={`Iniciar cronômetro de ${restSeconds}s`}
+              className="min-h-[44px] px-3 py-2 flex items-center justify-center gap-1.5 rounded-xl bg-amber-950/70 hover:bg-amber-900/70 border border-amber-700/70 text-amber-200 hover:text-white text-xs font-extrabold flex-shrink-0 transition-colors cursor-pointer"
+              title={`Ir direto para ${pairMeta.partnerName} (0s)`}
             >
-              <Timer className="w-4 h-4" />
-              <span>Iniciar {restSeconds}s</span>
+              <span>Ir p/ 2/2 (0s)</span>
+              <ArrowRight className="w-4 h-4" />
             </button>
+          ) : (
+            onTriggerTimer && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  unlockTimerAudio();
+                  onTriggerTimer(restSeconds, data, displayTitle);
+                }}
+                className="min-h-[44px] px-3.5 py-2 flex items-center justify-center gap-1.5 rounded-xl bg-blue-950/80 hover:bg-blue-900 border border-blue-700/70 text-blue-200 hover:text-white text-xs font-extrabold flex-shrink-0 transition-colors cursor-pointer"
+                title={`Iniciar cronômetro de ${restSeconds}s`}
+              >
+                <Timer className="w-4 h-4" />
+                <span>Iniciar {restSeconds}s</span>
+              </button>
+            )
           )}
         </div>
 

@@ -5,7 +5,10 @@ import {
   sortMonthsChronologically,
   isOptionalExercise,
   getDisplayExerciseName,
-  getCanonicalExerciseKey
+  getCanonicalExerciseKey,
+  parseRestSeconds,
+  cleanAdvancedTechnique,
+  buildExerciseRenderUnits
 } from './utils/exerciseNormalizer';
 import { findGlossaryEntriesForTechnique } from './utils/glossaryData';
 import { getCurrentSession, logoutUser } from './services/authService';
@@ -27,6 +30,7 @@ import MonthAndGuidesBar from './components/MonthAndGuidesBar';
 import WorkoutTabs from './components/WorkoutTabs';
 import WorkoutFilters from './components/WorkoutFilters';
 import ExerciseCard from './components/ExerciseCard';
+import ExercisePairGroup from './components/ExercisePairGroup';
 import ProfileDrawer from './components/ProfileDrawer';
 import ConfirmResetModal from './components/ConfirmResetModal';
 import ResultsModal from './components/ResultsModal';
@@ -275,10 +279,10 @@ function AuthenticatedWorkspace({ currentUser, onLogout }) {
     };
   }, [baseWorkoutExercises, logs.completedInCurrentScope]);
 
-  // Lista filtrada e ordenada (pendentes primeiro -> Ordem biomecânica -> Grupo -> Obrigatório -> Nome)
+  // Lista filtrada e unidades de renderização (agrupa pares conectados 1/2 -> 2/2 mantendo o par unido)
   const filteredExercises = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
-    const filtered = baseWorkoutExercises.filter((item) => {
+    return baseWorkoutExercises.filter((item) => {
       if (hideOptionals && isOptionalExercise(item['Exercício'])) return false;
       if (selectedMuscleGroup !== 'TODOS' && item['Grupo muscular'] !== selectedMuscleGroup) {
         return false;
@@ -292,7 +296,8 @@ function AuthenticatedWorkspace({ currentUser, onLogout }) {
           item['Exercício'],
           item['Grupo muscular'],
           item['Especificação do grupo muscular'],
-          item['Técnica Avançada']
+          item['Técnica Avançada'],
+          item['Conexão']
         ]
           .filter(Boolean)
           .join(' ')
@@ -300,36 +305,6 @@ function AuthenticatedWorkspace({ currentUser, onLogout }) {
         if (!haystack.includes(q)) return false;
       }
       return true;
-    });
-
-    return filtered.sort((a, b) => {
-      const keyA = getCanonicalExerciseKey(a['Exercício']);
-      const keyB = getCanonicalExerciseKey(b['Exercício']);
-
-      const isCompletedA = logs.completedInCurrentScope.includes(keyA);
-      const isCompletedB = logs.completedInCurrentScope.includes(keyB);
-      if (isCompletedA !== isCompletedB) return isCompletedA ? 1 : -1;
-
-      const orderA = parseInt(a['Ordem'], 10);
-      const orderB = parseInt(b['Ordem'], 10);
-      const hasOrderA = !Number.isNaN(orderA);
-      const hasOrderB = !Number.isNaN(orderB);
-      if (hasOrderA && hasOrderB && orderA !== orderB) return orderA - orderB;
-      if (hasOrderA !== hasOrderB) return hasOrderA ? -1 : 1;
-
-      const groupA = (a['Grupo muscular'] || '').trim();
-      const groupB = (b['Grupo muscular'] || '').trim();
-      const compareGroup = groupA.localeCompare(groupB, 'pt-BR');
-      if (compareGroup !== 0) return compareGroup;
-
-      const optA = isOptionalExercise(a['Exercício']);
-      const optB = isOptionalExercise(b['Exercício']);
-      if (optA !== optB) return optA ? 1 : -1;
-
-      return getDisplayExerciseName(a['Exercício']).localeCompare(
-        getDisplayExerciseName(b['Exercício']),
-        'pt-BR'
-      );
     });
   }, [
     baseWorkoutExercises,
@@ -339,6 +314,41 @@ function AuthenticatedWorkspace({ currentUser, onLogout }) {
     searchQuery,
     logs.completedInCurrentScope
   ]);
+
+  const exerciseRenderUnits = useMemo(
+    () => buildExerciseRenderUnits(filteredExercises, logs.completedInCurrentScope),
+    [filteredExercises, logs.completedInCurrentScope]
+  );
+
+  // Mapa rápido de metadados de par para cada exercício visível conectado (usado no card, auto-timer e Modo Foco)
+  const activePairMetaByRawName = useMemo(() => {
+    const map = new Map();
+    exerciseRenderUnits.forEach((unit) => {
+      if (unit.type !== 'pair' || unit.exercises.length < 2) return;
+      const [firstEx, secondEx] = unit.exercises;
+      const [firstConn, secondConn] = unit.connections;
+      const firstRaw = firstEx['Exercício'] || '';
+      const secondRaw = secondEx['Exercício'] || '';
+
+      map.set(firstRaw, {
+        pairId: unit.pairId,
+        pairType: unit.pairType,
+        step: firstConn.step,
+        total: firstConn.total,
+        partnerExercise: secondEx,
+        partnerName: getDisplayExerciseName(secondRaw)
+      });
+      map.set(secondRaw, {
+        pairId: unit.pairId,
+        pairType: unit.pairType,
+        step: secondConn.step,
+        total: secondConn.total,
+        partnerExercise: firstEx,
+        partnerName: getDisplayExerciseName(firstRaw)
+      });
+    });
+    return map;
+  }, [exerciseRenderUnits]);
 
   const handleSaveSet = (
     canonicalKey,
@@ -351,10 +361,19 @@ function AuthenticatedWorkspace({ currentUser, onLogout }) {
   ) => {
     const saved = logs.logSet(canonicalKey, displayTitle, weight, reps);
     if (!saved) return null;
-    setFocusedExercise(exerciseObj);
+
+    const pairMeta = exerciseObj ? activePairMetaByRawName.get(exerciseObj['Exercício'] || '') : null;
+    const isPairFirstStep = Boolean(pairMeta && pairMeta.step === 1 && pairMeta.partnerExercise);
+
+    setFocusedExercise(isPairFirstStep && !options.suppressTimerAndToast ? pairMeta.partnerExercise : exerciseObj);
     setAutoDimPaused(false);
+
     if (!options.suppressTimerAndToast) {
-      if (autoStartTimer) {
+      if (isPairFirstStep) {
+        // Exercício 1/2 de um par: 0s de descanso -> orienta ir direto ao 2/2 e centraliza nele
+        showToast(`Série #${saved.setNumber} salva • Vá direto p/ 2/2: ${pairMeta.partnerName} (0s)!`);
+        scrollToExerciseByRawName(pairMeta.partnerExercise['Exercício']);
+      } else if (autoStartTimer) {
         timer.startTimer(restSeconds, true, displayTitle);
         showToast(`Série #${saved.setNumber} salva • Descanso ${restSeconds}s iniciado!`);
       } else {
@@ -563,47 +582,77 @@ function AuthenticatedWorkspace({ currentUser, onLogout }) {
           uiScale={uiScale}
         />
 
-        {/* Lista de Exercícios (chave estável inclui nome bruto para evitar colisão em Julho|A) */}
+        {/* Lista de Exercícios (cards individuais e blocos conectados de pares 1/2 -> 2/2) */}
         <div>
-          {filteredExercises.length > 0 ? (
-            filteredExercises.map((exercise) => {
-              const rawName = exercise['Exercício'] || '';
-              const canonicalKey = getCanonicalExerciseKey(rawName);
-              return (
-                <ExerciseCard
-                  key={`${effectiveMonth}-${selectedWorkout}-${rawName}`}
-                  cardRef={(el) => {
-                    if (el) exerciseCardRefs.current.set(rawName, el);
-                    else exerciseCardRefs.current.delete(rawName);
-                  }}
-                  data={exercise}
-                  onSaveSet={handleSaveSet}
-                  onToggleComplete={handleToggleComplete}
-                  onDeleteLog={handleDeleteLog}
-                  onTriggerTimer={(seconds, exObj, title) => {
-                    setFocusedExercise(exObj);
-                    setAutoDimPaused(false);
-                    timer.startTimer(seconds, true, title);
-                  }}
-                  onOpenScreensaver={(exObj, restSeconds) => {
-                    setFocusedExercise(exObj);
-                    setAutoDimPaused(false);
-                    const title = getDisplayExerciseName(exObj['Exercício']);
-                    // Prepara o tempo de descanso sem disparar a contagem antes da série ser executada
-                    timer.prepareTimer(restSeconds, title);
-                    setIsScreensaverOpen(true);
-                  }}
-                  onOpenPrincipleSection={openPrinciplesSection}
-                  onOpenTechniqueHelp={openTechniqueHelp}
-                  isFocused={
-                    Boolean(focusedExercise) && focusedExercise['Exercício'] === rawName
-                  }
-                  history={logs.workoutLogs[canonicalKey] || []}
-                  todaySetsCount={logs.getTodaySetsCount(canonicalKey)}
-                  isCompleted={logs.completedInCurrentScope.includes(canonicalKey)}
-                  uiScale={uiScale}
-                />
-              );
+          {exerciseRenderUnits.length > 0 ? (
+            exerciseRenderUnits.map((unit) => {
+              const renderCard = (exercise) => {
+                const rawName = exercise['Exercício'] || '';
+                const canonicalKey = getCanonicalExerciseKey(rawName);
+                const rawPairMeta = activePairMetaByRawName.get(rawName) || null;
+                const pairMeta = rawPairMeta
+                  ? {
+                      ...rawPairMeta,
+                      onJumpToPartner: () => {
+                        setFocusedExercise(rawPairMeta.partnerExercise);
+                        setAutoDimPaused(false);
+                        scrollToExerciseByRawName(rawPairMeta.partnerExercise['Exercício']);
+                      }
+                    }
+                  : null;
+
+                return (
+                  <ExerciseCard
+                    key={`${effectiveMonth}-${selectedWorkout}-${rawName}`}
+                    cardRef={(el) => {
+                      if (el) exerciseCardRefs.current.set(rawName, el);
+                      else exerciseCardRefs.current.delete(rawName);
+                    }}
+                    pairMeta={pairMeta}
+                    data={exercise}
+                    onSaveSet={handleSaveSet}
+                    onToggleComplete={handleToggleComplete}
+                    onDeleteLog={handleDeleteLog}
+                    onTriggerTimer={(seconds, exObj, title) => {
+                      setFocusedExercise(exObj);
+                      setAutoDimPaused(false);
+                      timer.startTimer(seconds, true, title);
+                    }}
+                    onOpenScreensaver={(exObj, restSeconds) => {
+                      setFocusedExercise(exObj);
+                      setAutoDimPaused(false);
+                      const title = getDisplayExerciseName(exObj['Exercício']);
+                      timer.prepareTimer(restSeconds, title);
+                      setIsScreensaverOpen(true);
+                    }}
+                    onOpenPrincipleSection={openPrinciplesSection}
+                    onOpenTechniqueHelp={openTechniqueHelp}
+                    isFocused={
+                      Boolean(focusedExercise) && focusedExercise['Exercício'] === rawName
+                    }
+                    history={logs.workoutLogs[canonicalKey] || []}
+                    todaySetsCount={logs.getTodaySetsCount(canonicalKey)}
+                    isCompleted={logs.completedInCurrentScope.includes(canonicalKey)}
+                    uiScale={uiScale}
+                  />
+                );
+              };
+
+              if (unit.type === 'pair') {
+                return (
+                  <ExercisePairGroup
+                    key={`${effectiveMonth}-${selectedWorkout}-${unit.pairId}`}
+                    pairId={unit.pairId}
+                    pairType={unit.pairType}
+                    allCompleted={unit.allCompleted}
+                    onOpenTechniqueHelp={openTechniqueHelp}
+                  >
+                    {unit.exercises.map(renderCard)}
+                  </ExercisePairGroup>
+                );
+              }
+
+              return renderCard(unit.exercise);
             })
           ) : (
             <div className="text-center py-10 px-4 bg-zinc-950 rounded-2xl border border-zinc-800 space-y-3">
@@ -739,11 +788,32 @@ function AuthenticatedWorkspace({ currentUser, onLogout }) {
         selectedMonth={effectiveMonth}
       />
 
-      {/* Modo Foco OLED (Screensaver Interativo com registro de série integrado) */}
+      {/* Modo Foco OLED (Screensaver Interativo com registro de série e troca de par 1/2 <-> 2/2) */}
       <FocusScreensaver
         key={isScreensaverOpen && focusedExercise ? `${focusedExercise['Exercício']}-open` : 'focus-idle'}
         isOpen={isScreensaverOpen}
         exercise={focusedExercise}
+        pairContext={(() => {
+          const rawMeta = focusedExercise
+            ? activePairMetaByRawName.get(focusedExercise['Exercício'] || '')
+            : null;
+          if (!rawMeta || !rawMeta.partnerExercise) return null;
+          return {
+            ...rawMeta,
+            onSwitchToPartner: () => {
+              const partner = rawMeta.partnerExercise;
+              const partnerTitle = getDisplayExerciseName(partner['Exercício']);
+              const partnerTech = cleanAdvancedTechnique(partner['Técnica Avançada']);
+              const partnerRest = parseRestSeconds(
+                partner['Descanso'],
+                partnerTech,
+                partner['Grupo muscular']
+              );
+              setFocusedExercise(partner);
+              timer.prepareTimer(partnerRest, partnerTitle);
+            }
+          };
+        })()}
         lastLog={focusedLastLog}
         todaySetsCount={
           focusedExercise

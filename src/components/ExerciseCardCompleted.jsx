@@ -4,6 +4,8 @@ import { formatWeightDisplay } from '../utils/numberFormat';
 
 export default function ExerciseCardCompleted({
   data,
+  cardRef = null,
+  pairMeta = null,
   displayTitle,
   isOptional,
   canonicalKey,
@@ -13,13 +15,21 @@ export default function ExerciseCardCompleted({
   isScaledUp = false
 }) {
   return (
-    <div className="bg-emerald-950/35 border border-emerald-800/80 rounded-2xl p-3 mb-2.5 flex items-center justify-between gap-2.5 shadow-sm transition-all">
+    <div
+      ref={cardRef}
+      className="scroll-mt-20 bg-emerald-950/35 border border-emerald-800/80 rounded-2xl p-3 mb-2.5 flex items-center justify-between gap-2.5 shadow-sm transition-all"
+    >
       <div className="flex items-center gap-3 overflow-hidden flex-1 min-w-0">
         <div className="bg-emerald-800/80 p-2 rounded-full flex-shrink-0">
           <Check className="w-4 h-4 text-emerald-100" />
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex items-center flex-wrap gap-1.5">
+            {pairMeta && (
+              <span className="text-xs font-extrabold bg-amber-950/80 text-amber-300 border border-amber-700/70 px-1.5 py-0.5 rounded-md font-mono">
+                {pairMeta.step}/{pairMeta.total}
+              </span>
+            )}
             <span className="text-xs font-bold text-emerald-400 uppercase tracking-wider truncate">
               {data['Grupo muscular']}
             </span>
