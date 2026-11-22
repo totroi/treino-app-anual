@@ -4,8 +4,6 @@ import {
   playAlarmBurst,
   stopSharedAudio,
   triggerSafeVibration,
-  startSilentKeepAlive,
-  stopSilentKeepAlive,
   resumeAudioFromInterruption
 } from '../utils/timerAudio';
 
@@ -33,7 +31,10 @@ export function useRestTimer() {
     triggerSafeVibration(0);
   }, []);
 
-  // Loop de alarme contínuo quando o cronômetro zera + recuperação imediata ao voltar do WhatsApp / Gravação de Tela no iOS
+  // Loop de alarme contínuo quando o cronômetro zera:
+  // - Faz FADE (ducking via audioSession = 'transient') na música do Deezer/Spotify sem pausá-la
+  // - Preserva os 15 ciclos audíveis enquanto o usuário estiver fora do app (document.visibilityState === 'hidden'),
+  //   tocando o loop contínuo completo assim que o usuário retorna do WhatsApp até tocar em PARAR ALARME
   useEffect(() => {
     if (!isAlarmRinging) {
       if (alarmIntervalRef.current) {
@@ -43,12 +44,16 @@ export function useRestTimer() {
       return;
     }
 
-    if (soundEnabled) playAlarmBurst();
+    if (soundEnabled) playAlarmBurst({ force: true });
     triggerSafeVibration([250, 120, 250]);
 
     let cycles = 0;
     alarmIntervalRef.current = setInterval(() => {
-      cycles += 1;
+      const isHidden = typeof document !== 'undefined' && document.visibilityState === 'hidden';
+      // Só consome os 15 ciclos de timeout quando a aba está visível (evita esgotar o alarme mudo enquanto o usuário está no WhatsApp)
+      if (!isHidden) {
+        cycles += 1;
+      }
       if (cycles >= 15) {
         setIsAlarmRinging(false);
         clearInterval(alarmIntervalRef.current);
@@ -60,8 +65,7 @@ export function useRestTimer() {
       triggerSafeVibration([250, 120, 250]);
     }, 1100);
 
-    // Se o iOS colocou o áudio em 'interrupted' enquanto o usuário estava no WhatsApp/Deezer/Gravação de Tela,
-    // destrava e toca imediatamente no instante em que a aba volta a ficar visível ou recebe toque
+    // No instante em que o usuário volta do WhatsApp para o IronTracker, dispara imediatamente o 1º bipe do loop contínuo
     const handleWakeAlarmAudio = () => {
       if (!soundEnabled) return;
       if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
@@ -125,9 +129,6 @@ export function useRestTimer() {
     (secs, openPanel = true, exerciseLabel = '') => {
       unlockTimerAudio();
       stopAlarm();
-      if (soundEnabled) {
-        startSilentKeepAlive();
-      }
       const duration = Math.max(5, secs || 60);
       endTimeRef.current = Date.now() + duration * 1000;
       setTotalSeconds(duration);
@@ -137,7 +138,7 @@ export function useRestTimer() {
       if (exerciseLabel) setActiveExerciseName(exerciseLabel);
       if (openPanel) setIsOpen(true);
     },
-    [stopAlarm, soundEnabled]
+    [stopAlarm]
   );
 
   // Prepara o cronômetro com o tempo do exercício SEM iniciar a contagem (ex.: ao entrar no Modo Foco antes da série)
@@ -158,26 +159,22 @@ export function useRestTimer() {
     unlockTimerAudio();
     stopAlarm();
     if (isRunning) {
-      // Pausa mantendo segundos restantes exatos e encerra o keep-alive
+      // Pausa mantendo segundos restantes exatos
       const remaining = endTimeRef.current
         ? Math.max(0, Math.ceil((endTimeRef.current - Date.now()) / 1000))
         : secondsLeft;
       endTimeRef.current = null;
       setSecondsLeft(remaining);
       setIsRunning(false);
-      stopSilentKeepAlive();
       return;
     }
 
-    if (soundEnabled) {
-      startSilentKeepAlive();
-    }
     const resumeSecs = secondsLeft > 0 ? secondsLeft : totalSeconds || 60;
     endTimeRef.current = Date.now() + resumeSecs * 1000;
     setSecondsLeft(resumeSecs);
     setIsRunning(true);
     setJustFinished(false);
-  }, [isRunning, secondsLeft, totalSeconds, stopAlarm, soundEnabled]);
+  }, [isRunning, secondsLeft, totalSeconds, stopAlarm]);
 
   // Updater puro (sem aninhar setState dentro de outro updater)
   const addSeconds = useCallback(
@@ -191,18 +188,16 @@ export function useRestTimer() {
       const next = Math.max(5, base + delta);
       if (isRunning) {
         endTimeRef.current = Date.now() + next * 1000;
-        if (soundEnabled) startSilentKeepAlive();
       }
       setSecondsLeft(next);
       setTotalSeconds((prevTot) => Math.max(prevTot, next));
       setJustFinished(false);
     },
-    [isRunning, secondsLeft, stopAlarm, soundEnabled]
+    [isRunning, secondsLeft, stopAlarm]
   );
 
   const resetTimer = useCallback(() => {
     stopAlarm();
-    stopSilentKeepAlive();
     endTimeRef.current = null;
     setIsRunning(false);
     setSecondsLeft(totalSeconds);
@@ -219,15 +214,13 @@ export function useRestTimer() {
     setSoundEnabled((prev) => {
       const next = !prev;
       if (next) {
-        if (isRunning) startSilentKeepAlive();
-        playAlarmBurst();
+        playAlarmBurst({ force: true });
       } else {
         stopAlarm();
-        stopSilentKeepAlive();
       }
       return next;
     });
-  }, [stopAlarm, isRunning]);
+  }, [stopAlarm]);
 
   return {
     isOpen,
