@@ -81,7 +81,7 @@ test.describe('Tier 4 — Real-World End-to-End Scenarios (8 Journeys)', () => {
       name: 'Princípios Básicos da Hipertrofia e Guia do Mês',
     });
     expect(await auditNoBlueLeaks(page)).toEqual([]);
-    await expect(modal.locator('a[href*="docs.google.com/document"]')).toHaveCount(0);
+    await expect(modal.locator('a[href*="docs.google.com/document"]')).toHaveCount(1);
     await expect(modal).toContainText(/Chun-Li|Feminino/i);
     await modal.getByRole('button', { name: 'Fechar Princípios' }).click();
 

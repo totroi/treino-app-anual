@@ -534,9 +534,18 @@ test.describe('Tier 2 — Boundary, Negative & Edge Cases (F1–F10, 50 Cases)',
   // =========================================================================
   // F7 Boundaries (5 cases)
   // =========================================================================
-  test('T2-F7-01 @m2-contract Female PrinciplesModal omits MONTHLY_DOCS links across all 12 months', async ({
+  test('T2-F7-01 @m2-contract Female PrinciplesModal links to distinct female MONTHLY_DOCS_FEMALE across all 12 months', async ({
     page,
   }) => {
+    const normMod = await import(repoModule('src/utils/exerciseNormalizer.js'));
+    expect(typeof normMod.MONTHLY_DOCS_FEMALE).toBe('object');
+    for (const m of normMod.MONTHS_ORDER) {
+      expect(normMod.MONTHLY_DOCS_FEMALE[m]).toMatch(
+        /^https:\/\/docs\.google\.com\/document\/d\/[^/]+\/preview$/
+      );
+      expect(normMod.MONTHLY_DOCS_FEMALE[m]).not.toBe(normMod.MONTHLY_DOCS[m]);
+    }
+
     const creds = getFemaleCredentials();
     await page.goto('/');
     await loginViaUI(page, creds);
@@ -547,7 +556,9 @@ test.describe('Tier 2 — Boundary, Negative & Edge Cases (F1–F10, 50 Cases)',
       const modal = page.getByRole('dialog', {
         name: 'Princípios Básicos da Hipertrofia e Guia do Mês',
       });
-      await expect(modal.locator('a[href*="docs.google.com/document"]')).toHaveCount(0);
+      const link = modal.locator('a[href*="docs.google.com/document"]');
+      await expect(link).toHaveCount(1);
+      expect(await link.getAttribute('href')).toBe(normMod.MONTHLY_DOCS_FEMALE[month]);
       await modal.getByRole('button', { name: 'Fechar Princípios' }).click();
     }
   });

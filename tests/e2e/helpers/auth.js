@@ -44,7 +44,7 @@ export async function getMaleCredentials() {
 export function getFemaleCredentials() {
   return {
     username: process.env.E2E_FEMALE_USER || 'convidada',
-    password: process.env.E2E_FEMALE_PASS || 'convidada123',
+    password: process.env.E2E_FEMALE_PASS || 'treino2026',
   };
 }
 

@@ -28,6 +28,21 @@ export const MONTHLY_DOCS = {
   "Dezembro": "https://docs.google.com/document/d/1DB7OcpfK0iHNC2tq9DVEczigXBCTYpL7J6_xf-JcjpM/preview"
 };
 
+export const MONTHLY_DOCS_FEMALE = {
+  "Janeiro": "https://docs.google.com/document/d/1Lzmy5AFcBDeOCDS0EEHGhZRtE2TE4wbt7-8xqSXeZ1o/preview",
+  "Fevereiro": "https://docs.google.com/document/d/16UKitOdLpxmAyMyt8u-dfbyJpjWybkKuYVwwLGFarzw/preview",
+  "Março": "https://docs.google.com/document/d/15Yvw2XnEVAGwD8jkP__tw--VnmPmbArChaai3LHouWg/preview",
+  "Abril": "https://docs.google.com/document/d/1gjmA6tqi6T9-L9kJlQiDfTKhCrxqOXgDi40npomGJqM/preview",
+  "Maio": "https://docs.google.com/document/d/12RBTl3uwi5_ia1ybK-OtD47F4GipOLaP3NiKZ-CHGEM/preview",
+  "Junho": "https://docs.google.com/document/d/1AIi0B_VrQo2i-Jznb-5V8oBPxz6C-7cVAkNwtju7Fxg/preview",
+  "Julho": "https://docs.google.com/document/d/1yqekaZRMryQZM0QnxYTLZYSI10WqBRdog6RV53zj1iY/preview",
+  "Agosto": "https://docs.google.com/document/d/1DW4jRb6M_dapGsro0n9pY1kB6XdGggGz9frx1XDlaAg/preview",
+  "Setembro": "https://docs.google.com/document/d/1nGi-0d8QNrtoZR8GrMHhKgBAy5E9MxEzX1dygI6veFg/preview",
+  "Outubro": "https://docs.google.com/document/d/1KNJC-G5cPo0IbiqKtxeWCPgNWTrspU16uUuvQO2Hm2Y/preview",
+  "Novembro": "https://docs.google.com/document/d/1wvekEBAQKI9WZgRboVBZ-1DAdFKFNpnG8Nqc5Im8xDY/preview",
+  "Dezembro": "https://docs.google.com/document/d/1ZhKI5-IJwrnfoUOQ0-fj2A_gLRSAuhZkt4uQ4hgCqCE/preview"
+};
+
 export const MONTHLY_SUMMARIES = {
   "Fevereiro": {
     cycle: "Mês 01/12 • O Alicerce da Grandeza",
@@ -185,7 +200,9 @@ export const getMonthlySummaries = (sexo = "M") => {
 };
 
 export const getMonthlyDocs = (sexo = "M") => {
-  return String(sexo || "M").trim().toUpperCase() === "F" ? {} : MONTHLY_DOCS;
+  return String(sexo || "M").trim().toUpperCase() === "F"
+    ? MONTHLY_DOCS_FEMALE
+    : MONTHLY_DOCS;
 };
 
 export const getCurrentMonthName = () => {

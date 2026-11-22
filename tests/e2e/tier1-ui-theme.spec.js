@@ -188,7 +188,7 @@ test.describe('Tier 1 — Storage, Methodology, Pink Theme, Favicon & SVG (F6–
     expect(text).toMatch(/60\s*kg/i);
   });
 
-  test('T1-F7-02 @m2-contract Female Guia Mês renders MONTHLY_SUMMARIES_FEMALE and hides male Google Docs links', async ({
+  test('T1-F7-02 @m2-contract Female Guia Mês renders MONTHLY_SUMMARIES_FEMALE and links to female Google Docs guide', async ({
     page,
   }) => {
     const creds = getFemaleCredentials();
@@ -201,7 +201,11 @@ test.describe('Tier 1 — Storage, Methodology, Pink Theme, Favicon & SVG (F6–
       name: 'Princípios Básicos da Hipertrofia e Guia do Mês',
     });
     await expect(modal).toBeVisible();
-    await expect(modal.locator('a[href*="docs.google.com/document"]')).toHaveCount(0);
+    const docLink = modal.locator('a[href*="docs.google.com/document"]');
+    await expect(docLink).toHaveCount(1);
+    const href = await docLink.getAttribute('href');
+    expect(href).toContain('16UKitOdLpxmAyMyt8u-dfbyJpjWybkKuYVwwLGFarzw/preview');
+    expect(href).not.toContain('1KNjq9QURk1pzOzyA3TQ5dRaEY--NCSVuSrUHFeS0QDE');
     await expect(modal.locator('#guia-mes')).toContainText(/Fevereiro/i);
   });
 
