@@ -103,6 +103,91 @@ export const MONTHLY_SUMMARIES = {
   }
 };
 
+export const MONTHLY_SUMMARIES_FEMALE = {
+  "Fevereiro": {
+    cycle: "Mês 01/12 • O Alicerce Chun-Li (Quadríceps, Glúteos & Cintura Fina)",
+    school: "Arnold Schwarzenegger, Frédéric Delavier & Frank Zane",
+    orderRule: "Inferior I (Quads/Glúteo Alongado) → Superior Postural → Inferior II (Posteriores/Glúteo Pico) + Vacuum",
+    focus: "Construir base técnica com Leg Press sem lockout, Passada Longa (canela vertical e estiramento máximo do glúteo), Cadeira Abdutora com tronco inclinado (glúteo médio) e Stomach Vacuum obrigatório."
+  },
+  "Março": {
+    cycle: "Mês 02/12 • Consolidação e Tensão Contínua 3/4",
+    school: "Vince Gironda, Arnold & Delavier (Tensão Contínua Sem Lockout)",
+    orderRule: "Compostos sem bloqueio articular → Isoladores de pico 2s → Sóleo a 90º + Vacuum",
+    focus: "Movimentos 3/4 no Leg Press e Agachamento para proteger a articulação femoropatelar (ângulo Q), Elevação Pélvica com isometria no topo e foco estrito em deltoide lateral/posterior para cintura visualmente mais fina."
+  },
+  "Abril": {
+    cycle: "Mês 03/12 • O Ápice da Contração (Heavy Duty Feminino)",
+    school: "Mike Mentzer & Frédéric Delavier (HIT & Pré-Exaustão)",
+    orderRule: "Pré-Exaustão HIT: Isolador até a falha (1/2) → Composto imediato (2/2)",
+    focus: "Pares de Pré-Exaustão sem descanso (Extensora → Leg Press; Abdutora → Passada Longa; Mesa Flexora → Stiff) com cadência lenta e pausas passivas de 120–180s para ressíntese completa de Fosfocreatina (PCr)."
+  },
+  "Maio": {
+    cycle: "Mês 04/12 • Densidade Glúteo-Femoral e Choque Metabólico",
+    school: "Arnold Schwarzenegger & Vince Gironda (Alta Densidade 15–25 Reps)",
+    orderRule: "Compostos inferiores → Dropsets e Rest-Pause → Glúteo Médio & Vacuum",
+    focus: "Explorar a alta resistência feminina à fadiga e ação protetora do 17β-estradiol com faixas de 12–20 e 15–25 repetições, Dropsets em Extensora/Abdutora e contorno postural superior elegante."
+  },
+  "Junho": {
+    cycle: "Mês 05/12 • Proporção Áurea, Sweep Lateral e Linha de Cintura",
+    school: "Frank Zane, Vince Gironda & Delavier (Proporção & Simetria)",
+    orderRule: "Foco em Vasto Lateral/VMO e Glúteo Médio → Dorsal Superior Moderada → Sóleo & Vacuum",
+    focus: "Esculpir o 'deltoide do quadril' (glúteo médio/mínimo) e o sweep externo da coxa com alinhamento rigoroso do joelho ao 2º metatarso, mantendo cintura ultracompacta sem oblíquos pesados."
+  },
+  "Julho": {
+    cycle: "Mês 06/12 • Dureza Muscular e Pré-Exaustão Extrema (HIT Puro)",
+    school: "Mike Mentzer (HIT 1–2 Séries até a Falha Concêntrica)",
+    orderRule: "Pré-Exaustão HIT (1–2 séries estritas, 0s na transição 1/2 → 2/2, 180s de descanso)",
+    focus: "Volume ultracondensado na faixa de 12–20 repetições para membros inferiores (regra de Mentzer para pernas), negativas lentas e 180s de pausa passiva para recrutamento máximo de unidades motoras."
+  },
+  "Agosto": {
+    cycle: "Mês 07/12 • Consolidação HIT e Contração Estática no Pico",
+    school: "Mike Mentzer & Delavier (Cadência 4-0-4-2 & Isometria)",
+    orderRule: "Pré-Exaustão HIT (Extensora → Leg; Elevação Lateral → Puxada; Flexora → Stiff)",
+    focus: "Pausa estática de 2s no pico da Mesa Flexora, Extensora e Glúteo no Cabo, combinada com compostos seguros sem compressão lombar ou espessamento da linha de cintura."
+  },
+  "Setembro": {
+    cycle: "Mês 08/12 • Maturidade Miofibrilar e Detalhamento Inferior",
+    school: "John McCallum, Arnold & Frank Zane (Progressão & Alinhamento)",
+    orderRule: "Compostos progressivos → Unilaterais de longo alcance (Búlgaro/Passada) → Sóleo & Vacuum",
+    focus: "Retorno ao volume moderado-alto com Agachamento Búlgaro e Passadas Longas para separação nítida entre quadríceps e isquiotibiais, preservando a cintura fina com Stomach Vacuum."
+  },
+  "Outubro": {
+    cycle: "Mês 09/12 • Densidade de Aço: Pré-Exaustão + Tensão 3/4",
+    school: "Mike Mentzer & Vince Gironda (Pré-Exaustão + Sem Lockout)",
+    orderRule: "Pré-Exaustão HIT nos 3 treinos → Panturrilhas a 90º → Vacuum (A/B/C)",
+    focus: "União cirúrgica da Pré-Exaustão de Mentzer com movimentos 3/4 contínuos, maximizando o recrutamento de glúteos, vastos e posteriores sem sobrecarga axial na coluna."
+  },
+  "Novembro": {
+    cycle: "Mês 10/12 • Refinamento Estético e Controle Excêntrico",
+    school: "Mentzer, Arnold & Delavier (Falha Estática & Negativas Controladas)",
+    orderRule: "Pré-Exaustão HIT → Isolamento de Glúteo em Pico → Vacuum (A/B/C)",
+    focus: "Ênfase na fase excêntrica controlada (4s) e isometria de pico no glúteo máximo e médio, preparando a musculatura inferior para o bloco final de choque."
+  },
+  "Dezembro": {
+    cycle: "Mês 11/12 • Sobrecarga Metabólica Final e Super-Séries",
+    school: "Arnold Schwarzenegger, Gironda & Zane (Bi-Sets & Stripping)",
+    orderRule: "Bi-Sets de Quadríceps e Glúteos → Stripping em Isoladores → Panturrilhas & Vacuum",
+    focus: "Pico de densidade metabólica anual com Bi-Sets e Stripping para saturar quadríceps, posteriores e glúteos, mantendo membros superiores tonificados e postura clavicular aberta."
+  },
+  "Janeiro": {
+    cycle: "Mês 12/12 • O Apogeu Chun-Li (Precisão Biomecânica Final)",
+    school: "Vince Gironda, Arnold, Frank Zane & Delavier",
+    orderRule: "Bi-Set Extensora + Hack Squat (Pés Próximos) → Glúteo Completo → Gêmeos Pés Alternados",
+    focus: "Fechamento do ciclo anual com Hack Squat de pés próximos (pausa mecânica de 1s no fundo para vasto lateral sem valgo dinâmico), Glúteo completo em 3 ângulos e Gêmeos com variação de pés (Arnold & Zane)."
+  }
+};
+
+export const getMonthlySummaries = (sexo = "M") => {
+  return String(sexo || "M").trim().toUpperCase() === "F"
+    ? MONTHLY_SUMMARIES_FEMALE
+    : MONTHLY_SUMMARIES;
+};
+
+export const getMonthlyDocs = (sexo = "M") => {
+  return String(sexo || "M").trim().toUpperCase() === "F" ? {} : MONTHLY_DOCS;
+};
+
 export const getCurrentMonthName = () => {
   return MONTHS_ORDER[new Date().getMonth()];
 };
@@ -126,6 +211,13 @@ const MUSCLE_GROUP_MAP = {
   "Membros Inferiores": "Pernas",
   "Pernas (Posterior)": "Pernas",
   "Adutores": "Pernas",
+  "Glúteo": "Glúteos",
+  "Glúteos": "Glúteos",
+  "Glúteo Máximo": "Glúteos",
+  "Glúteo Médio": "Glúteos",
+  "Glúteo / Posteriores": "Glúteos",
+  "Gluteo": "Glúteos",
+  "Gluteos": "Glúteos",
   "Abdominais": "Abdômen",
   "Braços (Completo)": "Braços",
   "Bíceps / Antebraço": "Bíceps",
@@ -396,7 +488,43 @@ const CANONICAL_EXERCISE_ALIASES = {
   "stomach vacuum (tecnica twin)": "stomach_vacuum",
   "vacuo abdominal (vacuum)": "stomach_vacuum",
   "stomach vacuum (vacuo)": "stomach_vacuum",
-  "vacuum (vacuo abdominal)": "stomach_vacuum"
+  "vacuum (vacuo abdominal)": "stomach_vacuum",
+  "stomach vacuum (vacuo abdominal)": "stomach_vacuum",
+
+  // Glúteos & Membros Inferiores Femininos (Estética Chun-Li)
+  "elevacao pelvica (hip thrust)": "elevacao_pelvica",
+  "elevacao pelvica": "elevacao_pelvica",
+  "hip thrust": "elevacao_pelvica",
+  "cadeira abdutora (tronco inclinado)": "cadeira_abdutora",
+  "cadeira abdutora": "cadeira_abdutora",
+  "abducao de quadril no cabo": "abducao_quadril_cabo",
+  "passada longa com halteres (lunges)": "passada_longa_halteres",
+  "agachamento bulgaro (halteres)": "agachamento_bulgaro",
+  "gluteo no cabo (kickback)": "gluteo_cabo_kickback",
+  "gluteo 4 apoios (caneleira)": "gluteo_4_apoios",
+  "hiperextensao de quadril (banco romano)": "hiperextensao_quadril",
+  "agachamento com halteres": "agachamento_halteres",
+  "agachamento paralelo (calcanhar no bloco)": "agachamento_paralelo_bloco",
+  "hack squat (pes proximos)": "hack_squat_pes_proximos",
+  "cadeira extensora": "cadeira_extensora",
+  "cadeira adutora": "cadeira_adutora",
+  "stiff com halteres (moderado)": "stiff_halteres",
+  "stiff com barra leve": "stiff_barra_leve",
+  "gemeos sentado (soleo 90o)": "gemeos_sentado_soleo",
+  "gemeos sentado (soleo 90º)": "gemeos_sentado_soleo",
+  "gemeos no leg press (pes alternados)": "gemeos_leg_press",
+  "crucifixo inclinado 30o (halteres)": "crucifixo_inclinado_halteres",
+  "crucifixo inclinado 30º (halteres)": "crucifixo_inclinado_halteres",
+  "crossover clavicular (polia)": "crossover_clavicular",
+  "pec deck (pegada neutra)": "pec_deck",
+  "crucifixo reto leve (halteres)": "crucifixo_reto",
+  "puxada alta pela frente (pegada aberta)": "puxada_alta",
+  "remada apoiada no banco (pegada aberta)": "remada_apoiada_aberta",
+  "remada baixa neutra moderada": "remada_baixa",
+  "remada unilateral leve (serrote)": "remada_serrote",
+  "elevacao lateral no cabo": "elevacao_lateral_cabo",
+  "crucifixo inverso (deltoide posterior)": "crucifixo_inverso_posterior",
+  "rosca martelo moderada": "rosca_martelo"
 };
 
 export const getCanonicalExerciseKey = (rawName) => {

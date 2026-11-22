@@ -41,8 +41,10 @@ export default function FocusScreensaver({
   timer,
   onSaveSet,
   onToggleComplete,
-  onExit
+  onExit,
+  sexo = 'M'
 }) {
+  const isFemale = String(sexo || 'M').trim().toUpperCase() === 'F';
   // Pré-preenche carga se já houver série ativa nesta sessão (continuidade rápida entre séries)
   const [weight, setWeight] = useState(() =>
     todaySetsCount > 0 && lastLog ? formatWeightDisplay(lastLog.weight) : ''
@@ -265,7 +267,7 @@ export default function FocusScreensaver({
           <ExerciseSilhouette
             exerciseName={displayName}
             muscleGroup={exercise['Grupo muscular']}
-            accentColor="#0369a1"
+            accentColor={isFemale ? '#be185d' : '#0369a1'}
             sizeClass="w-32 h-32"
             lowPower
             paused={!timer.isRunning}
@@ -322,7 +324,7 @@ export default function FocusScreensaver({
           <ExerciseSilhouette
             exerciseName={displayName}
             muscleGroup={exercise['Grupo muscular']}
-            accentColor={timer.isAlarmRinging ? '#10b981' : '#0284c7'}
+            accentColor={timer.isAlarmRinging ? '#10b981' : isFemale ? '#db2777' : '#0284c7'}
             sizeClass="w-24 h-24"
             lowPower
           />

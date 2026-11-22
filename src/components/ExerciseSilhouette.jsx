@@ -35,12 +35,51 @@ function detectArchetype(exerciseName = '', muscleGroup = '') {
   if (n.includes('vacuum') || n.includes('vácuo') || n.includes('abdom') || g.includes('abdômen')) {
     return 'vacuum';
   }
+  if (
+    n.includes('elevação pélvica') ||
+    n.includes('elevacao pelvica') ||
+    n.includes('hip thrust')
+  ) {
+    return 'hip_thrust';
+  }
+  if (
+    n.includes('abdutora') ||
+    n.includes('abdução') ||
+    n.includes('abducao')
+  ) {
+    return 'abduction';
+  }
+  if (
+    n.includes('passada') ||
+    n.includes('lunge') ||
+    n.includes('búlgaro') ||
+    n.includes('bulgaro') ||
+    n.includes('afundo')
+  ) {
+    return 'lunge';
+  }
+  if (
+    n.includes('4 apoios') ||
+    n.includes('extensão de quadril') ||
+    n.includes('extensao de quadril') ||
+    ((n.includes('coice') ||
+      n.includes('kickback') ||
+      n.includes('glúteo no cabo') ||
+      n.includes('gluteo no cabo')) &&
+      (n.includes('glúteo') ||
+        n.includes('gluteo') ||
+        g.includes('glúteo') ||
+        g.includes('gluteo')))
+  ) {
+    return 'kickback';
+  }
   if (n.includes('paralela') || n.includes('dip') || n.includes('mergulho')) return 'dips';
   if (
     n.includes('supino') ||
     n.includes('bench') ||
     n.includes('neck press') ||
     n.includes('crucifixo') ||
+    n.includes('crossover') ||
     n.includes('pec deck') ||
     n.includes('fly') ||
     n.includes('pull-over') ||
@@ -393,6 +432,74 @@ export default function ExerciseSilhouette({
             <polyline points="64,90 64,144 46,144" {...strokeProps} />
             <g style={{ transformOrigin: '90px 90px' }} className="anim-vacuum">
               <path d="M 68 96 Q 90 118 112 96" stroke={barColor} strokeWidth="3" fill="none" strokeDasharray="4 3" />
+            </g>
+          </g>
+        )}
+
+        {archetype === 'hip_thrust' && (
+          <g>
+            {/* Banco de apoio escapular + solo */}
+            <rect x="28" y="110" width="32" height="36" rx="4" {...dimStroke} />
+            <line x1="24" y1="146" x2="156" y2="146" {...dimStroke} />
+            <circle cx="48" cy="96" r="9" {...strokeProps} />
+            <g className="anim-lift-y">
+              {/* Tronco e pelve em extensão com barra sobre o quadril */}
+              <line x1="56" y1="104" x2="104" y2="102" {...strokeProps} />
+              <polyline points="104,102 132,114 134,146" {...strokeProps} />
+              <circle cx="102" cy="94" r="11" stroke={barColor} strokeWidth="3" fill="none" />
+              <circle cx="102" cy="94" r="4" fill={accentColor} />
+            </g>
+          </g>
+        )}
+
+        {archetype === 'abduction' && (
+          <g>
+            {/* Assento da cadeira abdutora com tronco levemente inclinado à frente */}
+            <rect x="68" y="96" width="44" height="10" rx="3" {...dimStroke} />
+            <line x1="76" y1="106" x2="70" y2="148" {...dimStroke} />
+            <line x1="104" y1="106" x2="110" y2="148" {...dimStroke} />
+            <circle cx="90" cy="46" r="9" {...strokeProps} />
+            <line x1="90" y1="56" x2="90" y2="96" {...strokeProps} />
+            <g style={{ transformOrigin: '82px 98px' }} className="anim-lateral-left">
+              <line x1="82" y1="98" x2="62" y2="142" {...strokeProps} />
+              <circle cx="62" cy="142" r="4.5" fill={barColor} />
+            </g>
+            <g style={{ transformOrigin: '98px 98px' }} className="anim-lateral-right">
+              <line x1="98" y1="98" x2="118" y2="142" {...strokeProps} />
+              <circle cx="118" cy="142" r="4.5" fill={barColor} />
+            </g>
+          </g>
+        )}
+
+        {archetype === 'lunge' && (
+          <g>
+            <line x1="26" y1="150" x2="154" y2="150" {...dimStroke} />
+            <g className="anim-lift-y-deep">
+              <circle cx="88" cy="44" r="9" {...strokeProps} />
+              <line x1="88" y1="54" x2="88" y2="98" {...strokeProps} />
+              {/* Passo longo (canela dianteira vertical + perna traseira estendida) */}
+              <polyline points="88,98 116,114 116,148" {...strokeProps} />
+              <polyline points="88,98 58,124 42,148" {...strokeProps} />
+              {/* Halter lateral */}
+              <line x1="88" y1="64" x2="88" y2="108" {...strokeProps} />
+              <rect x="80" y="106" width="16" height="7" rx="2" fill={barColor} />
+            </g>
+          </g>
+        )}
+
+        {archetype === 'kickback' && (
+          <g>
+            {/* Coluna do cabo / apoio frontal e solo */}
+            <line x1="42" y1="36" x2="42" y2="150" {...dimStroke} />
+            <line x1="28" y1="150" x2="154" y2="150" {...dimStroke} />
+            <circle cx="74" cy="56" r="9" {...strokeProps} />
+            <line x1="72" y1="66" x2="82" y2="104" {...strokeProps} />
+            <line x1="72" y1="74" x2="44" y2="86" {...strokeProps} />
+            <line x1="82" y1="104" x2="78" y2="148" {...strokeProps} />
+            {/* Perna em extensão terminal de quadril (coice glúteo) */}
+            <g style={{ transformOrigin: '82px 104px' }} className="anim-leg-ext">
+              <polyline points="82,104 112,124 134,136" {...strokeProps} />
+              <circle cx="134" cy="136" r="5" fill={barColor} />
             </g>
           </g>
         )}

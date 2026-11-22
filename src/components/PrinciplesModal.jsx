@@ -20,7 +20,7 @@ import {
   HelpCircle,
   Search
 } from 'lucide-react';
-import { MONTHLY_DOCS, MONTHLY_SUMMARIES } from '../utils/exerciseNormalizer';
+import { getMonthlyDocs, getMonthlySummaries } from '../utils/exerciseNormalizer';
 import { GLOSSARY_ITEMS } from '../utils/glossaryData';
 
 const PUMPER_EXAMPLES = [
@@ -124,6 +124,107 @@ const PUMPER_EXAMPLES = [
   }
 ];
 
+const PUMPER_EXAMPLES_FEMALE = [
+  {
+    group: 'Glúteos',
+    deficit: 'Glúteo sem projeção superior ou lateral ("deltoide do quadril")',
+    examples: [
+      {
+        name: 'Abdução na Cadeira ou Cabo em Pulsos Curtos (Tronco Inclinado)',
+        desc: 'Incline o tronco levemente à frente (Delavier) e bombeie apenas no terço final de abdução por 15–25 repetições curtas, saturando o glúteo médio e mínimo para afinar visualmente a cintura.'
+      },
+      {
+        name: 'Glúteo no Cabo ou 4 Apoios no Terço Final (Pico de Contração)',
+        desc: 'Execute micro-pulsos apenas nos últimos 20° de extensão do quadril (Arnold), mantendo o glúteo máximo esmagado em encurtamento total sem relaxar na descida.'
+      }
+    ]
+  },
+  {
+    group: 'Pernas',
+    deficit: 'Coxa sem curvatura externa (Sweep) ou gota medial (VMO)',
+    examples: [
+      {
+        name: 'Leg Press ou Hack (Pés Próximos) no Terço Médio-Baixo',
+        desc: 'Com os pés próximos e joelhos alinhados ao 2º metatarso (sem valgo dinâmico), pulse na metade inferior sem jamais travar os joelhos no topo para esculpir o vasto lateral.'
+      },
+      {
+        name: 'Cadeira Extensora ou Mesa Flexora em Pulsos de Pico',
+        desc: 'Na Extensora, bombeie no terço final de contração; na Mesa Flexora (tornozelos em dorsiflexão neutra), bombeie próximo aos glúteos para densidade nos isquiotibiais.'
+      }
+    ]
+  },
+  {
+    group: 'Panturrilhas',
+    deficit: 'Panturrilha fina / sóleo e gastrocnêmio resistentes',
+    examples: [
+      {
+        name: 'Gêmeos Sentado a 90º (Pulsos no Alongamento Profundo)',
+        desc: 'Com os joelhos a 90º (isolando o sóleo), bombeie do estiramento máximo no bloco alto até a metade do curso, eliminando o reflexo elástico.'
+      },
+      {
+        name: 'Gêmeos em Pé ou no Leg Press (Burns no Topo)',
+        desc: 'Na ponta dos pés, execute micro-repetições contínuas no terço superior, alternando pontas levemente para dentro ou fora (Arnold & Zane).'
+      }
+    ]
+  },
+  {
+    group: 'Ombros',
+    deficit: 'Linha clavicular estreita / postura arredondada',
+    examples: [
+      {
+        name: 'Elevação Lateral Parcial (Zona de Tensão 45°–90°)',
+        desc: 'Movimente os halteres apenas no arco médio-alto sem encostar no quadril (Gironda), arredondando o deltoide lateral sem ativar o trapézio superior.'
+      },
+      {
+        name: 'Crucifixo Inverso Curto (Deltoide Posterior & Postura)',
+        desc: 'Execute pulsos curtos no terço final de abertura horizontal para alinhar as escápulas, abrir a clavícula e destacar a cintura fina.'
+      }
+    ]
+  },
+  {
+    group: 'Costas',
+    deficit: 'Falta de alinhamento postural e silhueta ampulheta superior',
+    examples: [
+      {
+        name: 'Puxada Alta pela Frente no Terço Inicial (Depressão Escapular)',
+        desc: 'Com braços quase estendidos no topo, bombeie apenas o primeiro terço focando no redondo maior e dorsal superior (Gironda), sem alargar a cintura.'
+      },
+      {
+        name: 'Remada Aberta Apoiada em Pulsos de Retração',
+        desc: 'Com o peito apoiado no banco, pulse no terço final de retração escapular para firmeza postural superior sem carga compressiva na lombar.'
+      }
+    ]
+  },
+  {
+    group: 'Peitoral',
+    deficit: 'Falta de sustentação e contorno clavicular superior',
+    examples: [
+      {
+        name: 'Crucifixo Inclinado 30° Curto na Zona de Alongamento Suave',
+        desc: 'Com halteres leves no banco a 30°, bombeie no terço médio-baixo mantendo tensão contínua no feixe clavicular sem achatar a linha do busto.'
+      },
+      {
+        name: 'Crossover Clavicular em Micro-Pulsos de Adução',
+        desc: 'Nos cabos, execute pulsos curtos à frente da linha clavicular sem encostar as mãos, mantendo tônus firme e elegante.'
+      }
+    ]
+  },
+  {
+    group: 'Braços',
+    deficit: 'Falta de firmeza no tríceps posterior e contorno elegante do braço',
+    examples: [
+      {
+        name: 'Tríceps Pulley no Cabo (Pulsos no Terço Final)',
+        desc: 'Trabalhe apenas na metade inferior da extensão na polia, tonificando a porção posterior do braço sem deixar o antebraço subir acima de 90°.'
+      },
+      {
+        name: 'Rosca Martelo Moderada no Arco Médio',
+        desc: 'Com pegada neutra, execute pulsos curtos ao redor de 90° de flexão, mantendo braços enxutos, firmes e proporcionais.'
+      }
+    ]
+  }
+];
+
 const NAV_ITEMS = [
   { id: 'guia-mes', label: 'Guia Mês', color: 'text-sky-300 border-sky-800/70 bg-sky-950/50' },
   { id: 'principio-1', label: '1. Falha', color: 'text-rose-300 border-rose-800/70 bg-rose-950/50' },
@@ -157,9 +258,14 @@ export default function PrinciplesModal({
   initialSection = null,
   highlightIds = [],
   contextLabel = '',
-  selectedMonth = 'Fevereiro'
+  selectedMonth = 'Fevereiro',
+  sexo = 'M'
 }) {
-  const [selectedPumperGroup, setSelectedPumperGroup] = useState('Peitoral');
+  const isFemale = String(sexo || 'M').trim().toUpperCase() === 'F';
+  const pumperList = isFemale ? PUMPER_EXAMPLES_FEMALE : PUMPER_EXAMPLES;
+  const [selectedPumperGroup, setSelectedPumperGroup] = useState(
+    isFemale ? 'Glúteos' : 'Peitoral'
+  );
   const [expandedSections, setExpandedSections] = useState({});
   const [glossaryQuery, setGlossaryQuery] = useState('');
   const scrollContainerRef = useRef(null);
@@ -223,9 +329,9 @@ export default function PrinciplesModal({
   const highlightSet = new Set(highlightIds);
   const highlightedEntries = GLOSSARY_ITEMS.filter((item) => highlightSet.has(item.id));
 
-  const activePumper = PUMPER_EXAMPLES.find((p) => p.group === selectedPumperGroup) || PUMPER_EXAMPLES[0];
-  const monthSummary = MONTHLY_SUMMARIES[selectedMonth];
-  const monthDocLink = MONTHLY_DOCS[selectedMonth];
+  const activePumper = pumperList.find((p) => p.group === selectedPumperGroup) || pumperList[0];
+  const monthSummary = getMonthlySummaries(sexo)[selectedMonth];
+  const monthDocLink = getMonthlyDocs(sexo)[selectedMonth];
 
   return (
     <div
@@ -250,10 +356,14 @@ export default function PrinciplesModal({
               </div>
               <div className="min-w-0">
                 <h2 className="text-base sm:text-lg font-extrabold text-white leading-tight">
-                  Método Golden Era • Liga Leve
+                  {isFemale
+                    ? 'Método Golden Era • Liga Leve Feminino (Estética Chun-Li)'
+                    : 'Método Golden Era • Liga Leve'}
                 </h2>
                 <p className="text-xs text-zinc-400 mt-0.5">
-                  Resumo prático + aprofundamento científico
+                  {isFemale
+                    ? 'Fisiologia feminina, hipertrofia glúteo-femoral e cintura fina'
+                    : 'Resumo prático + aprofundamento científico'}
                 </p>
               </div>
             </div>
@@ -428,8 +538,15 @@ export default function PrinciplesModal({
               onToggle={() => toggleSection('p2')}
               label="Aprofundar na Regra de Execução Ininterrupta"
             >
-              <div className="bg-amber-950/25 border border-amber-800/40 rounded-xl p-3 text-sm text-amber-100 leading-relaxed">
-                No pico concêntrico muitos travam cotovelos ou joelhos para descansar o peso nos ossos; no pico excêntrico surge a tentação de quicar ou &ldquo;gingar&rdquo; o tronco. Eliminar esses micro-descansos mantém o recrutamento de unidades motoras de alto limiar (fibras Tipo II) e potencializa o estresse metabólico local.
+              <div className="bg-amber-950/25 border border-amber-800/40 rounded-xl p-3 text-sm text-amber-100 leading-relaxed space-y-2">
+                <p>
+                  No pico concêntrico muitos travam cotovelos ou joelhos para descansar o peso nos ossos; no pico excêntrico surge a tentação de quicar ou &ldquo;gingar&rdquo; o tronco. Eliminar esses micro-descansos mantém o recrutamento de unidades motoras de alto limiar (fibras Tipo II) e potencializa o estresse metabólico local.
+                </p>
+                {isFemale && (
+                  <p>
+                    <strong className="text-white">Biomecânica Feminina &amp; Estética Chun-Li (Delavier, Gironda &amp; McCallum):</strong> Devido à pelve feminina mais larga e ao maior <strong className="text-amber-300">ângulo Q</strong>, mantenha os joelhos estritamente alinhados ao 2º dedo do pé (sem valgo dinâmico) e use passos longos nas passadas (canela vertical). Para preservar a <strong className="text-amber-300">cintura fina</strong>, vetamos oblíquos com carga e levantamento terra máximo, combinando o <strong className="text-white">Stomach Vacuum</strong> obrigatório com glúteo médio (&ldquo;deltoide do quadril&rdquo;) e deltoide lateral/posterior.
+                  </p>
+                )}
               </div>
             </ScienceAccordion>
           </section>
@@ -448,13 +565,18 @@ export default function PrinciplesModal({
                   Princípio 03
                 </span>
                 <h3 className="text-base font-bold text-white leading-tight">
-                  Descanso, Sono & Rotação ABC / CAB / BCA
+                  Descanso, Sono &amp; Rotação ABC / CAB / BCA
                 </h3>
               </div>
             </div>
 
             <p className="text-sm leading-relaxed text-zinc-200">
               O treino cria o estímulo; o músculo <strong className="text-white">cresce na recuperação</strong>. Alternar meses de volume com blocos HIT (1–2 séries com pausas de 120–180s) evita esgotamento do sistema nervoso central e mantém a força subindo o ano todo.
+              {isFemale && (
+                <>
+                  {' '}Na fisiologia feminina (Haluch), o <strong className="text-white">17β-estradiol</strong> (estrogênio) protege o sarcolema contra o dano oxidativo, sustenta células satélites e acelera a recuperação entre séries, enquanto o <strong className="text-white">ciclo menstrual</strong> modula energia e retenção hídrica (fase folicular com maior sensibilidade à insulina vs. fase lútea).
+                </>
+              )}
             </p>
 
             <ScienceAccordion
@@ -512,7 +634,9 @@ export default function PrinciplesModal({
                 <div className="text-lg font-extrabold text-emerald-400">2g / kg</div>
                 <div className="text-xs font-bold text-white mt-0.5">Proteína Diária</div>
                 <p className="text-xs text-zinc-300 mt-1 leading-relaxed">
-                  Ex.: 80kg = ~160g/dia para balanço nitrogenado positivo.
+                  {isFemale
+                    ? 'Ex.: 60kg = ~120g/dia (até 2,5g/kg em definição) para preservar massa magra e eixo hormonal.'
+                    : 'Ex.: 80kg = ~160g/dia para balanço nitrogenado positivo.'}
                 </p>
               </div>
 
@@ -622,13 +746,13 @@ export default function PrinciplesModal({
               </div>
 
               <div className="flex flex-wrap gap-1.5 mb-3">
-                {PUMPER_EXAMPLES.map((item) => (
+                {pumperList.map((item) => (
                   <button
                     key={item.group}
                     type="button"
                     onClick={() => setSelectedPumperGroup(item.group)}
                     className={`min-h-[40px] px-3 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
-                      selectedPumperGroup === item.group
+                      activePumper.group === item.group
                         ? 'bg-purple-600 text-white border-purple-400'
                         : 'bg-zinc-900 text-zinc-300 border-zinc-800 hover:border-zinc-700'
                     }`}
@@ -701,7 +825,7 @@ export default function PrinciplesModal({
               <div className="bg-amber-950/30 border border-amber-700/60 rounded-xl p-3 space-y-2">
                 <div className="text-xs text-amber-200 leading-snug">
                   <span className="text-amber-400 font-bold uppercase tracking-wider block text-[0.7rem]">
-                    Técnica consultada no exercício
+                    Entender: Técnica consultada no exercício
                   </span>
                   <strong className="text-white">{contextLabel}</strong>
                 </div>

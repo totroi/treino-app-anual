@@ -188,6 +188,27 @@ export const GLOSSARY_ITEMS = [
       'dedos dos pes',
       'foco no dedao'
     ]
+  },
+  {
+    id: 'glossario-angulo-q',
+    term: 'Ângulo Q & Alinhamento Femoropatelar (Prevenção do Valgo Dinâmico)',
+    shortDesc: 'Alinhar joelhos ao 2º metatarso, passo longo nas passadas e 0 lockout para proteger patela e LCA.',
+    desc: 'Como a pelve feminina é anatomicamente mais larga (Delavier & Arnold), o ângulo Q entre fêmur e tíbia é maior, elevando as forças de cisalhamento na patela e a tendência de colapso medial do joelho (valgo dinâmico). Alinhe rigorosamente os joelhos com o 2º dedo do pé, dê passos longos nas passadas (canela vertical) e jamais trave os joelhos no topo.',
+    matchers: ['angulo q', 'valgo dinamico', 'alinhamento femoropatelar', '2o metatarso']
+  },
+  {
+    id: 'glossario-gluteo-medio',
+    term: 'Glúteo Médio & Mínimo ("Deltoide do Quadril" — Delavier)',
+    shortDesc: 'Inclinar o tronco à frente na abdutora ou abduzir no cabo para projetar a lateral do quadril e afinar a cintura.',
+    desc: 'Frédéric Delavier classifica o glúteo médio e mínimo como o "deltoide do quadril". Na cadeira abdutora com tronco inclinado à frente ou na abdução no cabo, séries de 15–25 repetições até a queimação esculpem a porção lateral-superior do quadril, criando a ilusão óptica clássica de cintura muito mais fina.',
+    matchers: ['gluteo medio', 'deltoide do quadril', 'tronco inclinado']
+  },
+  {
+    id: 'glossario-variacao-pes',
+    term: 'Variação de Pés (Arnold & Zane — Gastrocnêmio & Vastos)',
+    shortDesc: 'Alternar a posição e abertura dos pés para direcionar o estímulo às cabeças laterais ou mediais.',
+    desc: 'Diretriz clássica de Arnold Schwarzenegger e Frank Zane: em panturrilhas (Gêmeos em pé ou no Leg Press), pontas dos pés levemente para dentro focam a cabeça lateral externa e pontas para fora focam a cabeça medial interna; no Leg Press e Hack Squat, pés próximos e paralelos priorizam o vasto lateral (outer sweep), enquanto pés mais afastados com pontas para fora enfatizam o vasto medial (VMO) e adutores.',
+    matchers: ['variacao de pes', 'pes alternados', 'arnold & zane']
   }
 ];
 

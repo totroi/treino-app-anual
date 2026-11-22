@@ -97,7 +97,11 @@ function AuthenticatedWorkspace({ currentUser, onLogout }) {
     };
   }, []);
 
-  const { rawData, loading, isOfflineFallback, syncWorkouts } = useWorkoutsData(true, showToast);
+  const { rawData, loading, isOfflineFallback, syncWorkouts } = useWorkoutsData(
+    true,
+    showToast,
+    currentUser?.sexo
+  );
   const logs = useWorkoutLogs(currentUser.username, selectedMonth, selectedWorkout);
   const timer = useRestTimer();
 
@@ -786,6 +790,7 @@ function AuthenticatedWorkspace({ currentUser, onLogout }) {
         highlightIds={principlesState.highlightIds}
         contextLabel={principlesState.contextLabel}
         selectedMonth={effectiveMonth}
+        sexo={currentUser?.sexo}
       />
 
       {/* Modo Foco OLED (Screensaver Interativo com registro de série e troca de par 1/2 <-> 2/2) */}
@@ -793,6 +798,7 @@ function AuthenticatedWorkspace({ currentUser, onLogout }) {
         key={isScreensaverOpen && focusedExercise ? `${focusedExercise['Exercício']}-open` : 'focus-idle'}
         isOpen={isScreensaverOpen}
         exercise={focusedExercise}
+        sexo={currentUser?.sexo}
         pairContext={(() => {
           const rawMeta = focusedExercise
             ? activePairMetaByRawName.get(focusedExercise['Exercício'] || '')
@@ -841,24 +847,57 @@ function AuthenticatedWorkspace({ currentUser, onLogout }) {
   );
 }
 
+function applyDocumentThemeAndIcons(user) {
+  if (typeof document === 'undefined') return;
+  const isFemale = String(user?.sexo || 'M').trim().toUpperCase() === 'F';
+  document.documentElement.dataset.theme = isFemale ? 'female' : 'male';
+
+  const iconLink = document.querySelector('link[rel="icon"]');
+  if (iconLink) {
+    iconLink.setAttribute('href', isFemale ? '/favicon-pink.svg' : '/favicon.svg');
+  }
+
+  const appleLink = document.querySelector('link[rel="apple-touch-icon"]');
+  if (appleLink) {
+    appleLink.setAttribute(
+      'href',
+      isFemale ? '/apple-touch-icon-pink.png' : '/apple-touch-icon.png'
+    );
+  }
+}
+
 export default function App() {
   const [currentUser, setCurrentUser] = useState(() => {
     const session = getCurrentSession();
-    return session ? session.user : null;
+    const user = session ? session.user : null;
+    applyDocumentThemeAndIcons(user);
+    return user;
   });
+
+  useEffect(() => {
+    applyDocumentThemeAndIcons(currentUser);
+  }, [currentUser]);
 
   const handleLogout = () => {
     logoutUser();
+    applyDocumentThemeAndIcons(null);
     setCurrentUser(null);
   };
 
   if (!currentUser) {
-    return <LoginScreen onLoginSuccess={(user) => setCurrentUser(user)} />;
+    return (
+      <LoginScreen
+        onLoginSuccess={(user) => {
+          applyDocumentThemeAndIcons(user);
+          setCurrentUser(user);
+        }}
+      />
+    );
   }
 
   return (
     <AuthenticatedWorkspace
-      key={currentUser.username}
+      key={`${currentUser.username}-${currentUser.sexo || 'M'}`}
       currentUser={currentUser}
       onLogout={handleLogout}
     />

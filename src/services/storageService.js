@@ -4,6 +4,8 @@ import { normalizeWeightInput } from '../utils/numberFormat.js';
 const LEGACY_LOGS_KEY = "gym_tracker_logs";
 const LEGACY_SESSION_KEY = "gym_tracker_session_completed";
 const CACHED_CSV_KEY = "irontracker_cached_csv_v1";
+const CACHED_CSV_MALE_KEY = "irontracker_cached_csv_v1_M";
+const CACHED_CSV_FEMALE_KEY = "irontracker_cached_csv_v1_F";
 const UI_SCALE_KEY = "irontracker_ui_scale";
 const SCREENSAVER_DELAY_KEY = "irontracker_screensaver_delay";
 const AUTO_TIMER_KEY = "irontracker_auto_start_timer";
@@ -268,27 +270,39 @@ export function resetAllUserProgress(username) {
   }
 }
 
-/* Cache local do último CSV sincronizado da planilha (reduz fallback offline desatualizado) */
-export function loadCachedWorkoutsCSV() {
-  try {
-    const raw = localStorage.getItem(CACHED_CSV_KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw);
-    if (parsed && typeof parsed.csv === 'string' && parsed.csv.length > 50) {
-      return parsed;
+/* Cache local do último CSV sincronizado da planilha, isolado por sexo ('M' vs 'F') */
+export function loadCachedWorkoutsCSV(sexo = "M") {
+  const isFemale = String(sexo || "M").trim().toUpperCase() === "F";
+  const candidateKeys = isFemale
+    ? [CACHED_CSV_FEMALE_KEY]
+    : [CACHED_CSV_MALE_KEY, CACHED_CSV_KEY];
+
+  for (const key of candidateKeys) {
+    try {
+      const raw = localStorage.getItem(key);
+      if (!raw) continue;
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed.csv === "string" && parsed.csv.length > 50) {
+        return parsed;
+      }
+    } catch {
+      // ignore corrupt entry and try next candidate if available
     }
-  } catch {
-    // ignore
   }
   return null;
 }
 
-export function saveCachedWorkoutsCSV(csvText) {
+export function saveCachedWorkoutsCSV(csvText, sexo = "M") {
+  const isFemale = String(sexo || "M").trim().toUpperCase() === "F";
+  const targetKey = isFemale ? CACHED_CSV_FEMALE_KEY : CACHED_CSV_MALE_KEY;
   try {
-    localStorage.setItem(CACHED_CSV_KEY, JSON.stringify({
-      csv: csvText,
-      syncedAt: new Date().toISOString()
-    }));
+    localStorage.setItem(
+      targetKey,
+      JSON.stringify({
+        csv: csvText,
+        syncedAt: new Date().toISOString()
+      })
+    );
   } catch {
     // ignore
   }

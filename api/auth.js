@@ -8,9 +8,18 @@ const FALLBACK_USERS = [
     senha: process.env.FALLBACK_ADMIN_HASH || "sha256:21f243ce675635d702409395876eee826f28b1795208ab88d0ac6822b106c244",
     nome: "Dan Castro",
     ativo: "SIM",
-    perfil: "admin"
+    perfil: "admin",
+    sexo: "M"
   }
 ];
+
+const FEMALE_SEXO_VALUES = new Set(["f", "fem", "feminino", "feminina", "female", "mulher"]);
+
+export function normalizeSexo(raw) {
+  if (typeof raw !== "string") return "M";
+  const cleaned = raw.trim().toLowerCase();
+  return FEMALE_SEXO_VALUES.has(cleaned) ? "F" : "M";
+}
 
 function parseSimpleCSV(csvText) {
   const lines = csvText.trim().split(/\r?\n/);
@@ -76,6 +85,7 @@ function createSignedToken(user, secret) {
       username: user.username,
       name: user.name,
       role: user.role,
+      sexo: normalizeSexo(user.sexo),
       exp: Date.now() + 30 * 24 * 60 * 60 * 1000
     })
   ).toString('base64url');
@@ -130,7 +140,8 @@ export async function authenticateUser(username, password) {
   const userProfile = {
     username: found.usuario.trim().toLowerCase(),
     name: (found.nome || found.usuario).trim(),
-    role: (found.perfil || 'user').trim().toLowerCase()
+    role: (found.perfil || 'user').trim().toLowerCase(),
+    sexo: normalizeSexo(found.sexo)
   };
 
   const token = createSignedToken(userProfile, secret);

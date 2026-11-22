@@ -28,7 +28,9 @@ function localVercelApiPlugin() {
     middlewares.use('/api/workouts', async (req, res, next) => {
       if (req.method !== 'GET') return next();
       try {
-        const csv = await fetchWorkoutsCSV();
+        const reqUrl = new URL(req.url || '/', 'http://localhost');
+        const sexo = reqUrl.searchParams.get('sexo') || 'M';
+        const csv = await fetchWorkoutsCSV(sexo);
         res.statusCode = 200;
         res.setHeader('Content-Type', 'text/csv; charset=utf-8');
         res.end(csv);

@@ -8,6 +8,49 @@
     --safe-right: env(safe-area-inset-right, 0px);
   }
 
+  html[data-theme="female"] {
+    --color-blue-50: #fdf2f8;
+    --color-blue-100: #fce7f3;
+    --color-blue-200: #fbcfe8;
+    --color-blue-300: #f9a8d4;
+    --color-blue-400: #f472b6;
+    --color-blue-500: #ec4899;
+    --color-blue-600: #db2777;
+    --color-blue-700: #be185d;
+    --color-blue-800: #9d174d;
+    --color-blue-900: #831843;
+    --color-blue-950: #500724;
+
+    --color-sky-50: #fdf2f8;
+    --color-sky-100: #fce7f3;
+    --color-sky-200: #fbcfe8;
+    --color-sky-300: #f9a8d4;
+    --color-sky-400: #f472b6;
+    --color-sky-500: #ec4899;
+    --color-sky-600: #db2777;
+    --color-sky-700: #be185d;
+    --color-sky-800: #9d174d;
+    --color-sky-900: #831843;
+    --color-sky-950: #500724;
+
+    --color-cyan-50: #fdf4ff;
+    --color-cyan-100: #fae8ff;
+    --color-cyan-200: #f5d0fe;
+    --color-cyan-300: #f0abfc;
+    --color-cyan-400: #e879f9;
+    --color-cyan-500: #d946ef;
+    --color-cyan-600: #c026d3;
+    --color-cyan-700: #a21caf;
+    --color-cyan-800: #86198f;
+    --color-cyan-900: #701a75;
+    --color-cyan-950: #4a044e;
+  }
+
+  html[data-theme="female"] ::selection {
+    background-color: #db2777;
+    color: #ffffff;
+  }
+
   html,
   body {
     background-color: #000000;

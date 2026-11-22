@@ -1,9 +1,16 @@
+import { normalizeSexo } from './auth.js';
+
 const DEFAULT_SHEET_ID = "1_2aqsSQMa8PdCsNQcTkdBj1hepqruyeaobwVD4OXZL0";
 const DEFAULT_WORKOUTS_GID = "190965404";
+const DEFAULT_FEMALE_WORKOUTS_GID = "676096017";
 
-export async function fetchWorkoutsCSV() {
+export async function fetchWorkoutsCSV(rawSexo = "M") {
   const sheetId = process.env.GOOGLE_SHEET_ID || DEFAULT_SHEET_ID;
-  const workoutsGid = process.env.WORKOUTS_SHEET_GID || DEFAULT_WORKOUTS_GID;
+  const sexo = normalizeSexo(rawSexo);
+  const workoutsGid =
+    sexo === "F"
+      ? process.env.FEMALE_WORKOUTS_SHEET_GID || DEFAULT_FEMALE_WORKOUTS_GID
+      : process.env.WORKOUTS_SHEET_GID || DEFAULT_WORKOUTS_GID;
   const url = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv&gid=${workoutsGid}`;
 
   const response = await fetch(url, {
@@ -22,7 +29,15 @@ export default async function handler(req, res) {
   }
 
   try {
-    const csvText = await fetchWorkoutsCSV();
+    let rawSexo = req.query?.sexo;
+    if (rawSexo === undefined && req.url) {
+      try {
+        rawSexo = new URL(req.url, 'http://localhost').searchParams.get('sexo');
+      } catch {
+        rawSexo = 'M';
+      }
+    }
+    const csvText = await fetchWorkoutsCSV(rawSexo);
     // Cache de 5 minutos na CDN da Vercel + 10 min stale-while-revalidate (suporta 100+ usuários diários com custo zero)
     res.setHeader('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=600');
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');

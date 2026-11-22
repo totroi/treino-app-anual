@@ -42,7 +42,7 @@ export default function LoginScreen({ onLoginSuccess }) {
             Periodização & Hipertrofia Anual
           </p>
           <p className="text-xs text-zinc-400 mt-1.5">
-            254 exercícios • Timer OLED • Histórico local
+            Periodização Anual • Timer OLED • Histórico local
           </p>
         </div>
 

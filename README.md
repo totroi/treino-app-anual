@@ -27,11 +27,13 @@ Aplicativo web mobile-first para acompanhamento de treinos de musculação perio
 
 ## Estrutura da Planilha Google Sheets
 
-A planilha base possui 3 abas:
-1. **`Table 1` (`gid: 190965404`):** Base dos 254 exercícios nos 12 meses (com `Ordem` biomecânica, `Cadência` E-F-C-T e `Descanso`).
-2. **`Usuarios` (`gid: 416797079`):** Controle de acesso ao aplicativo com as colunas:
-   - `usuario` | `senha` | `nome` | `ativo` (`SIM`/`NAO`) | `perfil` (`admin`/`user`) | `observacao`
-3. **`Source References` (`gid: 201829341`):** Referências bibliográficas da periodização.
+A planilha base (`1_2aqsSQMa8PdCsNQcTkdBj1hepqruyeaobwVD4OXZL0`) possui 4 abas:
+1. **`Table 1` (`gid: 190965404`):** Base masculina dos 254 exercícios nos 12 meses (13 colunas `A–M`: `Mês`, `Grupo muscular`, `Especificação do grupo muscular`, `Treino`, `Exercício`, `Séries/Reps`, `Cadência`, `Técnica Avançada`, `Modo de execução`, `Observação`, `Descanso`, `Ordem`, `Conexão`).
+2. **`Table_Feminino` (`gid: 676096017`):** Base feminina dos 252 exercícios nos 12 meses ("Golden Era Liga Leve • Estética Chun-Li" — ênfase em glúteos, quadríceps, posteriores, panturrilhas e cintura fina com `Stomach Vacuum` em `Ordem = 99` e 32 pares conectados `PAR-N`).
+3. **`Usuarios` (`gid: 416797079`):** Controle de acesso e versão (`M` vs `F`) com as colunas:
+   - `usuario` | `senha` | `nome` | `ativo` (`SIM`/`NAO`) | `perfil` (`admin`/`user`) | `observacao` | `sexo` (`M` ou `F`)
+   - Quando `sexo = F` (ou `Feminino`), o aplicativo ativa automaticamente a periodização `Table_Feminino`, a metodologia feminina no modal de Princípios, a identidade visual rosa em 100% da interface (incluindo Modo Foco OLED e novas silhuetas SVG de glúteos/abdução/passadas/elevação pélvica) e o favicon dinâmico `/favicon-pink.svg`.
+4. **`Source References` (`gid: 201829341`):** Referências bibliográficas completas da periodização masculina e feminina.
 
 ---
 
@@ -42,4 +44,10 @@ npm install
 npm run dev
 ```
 
-O servidor local do Vite já inclui middleware integrado para responder às rotas `/api/auth` e `/api/workouts`.
+O servidor local do Vite já inclui middleware integrado para responder às rotas `/api/auth` e `/api/workouts?sexo=M|F`.
+
+Para executar a suíte completa de testes E2E (Playwright — 126 casos de teste):
+
+```bash
+npm run test:e2e
+```

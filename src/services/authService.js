@@ -1,4 +1,11 @@
 const SESSION_KEY = "irontracker_auth_session";
+const FEMALE_SEXO_VALUES = new Set(["f", "fem", "feminino", "feminina", "female", "mulher"]);
+
+export function normalizeSexo(raw) {
+  if (typeof raw !== "string") return "M";
+  const cleaned = raw.trim().toLowerCase();
+  return FEMALE_SEXO_VALUES.has(cleaned) ? "F" : "M";
+}
 
 export function getCurrentSession() {
   try {
@@ -7,6 +14,7 @@ export function getCurrentSession() {
     const session = JSON.parse(raw);
     if (!session || !session.user || !session.user.username) return null;
 
+    let tokenSexo = undefined;
     if (session.token) {
       const [payloadB64] = session.token.split('.');
       if (payloadB64) {
@@ -16,8 +24,10 @@ export function getCurrentSession() {
           logoutUser();
           return null;
         }
+        tokenSexo = payload.sexo;
       }
     }
+    session.user.sexo = normalizeSexo(session.user.sexo ?? tokenSexo);
     return session;
   } catch {
     return null;
@@ -40,8 +50,13 @@ export async function loginUser(username, password, rememberMe = true) {
       };
     }
 
+    const normalizedUser = {
+      ...data.user,
+      sexo: normalizeSexo(data.user?.sexo)
+    };
+
     const sessionData = {
-      user: data.user,
+      user: normalizedUser,
       token: data.token,
       loggedInAt: new Date().toISOString()
     };
@@ -51,7 +66,7 @@ export async function loginUser(username, password, rememberMe = true) {
 
     const targetStorage = rememberMe ? localStorage : sessionStorage;
     targetStorage.setItem(SESSION_KEY, JSON.stringify(sessionData));
-    return { ok: true, user: data.user };
+    return { ok: true, user: normalizedUser };
   } catch {
     return {
       ok: false,
