@@ -283,7 +283,7 @@ export default function ExerciseCard({
               <span>Ir p/ 2/2 (0s)</span>
               <ArrowRight className="w-4 h-4" />
             </button>
-          ) : (
+          ) : restSeconds > 0 ? (
             onTriggerTimer && (
               <button
                 type="button"
@@ -299,6 +299,10 @@ export default function ExerciseCard({
                 <span>Iniciar {restSeconds}s</span>
               </button>
             )
+          ) : (
+            <span className="min-h-[36px] px-2.5 py-1.5 flex items-center justify-center rounded-xl bg-amber-950/50 border border-amber-800/60 text-amber-300 text-xs font-bold flex-shrink-0">
+              Transição 0s
+            </span>
           )}
         </div>
 

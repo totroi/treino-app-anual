@@ -36,8 +36,8 @@ export const GLOSSARY_ITEMS = [
   {
     id: 'glossario-rest-pause',
     term: 'Rest-Pause (Pausa-Descanso)',
-    shortDesc: 'Atingiu a falha → apoia o peso por 10–15s → extrai mais 2–3 reps até nova falha.',
-    desc: 'Ao atingir a falha muscular com carga pesada, apoie o peso, respire por 10–15 segundos para ressíntese parcial de fosfocreatina e execute imediatamente mais 2–3 repetições máximas até a nova falha.',
+    shortDesc: 'Atingiu a falha → apoia o peso por 10s (Mentzer) → extrai mais 1–3 reps até nova falha.',
+    desc: 'Ao atingir a falha muscular com carga pesada, apoie o peso, respire por exatamente 10 segundos (protocolo de Mike Mentzer, Cap. 11 p. 94) para ressíntese parcial de fosfocreatina e execute imediatamente mais 1–3 repetições máximas até a nova falha.',
     matchers: ['rest-pause', 'rest pause', 'pausa-descanso', 'pausa descanso']
   },
   {
@@ -174,9 +174,11 @@ export const GLOSSARY_ITEMS = [
   {
     id: 'glossario-biomecanica',
     term: 'Ajustes Biomecânicos Golden Era (Alavancas & Alinhamento)',
-    shortDesc: 'Microajustes de pegada, cotovelos, rotação ou pé para isolar a cabeça muscular certa.',
-    desc: 'Diretrizes precisas de alavanca usadas na Golden Era: Rotação Interna ("derramando jarra" no deltoide lateral/posterior), Supinação Forçada (girar o mindinho para cima na rosca), Cotovelos Fixos / Tronco Estável (evitar ajuda de ombro/lombar), Esterno na Barra (ativação total de dorsais), Foco no Dedão / Pés para Fora (direcionar gastrocnêmio) e Towel Pulls (ativação prévia de pegada/dorsais).',
+    shortDesc: 'Microajustes de pegada, cotovelos, retração escapular ou pé para isolar a cabeça muscular certa.',
+    desc: 'Diretrizes precisas de alavanca usadas na Golden Era: Retração Escapular / Pegada Neutra no deltoide posterior (evitando rotação interna que pinça o supraespinhal — Delavier pp. 30-31, 35), leve inclinação na Elevação Lateral até a linha das orelhas (Gironda p. 98), Supinação Forçada (girar o mindinho para cima na rosca), Cotovelos Fixos / Tronco Estável, Esterno na Barra, Foco no Dedão / Pés para Fora e Towel Pulls.',
     matchers: [
+      'retracao escapular',
+      'pegada neutra',
       'rotacao interna',
       'jarra',
       'supinacao',

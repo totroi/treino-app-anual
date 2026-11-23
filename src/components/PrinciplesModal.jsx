@@ -149,7 +149,7 @@ const PUMPER_EXAMPLES_FEMALE = [
       },
       {
         name: 'Cadeira Extensora ou Mesa Flexora em Pulsos de Pico',
-        desc: 'Na Extensora, bombeie no terço final de contração; na Mesa Flexora (tornozelos em dorsiflexão neutra), bombeie próximo aos glúteos para densidade nos isquiotibiais.'
+        desc: 'Na Extensora, bombeie no terço final de contração; na Mesa Flexora (tornozelos em flexão plantar — pontas dos pés estendidas, Delavier pp. 103, 105), bombeie próximo aos glúteos para isolar os isquiotibiais.'
       }
     ]
   },
@@ -660,10 +660,10 @@ export default function PrinciplesModal({
               </div>
 
               <div className="bg-zinc-950 border border-emerald-800/50 rounded-xl p-3">
-                <div className="text-lg font-extrabold text-emerald-400">~20 min</div>
-                <div className="text-xs font-bold text-white mt-0.5">Carbos Pós-Treino</div>
+                <div className="text-lg font-extrabold text-emerald-400">3–4h</div>
+                <div className="text-xs font-bold text-white mt-0.5">Janela Pré / Pós-Treino</div>
                 <p className="text-xs text-zinc-300 mt-1 leading-relaxed">
-                  Freia cortisol, gera pico de insulina e repõe glicogênio.
+                  Janela real entre refeições pré e pós-treino (Haluch / Staples 2011; síntese proteica elevada por 24–48h).
                 </p>
               </div>
 

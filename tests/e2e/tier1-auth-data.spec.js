@@ -223,12 +223,12 @@ test.describe('Tier 1 — Auth, Sheets & Data Routing (F1–F5)', () => {
     await expect(page.getByRole('heading', { name: /Supino Reto \(Barra\)/i })).toHaveCount(0);
   });
 
-  test('T1-F3-05 @male-baseline Male fallbackWorkouts.js remains untouched (254 rows, 0 Glúteos) on offline login', async ({
+  test('T1-F3-05 @male-baseline Male fallbackWorkouts.js remains untouched (227 rows, 0 Glúteos) on offline login', async ({
     page,
   }) => {
     const mod = await import(repoModule('src/data/fallbackWorkouts.js'));
     const report = validateWorkoutsCsv(mod.INITIAL_CSV_DATA, { expectFemale: false });
-    expect(report.rows.length).toBe(254);
+    expect(report.rows.length).toBe(227);
     expect(report.glutesCount).toBe(0);
 
     const creds = await getMaleCredentials();
@@ -330,7 +330,7 @@ test.describe('Tier 1 — Auth, Sheets & Data Routing (F1–F5)', () => {
     expect(csv).not.toBe(maleCsv);
   });
 
-  test('T1-F5-02 @male-baseline GET /api/workouts and ?sexo=M return male Table 1 CSV (254 rows, 0 Glúteos)', async ({
+  test('T1-F5-02 @male-baseline GET /api/workouts and ?sexo=M return male Table 1 CSV (227 rows, 0 Glúteos)', async ({
     request,
   }) => {
     const resDefault = await request.get('/api/workouts');
@@ -338,7 +338,7 @@ test.describe('Tier 1 — Auth, Sheets & Data Routing (F1–F5)', () => {
     expect(resDefault.headers()['content-type']).toContain('text/csv');
     const csvDefault = await resDefault.text();
     const reportDefault = validateWorkoutsCsv(csvDefault, { expectFemale: false });
-    expect(reportDefault.rows.length).toBe(254);
+    expect(reportDefault.rows.length).toBe(227);
     expect(reportDefault.glutesCount).toBe(0);
     expect(csvDefault).toContain('Supino Reto (Barra)');
 

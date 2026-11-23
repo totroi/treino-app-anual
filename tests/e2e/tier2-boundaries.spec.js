@@ -628,6 +628,17 @@ test.describe('Tier 2 — Boundary, Negative & Edge Cases (F1–F10, 50 Cases)',
     expect(normMod.cleanAdvancedTechnique('Até a falha absoluta')).toBe('');
 
     const creds = await getMaleCredentials();
+    const pureFailureCsv =
+      'Mês,Grupo muscular,Especificação do grupo muscular,Treino,Exercício,Séries/Reps,Cadência,Técnica Avançada,Modo de execução,Observação,Descanso,Ordem,Conexão\n' +
+      'Fevereiro,Peitoral,Peitoral Inferior,A,Paralelas (Dips),3-4 x 10,2-0-2-0,Até a falha,Execução padrão,Obs padrão,75-90s,1,';
+    await page.route('**/api/workouts*', (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'text/csv; charset=utf-8',
+        body: pureFailureCsv,
+      })
+    );
+
     await page.goto('/');
     await loginViaUI(page, creds);
     await selectMonth(page, 'Fevereiro');

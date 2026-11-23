@@ -47,8 +47,8 @@ export const MONTHLY_SUMMARIES = {
   "Fevereiro": {
     cycle: "Mês 01/12 • O Alicerce da Grandeza",
     school: "John McCallum & Reg Park (Volume & Força Base)",
-    orderRule: "Compostos pesados primeiro → Acessórios → Breathing Squats ao final",
-    focus: "Construir densidade estrutural e capacidade neural com básicos livres (Supino 5x5-8, Terra, Breathing Squats 1x25 e Press). Descanso de 90s nos compostos e 30s nas panturrilhas."
+    orderRule: "Compostos pesados primeiro → Acessórios → Breathing Squats 1x25 + 20 Pullovers ao final",
+    focus: "Construir densidade estrutural e capacidade neural com básicos livres (Supino 5x5-8, Terra, Breathing Squats 1x25 respiração 3-6-10 + 20 Pullovers leves e Press). Descanso de 90s nos compostos e 30s nas panturrilhas 15x10 (McCallum p. 67)."
   },
   "Março": {
     cycle: "Mês 02/12 • A Consolidação da Massa",
@@ -76,27 +76,27 @@ export const MONTHLY_SUMMARIES = {
   },
   "Julho": {
     cycle: "Mês 06/12 • Dureza Muscular e Densidade Extrema",
-    school: "Mike Mentzer (HIT Puro — 1 Série até a Falha Absoluta)",
-    orderRule: "Pré-Exaustão HIT (1 série no limite; opcionais são substitutos de 1-2x)",
-    focus: "Volume ultracondensado com negativas lentas (8s) e Rest-Pause. Descanso de 120-180s nos compostos pesados para ressíntese de 100% da Fosfocreatina (PCr)."
+    school: "Mike Mentzer (HIT Puro — 1 Série Estrita até a Falha Absoluta)",
+    orderRule: "Pré-Exaustão HIT (1 série única por exercício, 0s no par 1/2 → 2/2, transição pós-exercício de 120-180s)",
+    focus: "Volume ultracondensado em 1 série de trabalho (6-10 reps superiores, 3-5 pós pré-exaustão, 12-20 pernas/panturrilhas/abdômen dinâmico), cadência HIT 4-0-2-2 / 4-0-2-0, Rest-Pause de 10 seg. (Mentzer Cap. 11 p. 94) e 120-180s de transição pós-exercício para ressíntese de 100% da Fosfocreatina (PCr)."
   },
   "Agosto": {
     cycle: "Mês 07/12 • Consolidação e Expansão Estratégica",
-    school: "Mike Mentzer (HIT 1-2 séries, cadência 4-0-4-2)",
-    orderRule: "Pré-Exaustão HIT (Pec Deck → Supino; Pullover → Pulldown; Extensora → Leg Press)",
-    focus: "Intensidade cirúrgica com baixíssimo volume, Deltoide Posterior HIT e pausas de 120-180s nos compostos para máxima tensão mecânica sem cortisol crônico."
+    school: "Mike Mentzer (HIT Consolidado 1-2 Séries, Cadência 4-0-2-2 / 4-0-2-0)",
+    orderRule: "Pré-Exaustão HIT (Pec Deck → Supino; Pullover → Pulldown; Elevação Lateral → Militar; Extensora → Leg Press)",
+    focus: "Intensidade cirúrgica com 1-2 séries estritas, cadência HIT unificada (4-0-2-0 compostos, 4-0-2-2 isoladores/pico, 4-2-2-2 panturrilhas), Deltoide Posterior com retração escapular e pausas de 120-180s nos compostos."
   },
   "Setembro": {
     cycle: "Mês 08/12 • Maturidade e Detalhamento Miofibrilar",
-    school: "McCallum & Leandro Twin (Força Bruta + Detalhe)",
-    orderRule: "Compostos pesados 5x5-8 com Rest-Pause → Isolamento → Breathing Squats 1x20",
-    focus: "Retorno à carga bruta combinada com Elevação Lateral obrigatória, Sóleo sentado e Stomach Vacuum para densidade madura."
+    school: "John McCallum & Frank Zane (Força Bruta + Estética)",
+    orderRule: "Compostos pesados 5x5-8 com Rest-Pause (10 seg.) → Isolamento → Breathing Squats 1x20 + 20 Pullovers",
+    focus: "Retorno à carga bruta combinada com Elevação Lateral obrigatória, Sóleo sentado e Stomach Vacuum padronizado (A/B/C #99, 3-4 x 20-30 seg. — Arnold & Zane) para densidade madura."
   },
   "Outubro": {
     cycle: "Mês 09/12 • Dureza Muscular e Densidade de Aço",
-    school: "Mike Mentzer & Sergio Oliva (Pré-Exaustão + 3/4)",
-    orderRule: "Pré-Exaustão HIT (Pec Deck → Supinos; Extensora → Leg Press)",
-    focus: "Negativas lentas (5-8s), pausa de 2s no pico do Pec Deck, Supino 3/4 com Dropset e Deltoide Posterior obrigatório no Treino C."
+    school: "Mike Mentzer & Sergio Oliva (Pré-Exaustão + Movimentos 3/4)",
+    orderRule: "Pré-Exaustão HIT (Pec Deck → Supino Inclinado 2-3x; Extensora → Leg Press 2-3x)",
+    focus: "Paridade de 2-3 séries nos pares de Pré-Exaustão, pausa de 2s no pico do Pec Deck, Supino Reto em Movimentos 3/4 (Sergio Oliva — Arnold pp. 282-283) com Dropset e Deltoide Posterior obrigatório no Treino C."
   },
   "Novembro": {
     cycle: "Mês 10/12 • Refinamento Estético e Evolução de Potencial",
@@ -151,15 +151,15 @@ export const MONTHLY_SUMMARIES_FEMALE = {
   },
   "Julho": {
     cycle: "Mês 06/12 • Dureza Muscular e Pré-Exaustão Extrema (HIT Puro)",
-    school: "Mike Mentzer (HIT 1–2 Séries até a Falha Concêntrica)",
-    orderRule: "Pré-Exaustão HIT (1–2 séries estritas, 0s na transição 1/2 → 2/2, 180s de descanso)",
-    focus: "Volume ultracondensado na faixa de 12–20 repetições para membros inferiores (regra de Mentzer para pernas), negativas lentas e 180s de pausa passiva para recrutamento máximo de unidades motoras."
+    school: "Mike Mentzer (HIT Puro — 1 Série Estrita até a Falha Concêntrica)",
+    orderRule: "Pré-Exaustão HIT (1 série estrita por exercício, 0s no par 1/2 → 2/2, 120–180s de transição pós-exercício)",
+    focus: "Volume ultracondensado em 1 série única na faixa de 12–20 repetições para membros inferiores e panturrilhas (Mentzer Cap. 13), cadência controlada e 120–180s de transição pós-exercício para recrutamento máximo de unidades motoras."
   },
   "Agosto": {
     cycle: "Mês 07/12 • Consolidação HIT e Contração Estática no Pico",
-    school: "Mike Mentzer & Delavier (Cadência 4-0-4-2 & Isometria)",
-    orderRule: "Pré-Exaustão HIT (Extensora → Leg; Elevação Lateral → Puxada; Flexora → Stiff)",
-    focus: "Pausa estática de 2s no pico da Mesa Flexora, Extensora e Glúteo no Cabo, combinada com compostos seguros sem compressão lombar ou espessamento da linha de cintura."
+    school: "Mike Mentzer & Delavier (Cadência HIT 4-0-2-2 / 4-0-2-0 & Isometria)",
+    orderRule: "Pré-Exaustão HIT (Extensora → Leg Press; Abdutora → Elevação Pélvica; Mesa Flexora → Stiff)",
+    focus: "Pausa estática de 2s no pico da Mesa Flexora (em flexão plantar — Delavier pp. 103, 105), Extensora e Glúteo no Cabo, combinada com compostos seguros sem compressão lombar ou espessamento da linha de cintura."
   },
   "Setembro": {
     cycle: "Mês 08/12 • Maturidade Miofibrilar e Detalhamento Inferior",
@@ -322,29 +322,35 @@ export const getRepsPlaceholder = (seriesRepsText) => {
  * para que o usuário utilize o botão "+15s" se desejar estender o descanso.
  */
 export const parseRestSeconds = (descansoText = "", tecnicaText = "", groupText = "") => {
-  const d = (descansoText || "").toLowerCase();
-  const tech = (tecnicaText || "").toLowerCase();
-  const group = (groupText || "").toLowerCase();
+  const raw = (descansoText || "").trim().toLowerCase();
+  if (/^0\s*s\s+no\s+par\b/.test(raw) && !raw.includes("•")) {
+    return 0;
+  }
 
-  // 1. Prioridade para micro-pausa de Rest-Pause (15s)
-  if (d.includes("15s") || tech.includes("rest-pause")) return 15;
+  // Remove prefixos de micro-pausa ou transição de par antes de extrair o descanso principal
+  const cleaned = raw
+    .replace(/^0\s*s\s+na\s+redu[cç][aã]o\s*•?\s*/i, "")
+    .replace(/^0\s*s\s+no\s+par[^•]*•\s*/i, "")
+    .replace(/\b\d+\s*seg\.?\s+no\s+rest-pause\b/gi, "");
 
-  // 2. Busca explicitamente um intervalo (ex: "90-120s", "60-75s", "45-60s", "30-45s") e retorna o LIMITE INFERIOR
-  const rangeMatch = d.match(/(\d+)\s*-\s*(\d+)\s*s/);
+  // 1. Busca explicitamente um intervalo (ex: "90-120s", "60-75s", "45-60s", "30-45s") e retorna o LIMITE INFERIOR
+  const rangeMatch = cleaned.match(/(\d+)\s*(?:-|a)\s*(\d+)\s*s\b/);
   if (rangeMatch) {
     const lowerBound = parseInt(rangeMatch[1], 10);
     if (lowerBound > 0) return lowerBound;
   }
 
-  // 3. Busca valores positivos em segundos (ignorando "0s no par" / "0s na redução")
-  const allSecs = [...d.matchAll(/(\d+)\s*s\b/g)]
+  // 2. Busca valores positivos em segundos
+  const allSecs = [...cleaned.matchAll(/(\d+)\s*s\b/g)]
     .map((m) => parseInt(m[1], 10))
     .filter((n) => n > 0);
   if (allSecs.length > 0) {
     return allSecs[0];
   }
 
-  if (group.includes("panturrilha") || group.includes("abdômen")) return 30;
+  const group = (groupText || "").toLowerCase();
+  if (group.includes("panturrilha") || group.includes("abd")) return 30;
+  void tecnicaText;
   return 60;
 };
 
@@ -502,7 +508,6 @@ const CANONICAL_EXERCISE_ALIASES = {
   "vacuo abdominal (stomach vacuum)": "stomach_vacuum",
   "vacuo de estomago (vacuum)": "stomach_vacuum",
   "vacuum (vacuo estomacal)": "stomach_vacuum",
-  "stomach vacuum (tecnica twin)": "stomach_vacuum",
   "vacuo abdominal (vacuum)": "stomach_vacuum",
   "stomach vacuum (vacuo)": "stomach_vacuum",
   "vacuum (vacuo abdominal)": "stomach_vacuum",
@@ -541,7 +546,93 @@ const CANONICAL_EXERCISE_ALIASES = {
   "remada unilateral leve (serrote)": "remada_serrote",
   "elevacao lateral no cabo": "elevacao_lateral_cabo",
   "crucifixo inverso (deltoide posterior)": "crucifixo_inverso_posterior",
-  "rosca martelo moderada": "rosca_martelo"
+  "rosca martelo moderada": "rosca_martelo",
+  "abdominais (kneeling pose)": "abdominais_kneeling_pose",
+  "abdominais (sit-ups ou hanging leg raises)": "abdominais_kneeling_pose",
+  "abdominais dinamicos (sit-ups ou hanging leg raises)": "abdominais_kneeling_pose",
+  "arnold press": "arnold_press",
+  "barra fixa frontal ao esterno (ou nuca com mobilidade plena)": "barra_fixa_nuca",
+  "barra fixa frontal ao peito (substituto de behind neck chins)": "barra_fixa_nuca",
+  "barra fixa frontal ou puxada alta": "barra_fixa_ou_puxada_alta",
+  "barra fixa ou puxada alta": "barra_fixa_ou_puxada_alta",
+  "barra fixa supinada (palms-up chins — negativas)": "chins_barra_fixa",
+  "breathing squats": "breathing_squats",
+  "breathing squats (agachamento respiratorio mccallum)": "breathing_squats",
+  "chins (barra fixa)": "chins_barra_fixa",
+  "coice-extensao com bloqueio (lockout)": "coice_extensao_com_bloqueio_lockout",
+  "crucifixo inclinado": "crucifixo_inclinado",
+  "crucifixo inclinado (halteres 30°)": "crucifixo_inclinado",
+  "desenvolvimento com halteres (sentado 70°)": "desenvolvimento_halteres",
+  "desenvolvimento frontal / plano escapular (ou press behind neck ate as orelhas)": "press_behind_neck",
+  "desenvolvimento frontal com barra (ou behind neck c/ mobilidade)": "press_behind_neck",
+  "desenvolvimento militar (pela frente)": "desenvolvimento_militar",
+  "elevacao de gemeos em pe (standing calf raise)": "elevacao_gemeos",
+  "extensao de triceps com amplitude parcial": "extensao_de_triceps_com_amplitude_parcial",
+  "extensao de triceps no cabo (amplitude parcial / burns)": "extensao_de_triceps_com_amplitude_parcial",
+  "extensoes de triceps": "extensoes_de_triceps",
+  "extensoes de triceps (deitado ou cabo)": "extensoes_de_triceps",
+  "flexao de punho": "flexao_de_punho",
+  "flexao de punho (barbell wrist curls)": "flexao_de_punho",
+  "flexao e extensao de pescoco": "flexao_e_extensao_de_pescoco",
+  "flexao e extensao de pescoco (anilha acolchoada / manual)": "wrestler_s_bridge",
+  "flexao e extensao de pescoco segura (substituto de wrestler’s bridge)": "wrestler_s_bridge",
+  "flexao/extensao de pescoco": "flexao_extensao_de_pescoco",
+  "french press (triceps frances)": "french_press_triceps_frances",
+  "gemeos no leg press (variacao de pes)": "gemeos_leg_press",
+  "gironda wide dips (paralelas largas 32\") ou decline pulley hug": "supino_reto_barra",
+  "hanging leg raises": "hanging_leg_raises",
+  "hanging leg raises (elevacao de pernas na barra)": "hanging_leg_raises",
+  "hiperextensoes": "hiperextensoes",
+  "hiperextensoes no banco romano": "hiperextensoes",
+  "knees-together hack slide": "knees_together_hack_slide",
+  "knees-together hack slide (pausa mecanica 1s)": "knees_together_hack_slide",
+  "leg press 45º": "leg_press",
+  "leg press 45º ou cadeira extensora": "leg_press_45_ou_cadeira_extensora",
+  "leg press ou cadeira extensora": "leg_press_ou_cadeira_extensora",
+  "medium-grip chin": "medium_grip_chin",
+  "medium-grip chin (esterno na barra — gironda)": "medium_grip_chin",
+  "mesa flexora (thigh curl / leg curl)": "mesa_flexora",
+  "neck press (gironda style)": "neck_press_gironda_style",
+  "press behind neck": "press_behind_neck",
+  "pull-over (cabo ou halter)": "pull_over_cabo_ou_halter",
+  "pulldown supinado": "pulldown_supinado",
+  "pulldown supinado fechado (close-grip palms-up)": "pulldown_supinado",
+  "pullover na maquina": "pullover_na_maquina",
+  "pullover na maquina (ou bracos retos na polia)": "pullover_na_maquina",
+  "puxada alta pela frente (lat pulldown)": "puxada_alta",
+  "puxada na frente / remada": "puxada_na_frente_remada",
+  "puxada supinada fechada (close-grip palms-up pulldown)": "puxada_na_frente_remada",
+  "reeves toe press (leg press)": "reeves_toe_press_leg_press",
+  "reeves toe press (panturrilhas no leg press)": "reeves_toe_press_leg_press",
+  "remada alta (upright rows — pegada media/aberta)": "remada_alta_pesada",
+  "remada curvada com barra (bent-over barbell rows)": "remada_curvada",
+  "remada unilateral (serrote)": "remada_unilateral_serrote",
+  "rosca de pulso inversa": "rosca_de_pulso_inversa",
+  "rosca de pulso inversa (reverse wrist curls)": "rosca_de_pulso_inversa",
+  "rosca de pulso inversa ou flexao de punho": "rosca_inversa_ou_flexao_de_punho",
+  "rosca de pulso inversa ou rosca martelo": "rosca_inversa",
+  "rosca de pulso inversa ou rosca martelo (substituto seguro de rosca inversa)": "rosca_inversa",
+  "rosca direta (halteres simultanea)": "rosca_direta_halteres",
+  "rosca direta (halteres)": "rosca_direta_halteres",
+  "rosca direta com barra reta (ou w p/ punhos)": "rosca_direta_barra",
+  "rosca direta com barra w (ez-bar)": "rosca_direta_barra_w",
+  "rosca inversa": "rosca_inversa",
+  "rosca inversa ou flexao de punho": "rosca_inversa_ou_flexao_de_punho",
+  "rosca preacher (preacher curl)": "rosca_preacher_preacher_curl",
+  "rosca scott (preacher curl)": "rosca_preacher_preacher_curl",
+  "stiff (stiff-legged deadlifts)": "stiff",
+  "supino com halteres": "supino_com_halteres",
+  "supino fechado": "supino_fechado",
+  "supino fechado (close-grip bench press)": "supino_fechado",
+  "supino fechado (triceps supinado / bi-set)": "supino_fechado_triceps",
+  "supino reto com halteres": "supino_com_halteres",
+  "triceps coice com bloqueio (dumbbell kickbacks)": "coice_extensao_com_bloqueio_lockout",
+  "triceps coice com halteres (kickbacks)": "triceps_coice",
+  "triceps no pulley (barra / corda)": "triceps_pulley",
+  "triceps pulley unilateral": "triceps_pulley_unilateral",
+  "triceps pulley unilateral (supinado/neutro)": "triceps_pulley_unilateral",
+  "triceps testa (skull crushers / atras da cabeca)": "triceps_testa",
+  "wrestler’s bridge": "wrestler_s_bridge"
 };
 
 export const getCanonicalExerciseKey = (rawName) => {

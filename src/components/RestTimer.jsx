@@ -3,7 +3,7 @@ import { Timer, Play, Pause, RotateCcw, X, Volume2, VolumeX, Plus, Minus, BellOf
 import { unlockTimerAudio } from '../utils/timerAudio';
 
 const PRESETS = [
-  { label: '15s', seconds: 15, desc: 'Rest-Pause' },
+  { label: '10s', seconds: 10, desc: 'Rest-Pause' },
   { label: '30s', seconds: 30, desc: 'Curto' },
   { label: '60s', seconds: 60, desc: 'Padrão' },
   { label: '90s', seconds: 90, desc: 'Composto' },
