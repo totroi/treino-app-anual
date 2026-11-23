@@ -268,6 +268,7 @@ export default function PrinciplesModal({
   );
   const [expandedSections, setExpandedSections] = useState({});
   const [glossaryQuery, setGlossaryQuery] = useState('');
+  const [offlineGuideMonth, setOfflineGuideMonth] = useState(null);
   const scrollContainerRef = useRef(null);
 
   const toggleSection = (key) => {
@@ -430,15 +431,33 @@ export default function PrinciplesModal({
               </div>
 
               {monthDocLink && (
-                <a
-                  href={monthDocLink}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="w-full min-h-[44px] px-4 py-2.5 rounded-xl bg-sky-950/70 hover:bg-sky-900/70 border border-sky-700/70 text-sky-200 font-bold text-xs flex items-center justify-center gap-2 transition-colors"
-                >
-                  <ExternalLink className="w-4 h-4" />
-                  <span>Abrir Guia Completo de {selectedMonth} (Google Docs)</span>
-                </a>
+                <div className="space-y-2">
+                  <a
+                    href={monthDocLink}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={(e) => {
+                      if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+                        e.preventDefault();
+                        setOfflineGuideMonth(selectedMonth);
+                      } else {
+                        setOfflineGuideMonth(null);
+                      }
+                    }}
+                    className="w-full min-h-[44px] px-4 py-2.5 rounded-xl bg-sky-950/70 hover:bg-sky-900/70 border border-sky-700/70 text-sky-200 font-bold text-xs flex items-center justify-center gap-2 transition-colors"
+                  >
+                    <ExternalLink className="w-4 h-4" />
+                    <span>Abrir Guia Completo de {selectedMonth} (Google Docs)</span>
+                  </a>
+                  {offlineGuideMonth === selectedMonth && (
+                    <p
+                      role="status"
+                      className="text-xs text-amber-300 bg-amber-950/40 border border-amber-800/60 rounded-xl px-3 py-2 leading-relaxed"
+                    >
+                      Sem sinal de internet no momento. Use o Resumo Offline acima durante o treino e abra o Google Docs quando tiver conexão.
+                    </p>
+                  )}
+                </div>
               )}
             </section>
           )}

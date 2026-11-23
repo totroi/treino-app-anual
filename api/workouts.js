@@ -38,8 +38,8 @@ export default async function handler(req, res) {
       }
     }
     const csvText = await fetchWorkoutsCSV(rawSexo);
-    // Cache de 5 minutos na CDN da Vercel + 10 min stale-while-revalidate (suporta 100+ usuários diários com custo zero)
-    res.setHeader('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=600');
+    // Cache de 1 hora na CDN + 24 horas stale-while-revalidate (no máx. 2 hits/hora na planilha mesmo com 1.000+ usuários)
+    res.setHeader('Cache-Control', 'public, s-maxage=3600, stale-while-revalidate=86400');
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     return res.status(200).send(csvText);
   } catch (err) {

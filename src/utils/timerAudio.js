@@ -1,14 +1,18 @@
 // Motor de áudio Seamless Music-First para iOS 17/18 WebKit (iPhone 15) + Android/Desktop
-// Arquitetura projetada para conviver com Deezer / Spotify / YouTube Music:
+// Arquitetura de MOTOR ÚNICO EXCLUSIVO (zero sobreposição de tons):
 // 1. Durante a contagem regressiva: NENHUM áudio é reproduzido e navigator.audioSession.type = 'ambient'
-//    -> A música no Deezer/Spotify NUNCA pausa nem baixa de volume ao iniciar o cronômetro ou ir ao WhatsApp.
-// 2. Quando o alarme dispara (00:00 ou ao retornar do WhatsApp):
-//    -> navigator.audioSession.type muda para 'transient', fazendo FADE (ducking) automático no volume da música sem pausá-la.
-//    -> sharedWavAudio.play() é acionado em TODOS os ciclos do loop (e não apenas quando WebAudio falha),
-//       eliminando o bug do iOS em que um AudioContext retomado de 'interrupted' por visibilitychange ficava mudo a partir do 2º bipe.
+//    -> A música no Deezer/Spotify/YouTube Music NUNCA pausa nem baixa de volume.
+// 2. Quando o alarme dispara (em 1º plano no Modo Foco ou no instante em que volta do WhatsApp):
+//    -> navigator.audioSession.type muda para 'transient', fazendo FADE (ducking) automático na música sem pausá-la.
+//    -> Toca EXCLUSIVAMENTE 1 única fonte por ciclo: HTMLAudioElement WAV pré-gerado em memória (3 bipes em 0.72s).
+//       Web Audio API atua APENAS como fallback exclusivo se o <audio> WAV falhar/rejeitar.
+//    -> Lock real (isBurstPlaying + burstGeneration + cooldown >= 950ms) impede qualquer sobreposição ou tom duplo.
 // 3. Ao tocar em PARAR ALARME (stopSharedAudio):
-//    -> O alarme para imediatamente e navigator.audioSession.type volta para 'ambient',
-//       fazendo o volume do Deezer/Spotify retornar a 100% automaticamente!
+//    -> Interrompe imediatamente qualquer ciclo ativo/pendente e restaura navigator.audioSession.type = 'ambient',
+//       devolvendo o volume do Deezer/Spotify a 100% automaticamente.
+
+const BURST_DURATION_MS = 740;
+const MIN_BURST_COOLDOWN_MS = 950;
 
 let sharedAudioCtx = null;
 let sharedWavAudio = null;
@@ -16,6 +20,10 @@ let activeOscillators = [];
 let hasUserInteracted = false;
 let isWavBlessed = false;
 let alarmWavUriCache = null;
+
+let isBurstPlaying = false;
+let burstGeneration = 0;
+let burstReleaseTimer = null;
 let lastBurstTimestamp = 0;
 
 function setAudioSessionType(type) {
@@ -29,9 +37,8 @@ function setAudioSessionType(type) {
 }
 
 /**
- * Gera em memória um WAV de alarme de alto contraste acústico (3 bipes duplos harmônicos:
- * 880/1760 Hz -> 1174.66/2349.32 Hz -> 1318.51/2637.02 Hz, amplitude 0.92, duração 0.72s)
- * projetado para se destacar com nitidez sobre a música do Deezer/Spotify em fade.
+ * Gera em memória um WAV de alarme de alto contraste acústico (3 bipes harmônicos em 0.72s:
+ * 880/1760 Hz -> 1174.66/2349.32 Hz -> 1318.51/2637.02 Hz) 100% offline (zero download).
  */
 function getAlarmWavDataUri() {
   if (alarmWavUriCache) return alarmWavUriCache;
@@ -107,9 +114,112 @@ function ensureAlarmAudioElement() {
   return sharedWavAudio;
 }
 
+function stopActiveOscillators() {
+  if (activeOscillators.length > 0) {
+    activeOscillators.forEach((osc) => {
+      try {
+        osc.stop();
+        osc.disconnect();
+      } catch {
+        // ignore
+      }
+    });
+    activeOscillators = [];
+  }
+}
+
+function stopCurrentBurst() {
+  if (burstReleaseTimer) {
+    clearTimeout(burstReleaseTimer);
+    burstReleaseTimer = null;
+  }
+  isBurstPlaying = false;
+  stopActiveOscillators();
+
+  if (sharedWavAudio) {
+    try {
+      sharedWavAudio.pause();
+      sharedWavAudio.currentTime = 0;
+    } catch {
+      // ignore
+    }
+  }
+}
+
+function armBurstRelease(gen) {
+  if (burstReleaseTimer) {
+    clearTimeout(burstReleaseTimer);
+  }
+  burstReleaseTimer = setTimeout(() => {
+    if (gen === burstGeneration) {
+      isBurstPlaying = false;
+      burstReleaseTimer = null;
+    }
+  }, BURST_DURATION_MS);
+}
+
+async function playWebAudioFallback(gen) {
+  try {
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    if (!AudioCtx) {
+      if (gen === burstGeneration) isBurstPlaying = false;
+      return false;
+    }
+    if (!sharedAudioCtx || sharedAudioCtx.state === 'closed') {
+      sharedAudioCtx = new AudioCtx();
+    }
+    if (sharedAudioCtx.state !== 'running') {
+      await sharedAudioCtx.resume().catch(() => {});
+    }
+    // Aborta se stopSharedAudio() ou um novo ciclo foi iniciado durante o await
+    if (gen !== burstGeneration) return false;
+    if (sharedAudioCtx.state !== 'running') {
+      isBurstPlaying = false;
+      return false;
+    }
+
+    stopActiveOscillators();
+    const ctx = sharedAudioCtx;
+    const notes = [
+      { freq: 880, harmonic: 1760, start: 0, dur: 0.16 },
+      { freq: 1174.66, harmonic: 2349.32, start: 0.21, dur: 0.18 },
+      { freq: 1318.51, harmonic: 2637.02, start: 0.44, dur: 0.24 }
+    ];
+    notes.forEach(({ freq, harmonic, start, dur }) => {
+      const osc1 = ctx.createOscillator();
+      const osc2 = ctx.createOscillator();
+      const gain = ctx.createGain();
+
+      osc1.type = 'triangle';
+      osc2.type = 'sine';
+      osc1.frequency.setValueAtTime(freq, ctx.currentTime + start);
+      osc2.frequency.setValueAtTime(harmonic, ctx.currentTime + start);
+
+      gain.gain.setValueAtTime(0.65, ctx.currentTime + start);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + start + dur);
+
+      osc1.connect(gain);
+      osc2.connect(gain);
+      gain.connect(ctx.destination);
+
+      osc1.start(ctx.currentTime + start);
+      osc2.start(ctx.currentTime + start);
+      osc1.stop(ctx.currentTime + start + dur);
+      osc2.stop(ctx.currentTime + start + dur);
+
+      activeOscillators.push(osc1, osc2);
+    });
+
+    armBurstRelease(gen);
+    return true;
+  } catch {
+    if (gen === burstGeneration) isBurstPlaying = false;
+    return false;
+  }
+}
+
 /**
- * Tenta tirar o AudioContext de 'suspended' OU 'interrupted' (estado exclusivo do iOS WebKit
- * quando o usuário alterna para o WhatsApp com Deezer e Gravação de Tela ativos).
+ * Tenta tirar o AudioContext de 'suspended' OU 'interrupted' ao voltar do background no iOS.
  */
 export async function resumeAudioFromInterruption() {
   try {
@@ -141,7 +251,6 @@ export function unlockTimerAudio() {
       if (sharedAudioCtx.state !== 'running') {
         sharedAudioCtx.resume().catch(() => {});
       }
-      // Toca 1 frame silencioso para destravar o AudioContext no WebKit sem interferir na música
       try {
         const silentBuf = sharedAudioCtx.createBuffer(1, 1, 22050);
         const src = sharedAudioCtx.createBufferSource();
@@ -160,8 +269,10 @@ export function unlockTimerAudio() {
       if (playPromise && typeof playPromise.then === 'function') {
         playPromise
           .then(() => {
-            wav.pause();
-            wav.currentTime = 0;
+            if (!isBurstPlaying) {
+              wav.pause();
+              wav.currentTime = 0;
+            }
             wav.muted = false;
             isWavBlessed = true;
           })
@@ -169,8 +280,10 @@ export function unlockTimerAudio() {
             wav.muted = false;
           });
       } else {
-        wav.pause();
-        wav.currentTime = 0;
+        if (!isBurstPlaying) {
+          wav.pause();
+          wav.currentTime = 0;
+        }
         wav.muted = false;
         isWavBlessed = true;
       }
@@ -181,110 +294,66 @@ export function unlockTimerAudio() {
 }
 
 /**
- * Toca 1 ciclo do alarme (3 bipes rápidos em ~0.72s).
- * Chamado a cada 1.1s enquanto isAlarmRinging === true:
- * - Ativa audioSession = 'transient' para fazer FADE (ducking) na música do Deezer/Spotify sem pausá-la.
- * - Toca SEMPRE o sharedWavAudio.play() em TODOS os ciclos (além do WebAudio), garantindo que
- *   ao voltar do WhatsApp para o app o alarme continue tocando todos os 15 ciclos até apertar PARAR ALARME!
+ * Toca EXATAMENTE 1 ciclo limpo do alarme (3 bipes em 0.72s) usando 1 único motor exclusivo:
+ * - Motor primário: HTMLAudioElement WAV (confiável no iOS 17/18 mesmo após retornar do WhatsApp).
+ * - Fallback exclusivo: Web Audio API APENAS se o <audio> WAV falhar/não existir.
+ * - Lock real (isBurstPlaying + burstGeneration + cooldown >= 950ms) impede qualquer sobreposição.
  */
 export async function playAlarmBurst({ force = false } = {}) {
   const now = Date.now();
-  if (!force && now - lastBurstTimestamp < 320) {
-    return;
+  if (!force && (isBurstPlaying || now - lastBurstTimestamp < MIN_BURST_COOLDOWN_MS)) {
+    return false;
   }
+
+  stopCurrentBurst();
+  burstGeneration += 1;
+  const gen = burstGeneration;
+  isBurstPlaying = true;
   lastBurstTimestamp = now;
 
-  // Solicita 'transient' durante os bipes para o iOS fazer ducking (fade no volume do Deezer sem pausar a música)
+  // Solicita 'transient' durante os bipes para o iOS fazer ducking (fade na música sem pausá-la)
   setAudioSessionType('transient');
 
-  // 1. Dispara SEMPRE via HTMLAudioElement WAV (confiável em todos os 15 ciclos no iOS mesmo após retorno do WhatsApp sem novo toque)
-  try {
-    const wav = ensureAlarmAudioElement();
-    if (wav) {
+  const wav = ensureAlarmAudioElement();
+  if (wav) {
+    try {
       wav.muted = false;
       wav.volume = 1.0;
       wav.currentTime = 0;
-      wav.play().catch(() => {});
+      wav.onended = () => {
+        if (gen === burstGeneration) {
+          isBurstPlaying = false;
+          if (burstReleaseTimer) {
+            clearTimeout(burstReleaseTimer);
+            burstReleaseTimer = null;
+          }
+        }
+      };
+
+      const playPromise = wav.play();
+      armBurstRelease(gen);
+
+      if (playPromise && typeof playPromise.then === 'function') {
+        await playPromise;
+        return gen === burstGeneration;
+      }
+      return true;
+    } catch {
+      if (gen !== burstGeneration) return false;
+      // Fallback exclusivo para Web Audio somente quando o WAV foi bloqueado/falhou
+      return await playWebAudioFallback(gen);
     }
-  } catch {
-    // ignore
   }
 
-  // 2. Complementa com Web Audio API quando o contexto estiver ativo
-  try {
-    const AudioCtx = window.AudioContext || window.webkitAudioContext;
-    if (AudioCtx) {
-      if (!sharedAudioCtx || sharedAudioCtx.state === 'closed') {
-        sharedAudioCtx = new AudioCtx();
-      }
-      if (sharedAudioCtx.state !== 'running') {
-        await sharedAudioCtx.resume().catch(() => {});
-      }
-      if (sharedAudioCtx.state === 'running') {
-        const ctx = sharedAudioCtx;
-        const notes = [
-          { freq: 880, harmonic: 1760, start: 0, dur: 0.15 },
-          { freq: 1174.66, harmonic: 2349.32, start: 0.20, dur: 0.16 },
-          { freq: 1318.51, harmonic: 2637.02, start: 0.41, dur: 0.22 }
-        ];
-        notes.forEach(({ freq, harmonic, start, dur }) => {
-          const osc1 = ctx.createOscillator();
-          const osc2 = ctx.createOscillator();
-          const gain = ctx.createGain();
-
-          osc1.type = 'triangle';
-          osc2.type = 'sine';
-          osc1.frequency.setValueAtTime(freq, ctx.currentTime + start);
-          osc2.frequency.setValueAtTime(harmonic, ctx.currentTime + start);
-
-          gain.gain.setValueAtTime(0.65, ctx.currentTime + start);
-          gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + start + dur);
-
-          osc1.connect(gain);
-          osc2.connect(gain);
-          gain.connect(ctx.destination);
-
-          osc1.start(ctx.currentTime + start);
-          osc2.start(ctx.currentTime + start);
-          osc1.stop(ctx.currentTime + start + dur);
-          osc2.stop(ctx.currentTime + start + dur);
-
-          activeOscillators.push(osc1, osc2);
-        });
-      }
-    }
-  } catch {
-    // ignore
-  }
+  return await playWebAudioFallback(gen);
 }
 
 export function stopSharedAudio() {
+  burstGeneration += 1;
   lastBurstTimestamp = 0;
+  stopCurrentBurst();
 
-  // Para imediatamente quaisquer osciladores Web Audio ativos
-  if (activeOscillators.length > 0) {
-    activeOscillators.forEach((osc) => {
-      try {
-        osc.stop();
-        osc.disconnect();
-      } catch {
-        // ignore
-      }
-    });
-    activeOscillators = [];
-  }
-
-  // Pausa e rebobina o WAV
-  if (sharedWavAudio) {
-    try {
-      sharedWavAudio.pause();
-      sharedWavAudio.currentTime = 0;
-    } catch {
-      // ignore
-    }
-  }
-
-  // Restaura sessão 'ambient' imediatamente -> o iOS remove o ducking e a música no Deezer/Spotify volta a 100% do volume sozinha!
+  // Restaura sessão 'ambient' imediatamente -> música no Deezer/Spotify volta a 100% sozinha
   setAudioSessionType('ambient');
 }
 

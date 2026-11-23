@@ -14,6 +14,12 @@ const FALLBACK_USERS = [
 ];
 
 const FEMALE_SEXO_VALUES = new Set(["f", "fem", "feminino", "feminina", "female", "mulher"]);
+const USERS_CACHE_TTL_MS = 60 * 1000;
+let usersMemoryCache = { key: "", fetchedAt: 0, users: null };
+
+export function clearUsersCache() {
+  usersMemoryCache = { key: "", fetchedAt: 0, users: null };
+}
 
 export function normalizeSexo(raw) {
   if (typeof raw !== "string") return "M";
@@ -110,20 +116,33 @@ export async function authenticateUser(username, password) {
   const usersGid = process.env.USERS_SHEET_GID || DEFAULT_USERS_GID;
   const secret = process.env.AUTH_SECRET || "irontracker-secret-key-2026";
 
+  const cacheKey = `${sheetId}:${usersGid}`;
   const csvUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv&gid=${usersGid}`;
   let users = [];
 
-  try {
-    const response = await fetch(csvUrl, {
-      headers: { 'Cache-Control': 'no-cache' },
-      signal: AbortSignal.timeout(5000)
-    });
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    const csvText = await response.text();
-    users = parseSimpleCSV(csvText);
-  } catch (err) {
-    console.warn("Fallback local de usuários acionado:", err.message);
-    users = FALLBACK_USERS;
+  const isCacheValid =
+    usersMemoryCache.users &&
+    usersMemoryCache.key === cacheKey &&
+    Date.now() - usersMemoryCache.fetchedAt < USERS_CACHE_TTL_MS;
+
+  if (isCacheValid) {
+    users = usersMemoryCache.users;
+  } else {
+    try {
+      const response = await fetch(csvUrl, {
+        headers: { 'Cache-Control': 'no-cache' },
+        signal: AbortSignal.timeout(5000)
+      });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const csvText = await response.text();
+      users = parseSimpleCSV(csvText);
+      if (users.length > 0) {
+        usersMemoryCache = { key: cacheKey, fetchedAt: Date.now(), users };
+      }
+    } catch (err) {
+      console.warn("Fallback local de usuários acionado:", err.message);
+      users = usersMemoryCache.users || FALLBACK_USERS;
+    }
   }
 
   const found = users.find(u => (u.usuario || '').trim().toLowerCase() === cleanUser);

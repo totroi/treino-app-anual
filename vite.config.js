@@ -1,8 +1,66 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import crypto from 'node:crypto';
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 import { authenticateUser } from './api/auth.js';
 import { fetchWorkoutsCSV } from './api/workouts.js';
+
+function collectDistFiles(dir, rootDir) {
+  const entries = fs.readdirSync(dir, { withFileTypes: true });
+  const files = [];
+  for (const entry of entries) {
+    const fullPath = path.join(dir, entry.name);
+    if (entry.isDirectory()) {
+      files.push(...collectDistFiles(fullPath, rootDir));
+    } else if (entry.isFile()) {
+      const rel = '/' + path.relative(rootDir, fullPath).split(path.sep).join('/');
+      if (rel === '/sw.js' || rel === '/precache-manifest.json') continue;
+      files.push({ rel, fullPath });
+    }
+  }
+  return files;
+}
+
+function offlinePrecacheManifestPlugin() {
+  let outDir = 'dist';
+  return {
+    name: 'offline-precache-manifest',
+    configResolved(config) {
+      outDir = config.build?.outDir || 'dist';
+    },
+    configureServer(server) {
+      server.middlewares.use('/precache-manifest.json', (req, res) => {
+        res.statusCode = 200;
+        res.setHeader('Content-Type', 'application/json; charset=utf-8');
+        res.setHeader('Cache-Control', 'no-store');
+        res.end(JSON.stringify({ version: 'irontracker-shell-dev', urls: [] }));
+      });
+    },
+    closeBundle() {
+      const resolvedOutDir = path.resolve(process.cwd(), outDir);
+      if (!fs.existsSync(resolvedOutDir)) return;
+
+      const files = collectDistFiles(resolvedOutDir, resolvedOutDir).sort((a, b) =>
+        a.rel.localeCompare(b.rel)
+      );
+      const hash = crypto.createHash('sha256');
+      for (const file of files) {
+        const stat = fs.statSync(file.fullPath);
+        hash.update(`${file.rel}:${stat.size}`);
+      }
+      const version = `irontracker-shell-${hash.digest('hex').slice(0, 10)}`;
+      const urls = Array.from(new Set(['/', ...files.map((f) => f.rel)]));
+
+      fs.writeFileSync(
+        path.join(resolvedOutDir, 'precache-manifest.json'),
+        JSON.stringify({ version, urls }, null, 2),
+        'utf-8'
+      );
+    }
+  };
+}
 
 function localVercelApiPlugin() {
   const attachMiddleware = (middlewares) => {
@@ -55,5 +113,5 @@ function localVercelApiPlugin() {
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [react(), tailwindcss(), localVercelApiPlugin()],
+  plugins: [react(), tailwindcss(), localVercelApiPlugin(), offlinePrecacheManifestPlugin()],
 });

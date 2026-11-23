@@ -33,8 +33,8 @@ export function useRestTimer() {
 
   // Loop de alarme contínuo quando o cronômetro zera:
   // - Faz FADE (ducking via audioSession = 'transient') na música do Deezer/Spotify sem pausá-la
-  // - Preserva os 15 ciclos audíveis enquanto o usuário estiver fora do app (document.visibilityState === 'hidden'),
-  //   tocando o loop contínuo completo assim que o usuário retorna do WhatsApp até tocar em PARAR ALARME
+  // - Nunca acumula disparos de áudio enquanto o app estiver em 2º plano (document.visibilityState === 'hidden')
+  // - Deduplica os eventos de retorno (visibilitychange / focus / pageshow) para tocar 1 único timbre limpo sem sobreposição
   useEffect(() => {
     if (!isAlarmRinging) {
       if (alarmIntervalRef.current) {
@@ -44,16 +44,23 @@ export function useRestTimer() {
       return;
     }
 
-    if (soundEnabled) playAlarmBurst({ force: true });
-    triggerSafeVibration([250, 120, 250]);
+    let isCancelled = false;
+    let lastWakeAt = 0;
+    const isCurrentlyHidden = () =>
+      typeof document !== 'undefined' && document.visibilityState === 'hidden';
+
+    if (!isCurrentlyHidden()) {
+      if (soundEnabled) playAlarmBurst({ force: true });
+      triggerSafeVibration([250, 120, 250]);
+    }
 
     let cycles = 0;
     alarmIntervalRef.current = setInterval(() => {
-      const isHidden = typeof document !== 'undefined' && document.visibilityState === 'hidden';
-      // Só consome os 15 ciclos de timeout quando a aba está visível (evita esgotar o alarme mudo enquanto o usuário está no WhatsApp)
-      if (!isHidden) {
-        cycles += 1;
+      if (isCancelled || isCurrentlyHidden()) {
+        // Enquanto o usuário estiver fora do app (WhatsApp), não consome ciclos nem tenta enfileirar áudio mudo
+        return;
       }
+      cycles += 1;
       if (cycles >= 15) {
         setIsAlarmRinging(false);
         clearInterval(alarmIntervalRef.current);
@@ -63,24 +70,25 @@ export function useRestTimer() {
       }
       if (soundEnabled) playAlarmBurst();
       triggerSafeVibration([250, 120, 250]);
-    }, 1100);
+    }, 1150);
 
-    // No instante em que o usuário volta do WhatsApp para o IronTracker, dispara imediatamente o 1º bipe do loop contínuo
+    // No instante em que o usuário volta do WhatsApp para o IronTracker, colapsa visibilitychange/focus/pageshow em 1 disparo limpo
     const handleWakeAlarmAudio = () => {
-      if (!soundEnabled) return;
-      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
-      resumeAudioFromInterruption().then(() => {
-        playAlarmBurst();
-      });
+      if (isCancelled || !soundEnabled || isCurrentlyHidden()) return;
+      const now = Date.now();
+      if (now - lastWakeAt < 450) return;
+      lastWakeAt = now;
+      resumeAudioFromInterruption();
+      playAlarmBurst();
+      triggerSafeVibration([250, 120, 250]);
     };
 
     document.addEventListener('visibilitychange', handleWakeAlarmAudio);
     window.addEventListener('focus', handleWakeAlarmAudio);
     window.addEventListener('pageshow', handleWakeAlarmAudio);
-    window.addEventListener('touchstart', handleWakeAlarmAudio, { passive: true });
-    window.addEventListener('pointerdown', handleWakeAlarmAudio, { passive: true });
 
     return () => {
+      isCancelled = true;
       if (alarmIntervalRef.current) {
         clearInterval(alarmIntervalRef.current);
         alarmIntervalRef.current = null;
@@ -88,8 +96,6 @@ export function useRestTimer() {
       document.removeEventListener('visibilitychange', handleWakeAlarmAudio);
       window.removeEventListener('focus', handleWakeAlarmAudio);
       window.removeEventListener('pageshow', handleWakeAlarmAudio);
-      window.removeEventListener('touchstart', handleWakeAlarmAudio);
-      window.removeEventListener('pointerdown', handleWakeAlarmAudio);
     };
   }, [isAlarmRinging, soundEnabled]);
 
