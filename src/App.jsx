@@ -11,6 +11,7 @@ import {
   buildExerciseRenderUnits
 } from './utils/exerciseNormalizer';
 import { findGlossaryEntriesForTechnique } from './utils/glossaryData';
+import { prefetchGuidesForSexo } from './utils/guideLoader';
 import { getCurrentSession, logoutUser } from './services/authService';
 import {
   loadUiScale,
@@ -96,6 +97,12 @@ function AuthenticatedWorkspace({ currentUser, onLogout }) {
       if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
     };
   }, []);
+
+  // Pré-aquece em tempo ocioso apenas o chunk dos 12 guias do sexo logado (~33-38 KB gzip)
+  // para garantir leitura interna 100% offline na academia de subsolo
+  useEffect(() => {
+    prefetchGuidesForSexo(currentUser?.sexo);
+  }, [currentUser?.sexo]);
 
   const { rawData, loading, isOfflineFallback, syncWorkouts } = useWorkoutsData(
     true,

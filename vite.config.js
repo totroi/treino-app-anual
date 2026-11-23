@@ -16,7 +16,13 @@ function collectDistFiles(dir, rootDir) {
       files.push(...collectDistFiles(fullPath, rootDir));
     } else if (entry.isFile()) {
       const rel = '/' + path.relative(rootDir, fullPath).split(path.sep).join('/');
-      if (rel === '/sw.js' || rel === '/precache-manifest.json') continue;
+      if (
+        rel === '/sw.js' ||
+        rel === '/precache-manifest.json' ||
+        /^\/assets\/guides(Male|Female)-[^/]+\.js$/i.test(rel)
+      ) {
+        continue;
+      }
       files.push({ rel, fullPath });
     }
   }

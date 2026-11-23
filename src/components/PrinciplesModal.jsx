@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, lazy, Suspense } from 'react';
 import {
   X,
   Flame,
@@ -22,6 +22,8 @@ import {
 } from 'lucide-react';
 import { getMonthlyDocs, getMonthlySummaries } from '../utils/exerciseNormalizer';
 import { GLOSSARY_ITEMS } from '../utils/glossaryData';
+
+const GuideReaderModal = lazy(() => import('./GuideReaderModal'));
 
 const PUMPER_EXAMPLES = [
   {
@@ -269,20 +271,21 @@ export default function PrinciplesModal({
   const [expandedSections, setExpandedSections] = useState({});
   const [glossaryQuery, setGlossaryQuery] = useState('');
   const [offlineGuideMonth, setOfflineGuideMonth] = useState(null);
+  const [isReaderOpen, setIsReaderOpen] = useState(false);
   const scrollContainerRef = useRef(null);
 
   const toggleSection = (key) => {
     setExpandedSections((prev) => ({ ...prev, [key]: !prev[key] }));
   };
 
-  // Bloqueia o scroll da página de fundo e fecha com ESC
+  // Bloqueia o scroll da página de fundo e fecha com ESC (respeitando o leitor interno por cima)
   useEffect(() => {
     if (!isOpen) return;
     const prevOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
 
     const handleKeyDown = (e) => {
-      if (e.key === 'Escape') onClose();
+      if (e.key === 'Escape' && !isReaderOpen) onClose();
     };
     window.addEventListener('keydown', handleKeyDown);
 
@@ -290,7 +293,7 @@ export default function PrinciplesModal({
       document.body.style.overflow = prevOverflow;
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [isOpen, onClose]);
+  }, [isOpen, isReaderOpen, onClose]);
 
   // Deep-link exato para seção ou termo específico do glossário (ex.: 'glossario-cheating')
   useEffect(() => {
@@ -334,10 +337,16 @@ export default function PrinciplesModal({
   const monthSummary = getMonthlySummaries(sexo)[selectedMonth];
   const monthDocLink = getMonthlyDocs(sexo)[selectedMonth];
 
+  const handleCloseAll = () => {
+    setIsReaderOpen(false);
+    onClose();
+  };
+
   return (
+    <>
     <div
       className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/85 backdrop-blur-sm p-0 sm:p-4 touch-none ui-fade-in"
-      onClick={onClose}
+      onClick={handleCloseAll}
       role="dialog"
       aria-modal="true"
       aria-label="Princípios Básicos da Hipertrofia e Guia do Mês"
@@ -430,35 +439,49 @@ export default function PrinciplesModal({
                 <p className="text-zinc-300">{monthSummary.focus}</p>
               </div>
 
-              {monthDocLink && (
-                <div className="space-y-2">
-                  <a
-                    href={monthDocLink}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    onClick={(e) => {
-                      if (typeof navigator !== 'undefined' && navigator.onLine === false) {
-                        e.preventDefault();
-                        setOfflineGuideMonth(selectedMonth);
-                      } else {
-                        setOfflineGuideMonth(null);
-                      }
-                    }}
-                    className="w-full min-h-[44px] px-4 py-2.5 rounded-xl bg-sky-950/70 hover:bg-sky-900/70 border border-sky-700/70 text-sky-200 font-bold text-xs flex items-center justify-center gap-2 transition-colors"
-                  >
-                    <ExternalLink className="w-4 h-4" />
-                    <span>Abrir Guia Completo de {selectedMonth} (Google Docs)</span>
-                  </a>
-                  {offlineGuideMonth === selectedMonth && (
-                    <p
-                      role="status"
-                      className="text-xs text-amber-300 bg-amber-950/40 border border-amber-800/60 rounded-xl px-3 py-2 leading-relaxed"
+              <div className="space-y-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOfflineGuideMonth(null);
+                    setIsReaderOpen(true);
+                  }}
+                  className="w-full min-h-[44px] px-4 py-2.5 rounded-xl bg-sky-600 hover:bg-sky-500 active:scale-[0.99] text-white font-extrabold text-xs flex items-center justify-center gap-2 shadow-lg shadow-sky-950/50 transition-all cursor-pointer"
+                >
+                  <BookOpen className="w-4 h-4 flex-shrink-0" />
+                  <span>Ler Guia Completo de {selectedMonth} (No App • Offline)</span>
+                </button>
+
+                {monthDocLink && (
+                  <div className="space-y-2">
+                    <a
+                      href={monthDocLink}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={(e) => {
+                        if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+                          e.preventDefault();
+                          setOfflineGuideMonth(selectedMonth);
+                        } else {
+                          setOfflineGuideMonth(null);
+                        }
+                      }}
+                      className="w-full min-h-[40px] px-3.5 py-2 rounded-xl bg-zinc-900/90 hover:bg-zinc-800 border border-zinc-800 text-zinc-300 hover:text-white font-semibold text-xs flex items-center justify-center gap-1.5 transition-colors"
                     >
-                      Sem sinal de internet no momento. Use o Resumo Offline acima durante o treino e abra o Google Docs quando tiver conexão.
-                    </p>
-                  )}
-                </div>
-              )}
+                      <ExternalLink className="w-3.5 h-3.5 text-sky-400" />
+                      <span>Abrir versão externa no Google Docs (impressão)</span>
+                    </a>
+                    {offlineGuideMonth === selectedMonth && (
+                      <p
+                        role="status"
+                        className="text-xs text-amber-300 bg-amber-950/40 border border-amber-800/60 rounded-xl px-3 py-2 leading-relaxed"
+                      >
+                        Sem sinal de internet para o Google Docs externo. Toque em &ldquo;Ler Guia Completo&rdquo; acima para abrir a versão 100% offline no app.
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
             </section>
           )}
 
@@ -918,7 +941,7 @@ export default function PrinciplesModal({
         <div className="px-4 pt-3 pb-[calc(1rem+env(safe-area-inset-bottom))] border-t border-zinc-800 bg-zinc-950">
           <button
             type="button"
-            onClick={onClose}
+            onClick={handleCloseAll}
             className="w-full min-h-[46px] py-2.5 px-4 rounded-xl bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white font-bold text-sm shadow-lg shadow-blue-600/20 transition-all cursor-pointer"
           >
             Entendi • Voltar ao Treino
@@ -926,5 +949,17 @@ export default function PrinciplesModal({
         </div>
       </div>
     </div>
+
+    {isReaderOpen && (
+      <Suspense fallback={null}>
+        <GuideReaderModal
+          isOpen={isReaderOpen}
+          onClose={() => setIsReaderOpen(false)}
+          initialMonth={selectedMonth}
+          sexo={sexo}
+        />
+      </Suspense>
+    )}
+    </>
   );
 }
