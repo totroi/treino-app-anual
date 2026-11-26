@@ -27,13 +27,17 @@ export function useFocusAutoDim({
       }, screensaverDelay * 1000);
     };
 
-    const events = ['pointerdown', 'keydown', 'touchstart', 'scroll'];
-    events.forEach((ev) => window.addEventListener(ev, resetInactivityTimer, { passive: true }));
+    const pointerEvents = ['pointerdown', 'keydown', 'touchstart'];
+    pointerEvents.forEach((ev) =>
+      window.addEventListener(ev, resetInactivityTimer, { passive: true })
+    );
+    window.addEventListener('scroll', resetInactivityTimer, { capture: true, passive: true });
     resetInactivityTimer();
 
     return () => {
       if (timeoutId) clearTimeout(timeoutId);
-      events.forEach((ev) => window.removeEventListener(ev, resetInactivityTimer));
+      pointerEvents.forEach((ev) => window.removeEventListener(ev, resetInactivityTimer));
+      window.removeEventListener('scroll', resetInactivityTimer, { capture: true });
     };
   }, [
     enabled,

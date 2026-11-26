@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef, useCallback, useEffect } from 'react';
+import React, { useState, useMemo, useRef, useCallback, useEffect, lazy, Suspense } from 'react';
 import { RefreshCw, Info, CheckCircle2, Undo2 } from 'lucide-react';
 import {
   getCurrentMonthName,
@@ -25,6 +25,9 @@ import { useWorkoutsData } from './hooks/useWorkoutsData';
 import { useWorkoutLogs } from './hooks/useWorkoutLogs';
 import { useRestTimer } from './hooks/useRestTimer';
 import { useFocusAutoDim } from './hooks/useFocusAutoDim';
+import { usePwaUpdate } from './hooks/usePwaUpdate';
+import { trackSessionStart, trackProgressHeartbeat } from './services/trackingService';
+import { parsePtBrNumber } from './utils/numberFormat';
 import LoginScreen from './components/LoginScreen';
 import HeaderBar from './components/HeaderBar';
 import MonthAndGuidesBar from './components/MonthAndGuidesBar';
@@ -39,6 +42,8 @@ import PrinciplesModal from './components/PrinciplesModal';
 import FocusScreensaver from './components/FocusScreensaver';
 import RestTimer from './components/RestTimer';
 
+const AdminTrackingModal = lazy(() => import('./components/AdminTrackingModal'));
+
 function AuthenticatedWorkspace({ currentUser, onLogout }) {
   const [selectedMonth, setSelectedMonth] = useState(getCurrentMonthName());
   const [selectedWorkout, setSelectedWorkout] = useState('A');
@@ -49,6 +54,7 @@ function AuthenticatedWorkspace({ currentUser, onLogout }) {
 
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showResultsModal, setShowResultsModal] = useState(false);
+  const [showAdminTracking, setShowAdminTracking] = useState(false);
   const [principlesState, setPrinciplesState] = useState({
     isOpen: false,
     section: null,
@@ -111,6 +117,18 @@ function AuthenticatedWorkspace({ currentUser, onLogout }) {
   );
   const logs = useWorkoutLogs(currentUser.username, selectedMonth, selectedWorkout);
   const timer = useRestTimer();
+  const pwaUpdate = usePwaUpdate();
+
+  // Notifica quando PRs foram restaurados automaticamente do IndexedDB após limpeza parcial do navegador (R2)
+  useEffect(() => {
+    if (!logs.storageStatus?.recoveredFromIDB) return;
+    const id = setTimeout(() => {
+      showToast(
+        `${logs.storageStatus.recoveredFromIDB} registro(s) restaurado(s) do armazenamento blindado.`
+      );
+    }, 200);
+    return () => clearTimeout(id);
+  }, [logs.storageStatus?.recoveredFromIDB, showToast]);
 
   // Notifica discretamente quando a virada semanal automática (ISO-8601) limpar o ciclo anterior
   useEffect(() => {
@@ -192,10 +210,51 @@ function AuthenticatedWorkspace({ currentUser, onLogout }) {
     isBlockedByModal:
       principlesState.isOpen ||
       showResultsModal ||
+      showAdminTracking ||
       showUserMenu ||
       Boolean(resetModalTab),
     onTriggerScreensaver: () => setIsScreensaverOpen(true)
   });
+
+  // R5: Telemetria agregada anônima (1x session_start + heartbeat throttled >= 5 min + visibilitychange)
+  const completedCountToday = logs.completedExercises?.length || 0;
+  const setsLoggedToday = logs.summaryStats?.setsToday || 0;
+  const trackingSnapshotRef = useRef({
+    sexo: currentUser?.sexo,
+    month: effectiveMonth,
+    workoutKey: selectedWorkout,
+    completedExercisesCount: completedCountToday,
+    setsLoggedToday
+  });
+
+  useEffect(() => {
+    trackingSnapshotRef.current = {
+      sexo: currentUser?.sexo,
+      month: effectiveMonth,
+      workoutKey: selectedWorkout,
+      completedExercisesCount: completedCountToday,
+      setsLoggedToday
+    };
+  }, [currentUser?.sexo, effectiveMonth, selectedWorkout, completedCountToday, setsLoggedToday]);
+
+  useEffect(() => {
+    trackSessionStart(trackingSnapshotRef.current);
+  }, []);
+
+  useEffect(() => {
+    if (completedCountToday === 0 && setsLoggedToday === 0) return;
+    trackProgressHeartbeat(trackingSnapshotRef.current);
+  }, [completedCountToday, setsLoggedToday, effectiveMonth, selectedWorkout]);
+
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (document.visibilityState === 'hidden') {
+        trackProgressHeartbeat(trackingSnapshotRef.current, { force: true, keepalive: true });
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => document.removeEventListener('visibilitychange', handleVisibility);
+  }, []);
 
   // Metadados das abas A / B / C (resumo muscular dinâmico + badge concluído)
   const workoutMetaByTab = useMemo(() => {
@@ -509,9 +568,24 @@ function AuthenticatedWorkspace({ currentUser, onLogout }) {
     );
   }
 
-  const focusedLastLog = focusedExercise
-    ? (logs.workoutLogs[getCanonicalExerciseKey(focusedExercise['Exercício'])] || [])[0] || null
-    : null;
+  const focusedLogsList = focusedExercise
+    ? logs.workoutLogs[getCanonicalExerciseKey(focusedExercise['Exercício'])] || []
+    : [];
+  const focusedLastLog = focusedLogsList[0] || null;
+  let focusedPrLog = null;
+  if (focusedLogsList.length > 0) {
+    let best = focusedLogsList[0];
+    let bestWeight = parsePtBrNumber(best.weight);
+    if (Number.isNaN(bestWeight)) bestWeight = -Infinity;
+    for (let i = 1; i < focusedLogsList.length; i += 1) {
+      const w = parsePtBrNumber(focusedLogsList[i].weight);
+      if (!Number.isNaN(w) && w > bestWeight) {
+        bestWeight = w;
+        best = focusedLogsList[i];
+      }
+    }
+    focusedPrLog = best;
+  }
 
   return (
     <div className="min-h-[100dvh] bg-black font-sans text-zinc-100">
@@ -548,6 +622,7 @@ function AuthenticatedWorkspace({ currentUser, onLogout }) {
         onToggleUserMenu={() => setShowUserMenu((prev) => !prev)}
         onOpenResults={() => setShowResultsModal(true)}
         hasBackupAlert={hasBackupAlert}
+        hasPwaUpdate={pwaUpdate.hasPwaUpdate}
       />
 
       {/* Barra rolável de Mês + Guia + Princípios (não ocupa espaço fixo durante o treino) */}
@@ -732,13 +807,20 @@ function AuthenticatedWorkspace({ currentUser, onLogout }) {
         currentUser={currentUser}
         summaryStats={logs.summaryStats}
         backupMeta={logs.backupMeta}
+        storageStatus={logs.storageStatus}
+        pwaUpdate={pwaUpdate}
         uiScale={uiScale}
         onUiScaleChange={handleUiScaleChange}
         screensaverDelay={screensaverDelay}
         onScreensaverDelayChange={handleScreensaverDelayChange}
         autoStartTimer={autoStartTimer}
         onToggleAutoStartTimer={handleToggleAutoStartTimer}
+        timerVolume={timer.volumeLevel}
+        onTimerVolumeChange={(level) => timer.setVolumeLevel(level, { preview: true })}
         onOpenResults={() => setShowResultsModal(true)}
+        onOpenAdminTracking={
+          currentUser?.role === 'admin' ? () => setShowAdminTracking(true) : null
+        }
         onExportBackup={() => {
           logs.exportBackup();
           showToast('Backup JSON exportado!');
@@ -761,6 +843,17 @@ function AuthenticatedWorkspace({ currentUser, onLogout }) {
           showToast('Backup JSON exportado!');
         }}
       />
+
+      {/* Modal Admin de Tracking (Lazy Loaded, exclusivo role === 'admin') */}
+      {currentUser?.role === 'admin' && showAdminTracking && (
+        <Suspense fallback={null}>
+          <AdminTrackingModal
+            isOpen={showAdminTracking}
+            onClose={() => setShowAdminTracking(false)}
+            currentUser={currentUser}
+          />
+        </Suspense>
+      )}
 
       {/* Modal Unificado de Reinício de Status (Aba 1) e Limpeza Granular de Histórico (Aba 2) */}
       <ConfirmResetModal
@@ -800,9 +893,9 @@ function AuthenticatedWorkspace({ currentUser, onLogout }) {
         sexo={currentUser?.sexo}
       />
 
-      {/* Modo Foco OLED (Screensaver Interativo com registro de série e troca de par 1/2 <-> 2/2) */}
+      {/* Modo Foco OLED (Screensaver Interativo sem remount de WakeLock ao alternar 1/2 <-> 2/2) */}
       <FocusScreensaver
-        key={isScreensaverOpen && focusedExercise ? `${focusedExercise['Exercício']}-open` : 'focus-idle'}
+        key={isScreensaverOpen ? 'focus-open' : 'focus-idle'}
         isOpen={isScreensaverOpen}
         exercise={focusedExercise}
         sexo={currentUser?.sexo}
@@ -817,10 +910,12 @@ function AuthenticatedWorkspace({ currentUser, onLogout }) {
               const partner = rawMeta.partnerExercise;
               const partnerTitle = getDisplayExerciseName(partner['Exercício']);
               const partnerTech = cleanAdvancedTechnique(partner['Técnica Avançada']);
+              const partnerStep = rawMeta.step === 1 ? 2 : 1;
               const partnerRest = parseRestSeconds(
                 partner['Descanso'],
                 partnerTech,
-                partner['Grupo muscular']
+                partner['Grupo muscular'],
+                partnerStep
               );
               setFocusedExercise(partner);
               timer.prepareTimer(partnerRest, partnerTitle);
@@ -828,6 +923,7 @@ function AuthenticatedWorkspace({ currentUser, onLogout }) {
           };
         })()}
         lastLog={focusedLastLog}
+        prLog={focusedPrLog}
         todaySetsCount={
           focusedExercise
             ? logs.getTodaySetsCount(getCanonicalExerciseKey(focusedExercise['Exercício']))

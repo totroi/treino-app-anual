@@ -1,5 +1,12 @@
 import { getCanonicalExerciseKey } from '../utils/exerciseNormalizer.js';
 import { normalizeWeightInput } from '../utils/numberFormat.js';
+import {
+  saveDurableLogs,
+  saveDurableSessionV3,
+  saveDurableBackupMeta,
+  saveDurableCsvCache,
+  clearDurableUserProgress
+} from './durableStorage.js';
 
 const LEGACY_LOGS_KEY = "gym_tracker_logs";
 const LEGACY_SESSION_KEY = "gym_tracker_session_completed";
@@ -9,11 +16,67 @@ const CACHED_CSV_FEMALE_KEY = "irontracker_cached_csv_v1_F";
 const UI_SCALE_KEY = "irontracker_ui_scale";
 const SCREENSAVER_DELAY_KEY = "irontracker_screensaver_delay";
 const AUTO_TIMER_KEY = "irontracker_auto_start_timer";
+const TIMER_VOLUME_KEY = "irontracker_timer_volume";
+const TIMER_SOUND_ENABLED_KEY = "irontracker_timer_sound_enabled";
 
 const getLogsKey = (username) => `irontracker_logs_${(username || 'default').toLowerCase()}`;
+const getLogsBakKey = (username) => `irontracker_logs_bak_${(username || 'default').toLowerCase()}`;
+const getResetAtKey = (username) => `irontracker_reset_at_${(username || 'default').toLowerCase()}`;
 const getSessionV2Key = (username) => `irontracker_session_${(username || 'default').toLowerCase()}`;
 const getSessionV3Key = (username) => `irontracker_session_v3_${(username || 'default').toLowerCase()}`;
 const getBackupMetaKey = (username) => `irontracker_backup_meta_${(username || 'default').toLowerCase()}`;
+
+function isQuotaError(err) {
+  if (!err) return false;
+  return (
+    err.name === 'QuotaExceededError' ||
+    err.name === 'NS_ERROR_DOM_QUOTA_REACHED' ||
+    err.code === 22 ||
+    err.code === 1014
+  );
+}
+
+/**
+ * Grava em localStorage com evicção automática de caches CSV reconstruíveis se ocorrer QuotaExceededError.
+ */
+export function safeLocalStorageSet(key, value) {
+  try {
+    localStorage.setItem(key, value);
+    return { ok: true, quotaError: false };
+  } catch (err) {
+    if (isQuotaError(err)) {
+      try {
+        localStorage.removeItem(CACHED_CSV_KEY);
+        localStorage.removeItem(CACHED_CSV_MALE_KEY);
+        localStorage.removeItem(CACHED_CSV_FEMALE_KEY);
+        localStorage.setItem(key, value);
+        return { ok: true, quotaError: false, evictedCsvCache: true };
+      } catch {
+        return { ok: false, quotaError: true };
+      }
+    }
+    return { ok: false, quotaError: false };
+  }
+}
+
+function countLogsEntries(logsMap) {
+  if (!logsMap || typeof logsMap !== 'object') return 0;
+  let total = 0;
+  Object.values(logsMap).forEach((arr) => {
+    if (Array.isArray(arr)) total += arr.length;
+  });
+  return total;
+}
+
+export function loadUserResetAt(username) {
+  try {
+    const raw = localStorage.getItem(getResetAtKey(username));
+    const ms = Number(raw);
+    return Number.isFinite(ms) && ms > 0 ? ms : 0;
+  } catch {
+    return 0;
+  }
+}
 
 export const makeSessionScopeKey = (month, workout) => `${(month || '').trim()}::${(workout || '').trim()}`;
 
@@ -75,32 +138,77 @@ export function normalizeLogsMap(rawLogsMap) {
   return normalized;
 }
 
-export function loadUserWorkoutLogs(username) {
+export function loadUserWorkoutLogsWithStatus(username) {
+  const userKey = getLogsKey(username);
+  const bakKey = getLogsBakKey(username);
+  let corrupted = false;
+
   try {
-    const userKey = getLogsKey(username);
     const saved = localStorage.getItem(userKey);
     if (saved) {
-      return normalizeLogsMap(JSON.parse(saved));
+      return {
+        logs: normalizeLogsMap(JSON.parse(saved)),
+        corrupted: false,
+        recoveredFromBackup: false
+      };
     }
+  } catch (e) {
+    corrupted = true;
+    console.warn("Erro ao carregar histórico principal de treinos:", e);
+  }
 
+  // Fallback síncrono instantâneo via sombra irontracker_logs_bak_<username>
+  try {
+    const bakSaved = localStorage.getItem(bakKey);
+    if (bakSaved) {
+      const recovered = normalizeLogsMap(JSON.parse(bakSaved));
+      if (countLogsEntries(recovered) > 0) {
+        safeLocalStorageSet(userKey, JSON.stringify(recovered));
+        return { logs: recovered, corrupted: false, recoveredFromBackup: true };
+      }
+    }
+  } catch (e) {
+    console.warn("Erro ao carregar backup sombra de treinos:", e);
+  }
+
+  try {
     const legacy = localStorage.getItem(LEGACY_LOGS_KEY);
     if (legacy) {
       const migrated = normalizeLogsMap(JSON.parse(legacy));
-      localStorage.setItem(userKey, JSON.stringify(migrated));
-      return migrated;
+      safeLocalStorageSet(userKey, JSON.stringify(migrated));
+      return { logs: migrated, corrupted: false, recoveredFromBackup: false };
     }
   } catch (e) {
-    console.warn("Erro ao carregar histórico de treinos:", e);
+    console.warn("Erro ao migrar histórico legado:", e);
   }
-  return {};
+
+  return { logs: {}, corrupted, recoveredFromBackup: false };
 }
 
-export function saveUserWorkoutLogs(username, logsMap) {
-  try {
-    localStorage.setItem(getLogsKey(username), JSON.stringify(logsMap));
-  } catch (e) {
-    console.warn("Erro ao salvar histórico:", e);
+export function loadUserWorkoutLogs(username) {
+  return loadUserWorkoutLogsWithStatus(username).logs;
+}
+
+export function saveUserWorkoutLogs(username, logsMap, { allowEmpty = false } = {}) {
+  const userKey = getLogsKey(username);
+  const bakKey = getLogsBakKey(username);
+  const serialized = JSON.stringify(logsMap);
+  const entryCount = countLogsEntries(logsMap);
+
+  const result = safeLocalStorageSet(userKey, serialized);
+  if (entryCount > 0) {
+    safeLocalStorageSet(bakKey, serialized);
+  } else if (allowEmpty) {
+    try {
+      localStorage.removeItem(bakKey);
+    } catch {
+      // ignore
+    }
   }
+
+  // Espelho assíncrono em IndexedDB (2 gerações)
+  saveDurableLogs(username, logsMap, { allowEmpty }).catch(() => {});
+  return result;
 }
 
 /**
@@ -183,17 +291,16 @@ export function loadUserSessionV3(username, currentMonth, currentWorkout, now = 
 }
 
 export function saveUserSessionV3(username, sessionState) {
-  try {
-    localStorage.setItem(getSessionV3Key(username), JSON.stringify({
-      version: 3,
-      activeWeekKey: sessionState.activeWeekKey || getLocalIsoWeekKey(),
-      completedByScope: sessionState.completedByScope || {},
-      sessionStartedAtByScope: sessionState.sessionStartedAtByScope || {},
-      sessionHistory: sessionState.sessionHistory || {}
-    }));
-  } catch {
-    // ignore
-  }
+  const payload = {
+    version: 3,
+    activeWeekKey: sessionState.activeWeekKey || getLocalIsoWeekKey(),
+    completedByScope: sessionState.completedByScope || {},
+    sessionStartedAtByScope: sessionState.sessionStartedAtByScope || {},
+    sessionHistory: sessionState.sessionHistory || {}
+  };
+  const res = safeLocalStorageSet(getSessionV3Key(username), JSON.stringify(payload));
+  saveDurableSessionV3(username, payload).catch(() => {});
+  return res;
 }
 
 export function loadBackupMeta(username) {
@@ -207,11 +314,9 @@ export function loadBackupMeta(username) {
 }
 
 export function saveBackupMeta(username, meta) {
-  try {
-    localStorage.setItem(getBackupMetaKey(username), JSON.stringify(meta));
-  } catch {
-    // ignore
-  }
+  const res = safeLocalStorageSet(getBackupMetaKey(username), JSON.stringify(meta));
+  saveDurableBackupMeta(username, meta).catch(() => {});
+  return res;
 }
 
 export function exportUserBackup(username, logsMap, sessionV3, currentScopeCompleted = []) {
@@ -259,15 +364,19 @@ export function parseImportedBackup(jsonText) {
 
 export function resetAllUserProgress(username) {
   try {
+    const now = Date.now();
     localStorage.removeItem(getLogsKey(username));
+    localStorage.removeItem(getLogsBakKey(username));
     localStorage.removeItem(getSessionV2Key(username));
     localStorage.removeItem(getSessionV3Key(username));
     localStorage.removeItem(getBackupMetaKey(username));
     localStorage.removeItem(LEGACY_LOGS_KEY);
     localStorage.removeItem(LEGACY_SESSION_KEY);
+    safeLocalStorageSet(getResetAtKey(username), String(now));
   } catch (e) {
     console.warn("Erro ao resetar progresso:", e);
   }
+  clearDurableUserProgress(username).catch(() => {});
 }
 
 /* Cache local do último CSV sincronizado da planilha, isolado por sexo ('M' vs 'F') */
@@ -295,16 +404,15 @@ export function loadCachedWorkoutsCSV(sexo = "M") {
 export function saveCachedWorkoutsCSV(csvText, sexo = "M") {
   const isFemale = String(sexo || "M").trim().toUpperCase() === "F";
   const targetKey = isFemale ? CACHED_CSV_FEMALE_KEY : CACHED_CSV_MALE_KEY;
+  const payload = {
+    csv: csvText,
+    syncedAt: new Date().toISOString()
+  };
+  saveDurableCsvCache(sexo, payload).catch(() => {});
   try {
-    localStorage.setItem(
-      targetKey,
-      JSON.stringify({
-        csv: csvText,
-        syncedAt: new Date().toISOString()
-      })
-    );
+    localStorage.setItem(targetKey, JSON.stringify(payload));
   } catch {
-    // ignore
+    // Se localStorage estiver cheio, preserva espaço para PRs e confia no IndexedDB/fallback JS
   }
 }
 
@@ -379,6 +487,46 @@ export function loadAutoStartTimer() {
 export function saveAutoStartTimer(enabled) {
   try {
     localStorage.setItem(AUTO_TIMER_KEY, String(Boolean(enabled)));
+  } catch {
+    // ignore
+  }
+}
+
+const VALID_TIMER_VOLUMES = ['low', 'medium', 'high'];
+
+export function loadTimerVolume() {
+  try {
+    const saved = localStorage.getItem(TIMER_VOLUME_KEY);
+    if (saved && VALID_TIMER_VOLUMES.includes(saved)) return saved;
+  } catch {
+    // ignore
+  }
+  return 'high';
+}
+
+export function saveTimerVolume(level) {
+  const valid = VALID_TIMER_VOLUMES.includes(level) ? level : 'high';
+  try {
+    localStorage.setItem(TIMER_VOLUME_KEY, valid);
+  } catch {
+    // ignore
+  }
+}
+
+export function loadTimerSoundEnabled() {
+  try {
+    const saved = localStorage.getItem(TIMER_SOUND_ENABLED_KEY);
+    if (saved === '0' || saved === 'false') return false;
+    if (saved === '1' || saved === 'true') return true;
+  } catch {
+    // ignore
+  }
+  return true;
+}
+
+export function saveTimerSoundEnabled(enabled) {
+  try {
+    localStorage.setItem(TIMER_SOUND_ENABLED_KEY, enabled ? '1' : '0');
   } catch {
     // ignore
   }

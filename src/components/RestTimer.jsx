@@ -1,6 +1,6 @@
 import React from 'react';
 import { Timer, Play, Pause, RotateCcw, X, Volume2, VolumeX, Plus, Minus, BellOff } from 'lucide-react';
-import { unlockTimerAudio } from '../utils/timerAudio';
+import { unlockTimerAudio, TIMER_VOLUME_LEVELS } from '../utils/timerAudio';
 
 const PRESETS = [
   { label: '10s', seconds: 10, desc: 'Rest-Pause' },
@@ -19,6 +19,7 @@ export default function RestTimer({ timer }) {
     totalSeconds,
     isRunning,
     soundEnabled,
+    volumeLevel = 'high',
     justFinished,
     isAlarmRinging,
     activeExerciseName,
@@ -28,7 +29,8 @@ export default function RestTimer({ timer }) {
     resetTimer,
     stopAlarm,
     dismissAlarm,
-    toggleSound
+    toggleSound,
+    cycleVolumeLevel
   } = timer;
 
   const formatTime = (secs) => {
@@ -120,6 +122,17 @@ export default function RestTimer({ timer }) {
         </div>
 
         <div className="flex items-center gap-1 flex-shrink-0">
+          {soundEnabled && cycleVolumeLevel && (
+            <button
+              type="button"
+              onClick={cycleVolumeLevel}
+              aria-label={`Alternar volume do alarme (atual: ${TIMER_VOLUME_LEVELS[volumeLevel]?.label || 'Alto'})`}
+              className="min-h-[44px] px-2 flex items-center justify-center rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-[11px] font-bold text-blue-300 cursor-pointer"
+              title="Trocar volume do toque (Baixo / Médio / Alto)"
+            >
+              Vol: {TIMER_VOLUME_LEVELS[volumeLevel]?.label || 'Alto'}
+            </button>
+          )}
           <button
             type="button"
             onClick={toggleSound}

@@ -28,47 +28,63 @@ export function normalizeSexo(raw) {
 }
 
 function parseSimpleCSV(csvText) {
-  const lines = csvText.trim().split(/\r?\n/);
-  if (lines.length < 2) return [];
-  const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
-  const rows = [];
+  const text = String(csvText || '').replace(/^\uFEFF/, '');
+  const matrix = [];
+  let currentRow = [];
+  let currentField = '';
+  let inQuotes = false;
 
-  for (let i = 1; i < lines.length; i++) {
-    const line = lines[i];
-    if (!line.trim()) continue;
-
-    const values = [];
-    if (line.includes('"')) {
-      let inQuote = false;
-      let buf = '';
-      for (let j = 0; j < line.length; j++) {
-        const ch = line[j];
-        if (ch === '"') {
-          if (inQuote && line[j + 1] === '"') {
-            buf += '"';
-            j++;
-          } else {
-            inQuote = !inQuote;
-          }
-          continue;
-        }
-        if (ch === ',' && !inQuote) {
-          values.push(buf);
-          buf = '';
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (inQuotes) {
+      if (ch === '"') {
+        if (text[i + 1] === '"') {
+          currentField += '"';
+          i += 1;
         } else {
-          buf += ch;
+          inQuotes = false;
         }
+      } else {
+        currentField += ch;
       }
-      values.push(buf);
-    } else {
-      values.push(...line.split(','));
+      continue;
     }
 
+    if (ch === '"') {
+      inQuotes = true;
+    } else if (ch === ',') {
+      currentRow.push(currentField);
+      currentField = '';
+    } else if (ch === '\r') {
+      if (text[i + 1] === '\n') i += 1;
+      currentRow.push(currentField);
+      matrix.push(currentRow);
+      currentRow = [];
+      currentField = '';
+    } else if (ch === '\n') {
+      currentRow.push(currentField);
+      matrix.push(currentRow);
+      currentRow = [];
+      currentField = '';
+    } else {
+      currentField += ch;
+    }
+  }
+  if (currentField.length > 0 || currentRow.length > 0) {
+    currentRow.push(currentField);
+    matrix.push(currentRow);
+  }
+
+  const nonEmpty = matrix.filter((row) => row.some((cell) => cell.trim() !== ''));
+  if (nonEmpty.length < 2) return [];
+  const headers = nonEmpty[0].map((h) => h.trim().toLowerCase());
+  const rows = [];
+
+  for (let i = 1; i < nonEmpty.length; i++) {
+    const values = nonEmpty[i];
     const obj = {};
     headers.forEach((h, idx) => {
-      let val = values[idx] ? values[idx].trim() : '';
-      if (val.startsWith('"') && val.endsWith('"')) val = val.slice(1, -1);
-      obj[h] = val;
+      obj[h] = values[idx] ? values[idx].trim() : '';
     });
     if (obj.usuario) rows.push(obj);
   }
@@ -102,6 +118,46 @@ function createSignedToken(user, secret) {
     .digest('base64url');
 
   return `${payload}.${sig}`;
+}
+
+export function verifySignedToken(authHeader, secret = process.env.AUTH_SECRET || "irontracker-secret-key-2026") {
+  if (!authHeader || typeof authHeader !== 'string') return null;
+  const raw = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : authHeader.trim();
+  if (!raw) return null;
+
+  const dotIdx = raw.indexOf('.');
+  if (dotIdx <= 0 || dotIdx === raw.length - 1) return null;
+
+  const payloadB64 = raw.slice(0, dotIdx);
+  const sigB64 = raw.slice(dotIdx + 1);
+  if (!payloadB64 || !sigB64) return null;
+
+  try {
+    const expectedSig = crypto
+      .createHmac('sha256', secret)
+      .update(payloadB64)
+      .digest('base64url');
+
+    const sigBuf = Buffer.from(sigB64, 'utf8');
+    const expBuf = Buffer.from(expectedSig, 'utf8');
+    if (sigBuf.length !== expBuf.length || !crypto.timingSafeEqual(sigBuf, expBuf)) {
+      return null;
+    }
+
+    const decoded = JSON.parse(Buffer.from(payloadB64, 'base64url').toString('utf8'));
+    if (!decoded || typeof decoded !== 'object') return null;
+    if (typeof decoded.exp !== 'number' || decoded.exp <= Date.now()) return null;
+
+    return {
+      username: String(decoded.username || '').trim().toLowerCase(),
+      name: String(decoded.name || decoded.username || '').trim(),
+      role: String(decoded.role || 'user').trim().toLowerCase(),
+      sexo: normalizeSexo(decoded.sexo),
+      exp: decoded.exp
+    };
+  } catch {
+    return null;
+  }
 }
 
 export async function authenticateUser(username, password) {

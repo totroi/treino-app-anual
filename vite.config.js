@@ -6,6 +6,7 @@ import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 import { authenticateUser } from './api/auth.js';
 import { fetchWorkoutsCSV } from './api/workouts.js';
+import { handleTrackingRequest } from './api/tracking.js';
 
 function collectDistFiles(dir, rootDir) {
   const entries = fs.readdirSync(dir, { withFileTypes: true });
@@ -53,8 +54,9 @@ function offlinePrecacheManifestPlugin() {
       );
       const hash = crypto.createHash('sha256');
       for (const file of files) {
-        const stat = fs.statSync(file.fullPath);
-        hash.update(`${file.rel}:${stat.size}`);
+        const content = fs.readFileSync(file.fullPath);
+        hash.update(file.rel);
+        hash.update(content);
       }
       const version = `irontracker-shell-${hash.digest('hex').slice(0, 10)}`;
       const urls = Array.from(new Set(['/', ...files.map((f) => f.rel)]));
@@ -64,6 +66,14 @@ function offlinePrecacheManifestPlugin() {
         JSON.stringify({ version, urls }, null, 2),
         'utf-8'
       );
+
+      // Injeta hash de build em dist/sw.js garantindo que todo deploy gere SW byte-a-byte distinto (R1)
+      const swOutPath = path.join(resolvedOutDir, 'sw.js');
+      if (fs.existsSync(swOutPath)) {
+        const swSource = fs.readFileSync(swOutPath, 'utf-8');
+        const patchedSw = swSource.replace(/__IRONTRACKER_BUILD_VERSION__/g, version);
+        fs.writeFileSync(swOutPath, patchedSw, 'utf-8');
+      }
     }
   };
 }
@@ -103,6 +113,44 @@ function localVercelApiPlugin() {
         res.setHeader('Content-Type', 'application/json; charset=utf-8');
         res.end(JSON.stringify({ ok: false, error: 'Falha ao buscar planilha.' }));
       }
+    });
+
+    middlewares.use('/api/tracking', async (req, res, next) => {
+      if (req.method !== 'GET' && req.method !== 'POST') return next();
+      const finish = async (parsedBody) => {
+        try {
+          const result = await handleTrackingRequest({
+            method: req.method,
+            headers: req.headers || {},
+            body: parsedBody
+          });
+          res.statusCode = result.status;
+          res.setHeader('Content-Type', 'application/json; charset=utf-8');
+          res.setHeader('Cache-Control', 'no-store');
+          res.end(JSON.stringify(result.body));
+        } catch {
+          res.statusCode = 200;
+          res.setHeader('Content-Type', 'application/json; charset=utf-8');
+          res.end(JSON.stringify({ ok: false, skipped: true }));
+        }
+      };
+
+      if (req.method === 'GET') {
+        await finish({});
+        return;
+      }
+
+      let rawBody = '';
+      req.on('data', (chunk) => { rawBody += chunk; });
+      req.on('end', async () => {
+        let parsed = {};
+        try {
+          parsed = JSON.parse(rawBody || '{}');
+        } catch {
+          parsed = {};
+        }
+        await finish(parsed);
+      });
     });
   };
 

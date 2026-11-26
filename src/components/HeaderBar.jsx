@@ -10,7 +10,8 @@ export default function HeaderBar({
   onSync,
   onToggleUserMenu,
   onOpenResults,
-  hasBackupAlert
+  hasBackupAlert,
+  hasPwaUpdate = false
 }) {
   return (
     <header className="bg-black/95 backdrop-blur-md sticky top-0 z-20 border-b border-zinc-800/90 pt-safe-header">
@@ -68,12 +69,18 @@ export default function HeaderBar({
             <User className="w-4 h-4 text-blue-400 flex-shrink-0" />
             <span className="max-w-[70px] truncate">{currentUser.name.split(' ')[0]}</span>
             <ChevronDown className={`w-3.5 h-3.5 text-zinc-400 transition-transform ${showUserMenu ? 'rotate-180' : ''}`} />
-            {hasBackupAlert && (
+            {hasPwaUpdate ? (
+              <span
+                className="absolute top-1.5 right-1.5 w-2.5 h-2.5 rounded-full bg-sky-400 animate-pulse ring-2 ring-zinc-900"
+                title="Nova atualização do app disponível"
+                data-testid="pwa-update-dot"
+              />
+            ) : hasBackupAlert ? (
               <span
                 className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-amber-400"
                 title="Recomendado exportar backup JSON"
               />
-            )}
+            ) : null}
           </button>
         </div>
       </div>

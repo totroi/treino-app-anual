@@ -2,17 +2,32 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   unlockTimerAudio,
   playAlarmBurst,
+  previewAlarmBurst,
+  setTimerVolumeLevel,
   stopSharedAudio,
   triggerSafeVibration,
   resumeAudioFromInterruption
 } from '../utils/timerAudio';
+import {
+  loadTimerVolume,
+  saveTimerVolume,
+  loadTimerSoundEnabled,
+  saveTimerSoundEnabled
+} from '../services/storageService';
+
+const VOLUME_CYCLE = ['low', 'medium', 'high'];
 
 export function useRestTimer() {
   const [isOpen, setIsOpen] = useState(false);
   const [secondsLeft, setSecondsLeft] = useState(0);
   const [totalSeconds, setTotalSeconds] = useState(60);
   const [isRunning, setIsRunning] = useState(false);
-  const [soundEnabled, setSoundEnabled] = useState(true);
+  const [soundEnabled, setSoundEnabled] = useState(() => loadTimerSoundEnabled());
+  const [volumeLevel, setVolumeLevelState] = useState(() => {
+    const initial = loadTimerVolume();
+    setTimerVolumeLevel(initial);
+    return initial;
+  });
   const [justFinished, setJustFinished] = useState(false);
   const [isAlarmRinging, setIsAlarmRinging] = useState(false);
   const [activeExerciseName, setActiveExerciseName] = useState('');
@@ -148,10 +163,11 @@ export function useRestTimer() {
   );
 
   // Prepara o cronômetro com o tempo do exercício SEM iniciar a contagem (ex.: ao entrar no Modo Foco antes da série)
+  // Permite secs === 0 (ex.: passo 1/2 de Bi-Set / Pré-Exaustão) sem sobrescrever com 60s (R8)
   const prepareTimer = useCallback(
     (secs, exerciseLabel = '') => {
       if (isRunning || isAlarmRinging) return;
-      const duration = Math.max(5, secs || 60);
+      const duration = secs === 0 ? 0 : Math.max(5, secs || 60);
       endTimeRef.current = null;
       setTotalSeconds(duration);
       setSecondsLeft(duration);
@@ -219,14 +235,34 @@ export function useRestTimer() {
     unlockTimerAudio();
     setSoundEnabled((prev) => {
       const next = !prev;
+      saveTimerSoundEnabled(next);
       if (next) {
-        playAlarmBurst({ force: true });
+        previewAlarmBurst(volumeLevel);
       } else {
         stopAlarm();
       }
       return next;
     });
-  }, [stopAlarm]);
+  }, [stopAlarm, volumeLevel]);
+
+  const setVolumeLevel = useCallback(
+    (nextLevel, { preview = true } = {}) => {
+      const valid = setTimerVolumeLevel(nextLevel);
+      setVolumeLevelState(valid);
+      saveTimerVolume(valid);
+      if (preview && soundEnabled) {
+        previewAlarmBurst(valid);
+      }
+    },
+    [soundEnabled]
+  );
+
+  const cycleVolumeLevel = useCallback(() => {
+    const idx = VOLUME_CYCLE.indexOf(volumeLevel);
+    const next = VOLUME_CYCLE[(idx + 1) % VOLUME_CYCLE.length];
+    setVolumeLevel(next, { preview: true });
+    return next;
+  }, [volumeLevel, setVolumeLevel]);
 
   return {
     isOpen,
@@ -235,6 +271,7 @@ export function useRestTimer() {
     totalSeconds,
     isRunning,
     soundEnabled,
+    volumeLevel,
     justFinished,
     isAlarmRinging,
     activeExerciseName,
@@ -245,6 +282,8 @@ export function useRestTimer() {
     resetTimer,
     stopAlarm,
     dismissAlarm,
-    toggleSound
+    toggleSound,
+    setVolumeLevel,
+    cycleVolumeLevel
   };
 }

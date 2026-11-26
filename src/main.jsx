@@ -7,6 +7,10 @@ if (import.meta.env.PROD && typeof window !== 'undefined' && 'serviceWorker' in 
   window.addEventListener('load', () => {
     navigator.serviceWorker
       .register('/sw.js', { updateViaCache: 'none' })
+      .then((registration) => {
+        window.__irontrackerSwRegistration = registration;
+        window.dispatchEvent(new CustomEvent('irontracker:sw-registered', { detail: registration }));
+      })
       .catch(() => {
         // Falha silenciosa caso o navegador/contexto restrinja Service Workers
       });

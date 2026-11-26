@@ -1,10 +1,14 @@
 // IronTracker Service Worker — 100% Offline-First App Shell (zero dependências externas)
 // Garante abertura instantânea (0ms) da 2ª visita em diante, inclusive em academias de subsolo sem 4G/Wi-Fi.
 
+const BUILD_VERSION = '__IRONTRACKER_BUILD_VERSION__';
 const CACHE_PREFIX = 'irontracker-shell-';
 const META_CACHE_NAME = 'irontracker-sw-meta';
 const META_VERSION_KEY = '/__irontracker_sw_version__';
-const FALLBACK_CACHE_NAME = `${CACHE_PREFIX}fallback-v1`;
+const FALLBACK_CACHE_NAME =
+  BUILD_VERSION && !BUILD_VERSION.includes('__IRONTRACKER')
+    ? BUILD_VERSION
+    : `${CACHE_PREFIX}fallback-v1`;
 const CORE_FALLBACK_URLS = [
   '/',
   '/index.html',
@@ -81,9 +85,19 @@ self.addEventListener('install', (event) => {
         })
       );
       await saveActiveCacheVersion(version);
-      await self.skipWaiting();
+      // Primeira instalação: assume imediatamente; em atualizações com controller ativo,
+      // aguarda em 'waiting' até o usuário confirmar em "Atualizar App Agora" (SKIP_WAITING)
+      if (!self.registration.active) {
+        await self.skipWaiting();
+      }
     })()
   );
+});
+
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
 });
 
 self.addEventListener('activate', (event) => {

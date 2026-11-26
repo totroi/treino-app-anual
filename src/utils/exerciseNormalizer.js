@@ -60,7 +60,7 @@ export const MONTHLY_SUMMARIES = {
     cycle: "Mês 03/12 • O Ápice da Contração (Heavy Duty)",
     school: "Mike Mentzer (HIT & Pré-Exaustão)",
     orderRule: "Pré-Exaustão HIT: Isolador até a falha → Composto imediato",
-    focus: "Cadências lentas (4-1-2-0), negativas controladas e contrações estáticas. Inclui Gêmeos Sentado (Sóleo a 90º) com pausa de 2s no alongamento."
+    focus: "Cadências lentas HIT (4-0-2-0 compostos, 4-0-2-2 isoladores/pico, 4-2-2-2 panturrilhas), 1–2 séries estritas até a falha e pausas de 120–180s para ressíntese de PCr. Inclui Gêmeos Sentado (Sóleo a 90º) com pausa de 2s no alongamento."
   },
   "Maio": {
     cycle: "Mês 04/12 • Densidade Miofibrilar e Força Absoluta",
@@ -96,7 +96,7 @@ export const MONTHLY_SUMMARIES = {
     cycle: "Mês 09/12 • Dureza Muscular e Densidade de Aço",
     school: "Mike Mentzer & Sergio Oliva (Pré-Exaustão + Movimentos 3/4)",
     orderRule: "Pré-Exaustão HIT (Pec Deck → Supino Inclinado 2-3x; Extensora → Leg Press 2-3x)",
-    focus: "Paridade de 2-3 séries nos pares de Pré-Exaustão, pausa de 2s no pico do Pec Deck, Supino Reto em Movimentos 3/4 (Sergio Oliva — Arnold pp. 282-283) com Dropset e Deltoide Posterior obrigatório no Treino C."
+    focus: "Paridade de 2-3 séries nos pares de Pré-Exaustão, pausa de 2s no pico do Pec Deck, Supino Reto em Movimentos 3/4 sem lockout (Sergio Oliva — Arnold pp. 282-283), Dropset em Leg Press no Treino C e Deltoide Posterior obrigatório no Treino C."
   },
   "Novembro": {
     cycle: "Mês 10/12 • Refinamento Estético e Evolução de Potencial",
@@ -108,7 +108,7 @@ export const MONTHLY_SUMMARIES = {
     cycle: "Mês 11/12 • Expansão Estrutural e Sobrecarga Final",
     school: "Arnold, McCallum & Tom Platz (Sobrecarga Máxima)",
     orderRule: "Compostos pesados → Stripping & Super-séries → Breathing Squats 1x25",
-    focus: "Pico de intensidade anual unindo Supino 3/4 + Rest-Pause, Stripping nos deltoides, Deltoide Posterior, Sóleo e Breathing Squats 1x25."
+    focus: "Pico de intensidade anual unindo Supino Reto 3/4 + Rest-Pause no Inclinado, Stripping nos deltoides, Deltoide Posterior, Sóleo e Breathing Squats 1x25."
   },
   "Janeiro": {
     cycle: "Mês 12/12 • O Apogeu da Hipertrofia (Consolidação Final)",
@@ -141,7 +141,7 @@ export const MONTHLY_SUMMARIES_FEMALE = {
     cycle: "Mês 04/12 • Densidade Glúteo-Femoral e Choque Metabólico",
     school: "Arnold Schwarzenegger & Vince Gironda (Alta Densidade 15–25 Reps)",
     orderRule: "Compostos inferiores → Dropsets e Rest-Pause → Glúteo Médio & Vacuum",
-    focus: "Explorar a alta resistência feminina à fadiga e ação protetora do 17β-estradiol com faixas de 12–20 e 15–25 repetições, Dropsets em Extensora/Abdutora e contorno postural superior elegante."
+    focus: "Aplicar o Princípio do Choque com moderação (1–2 técnicas/pares por treino): Dropset na Cadeira Extensora + Bi-Set glúteo-femoral (A), Rest-Pause de 10 seg. na Puxada + Super-Série enxuta de braços (B) e Dropset na Mesa Flexora + Bi-Set de glúteos (C), em faixas de 12–25 repetições."
   },
   "Junho": {
     cycle: "Mês 05/12 • Proporção Áurea, Sweep Lateral e Linha de Cintura",
@@ -158,8 +158,8 @@ export const MONTHLY_SUMMARIES_FEMALE = {
   "Agosto": {
     cycle: "Mês 07/12 • Consolidação HIT e Contração Estática no Pico",
     school: "Mike Mentzer & Delavier (Cadência HIT 4-0-2-2 / 4-0-2-0 & Isometria)",
-    orderRule: "Pré-Exaustão HIT (Extensora → Leg Press; Abdutora → Elevação Pélvica; Mesa Flexora → Stiff)",
-    focus: "Pausa estática de 2s no pico da Mesa Flexora (em flexão plantar — Delavier pp. 103, 105), Extensora e Glúteo no Cabo, combinada com compostos seguros sem compressão lombar ou espessamento da linha de cintura."
+    orderRule: "Pré-Exaustão HIT (Extensora → Leg Press; Abdutora → Agachamento Búlgaro; Mesa Flexora → Stiff)",
+    focus: "Pausa estática de 2s no pico da Mesa Flexora (em flexão plantar — Delavier pp. 103, 105), Extensora e Glúteo 4 Apoios (cadência 4-0-2-2), combinada com compostos seguros sem compressão lombar ou espessamento da linha de cintura."
   },
   "Setembro": {
     cycle: "Mês 08/12 • Maturidade Miofibrilar e Detalhamento Inferior",
@@ -183,7 +183,7 @@ export const MONTHLY_SUMMARIES_FEMALE = {
     cycle: "Mês 11/12 • Sobrecarga Metabólica Final e Super-Séries",
     school: "Arnold Schwarzenegger, Gironda & Zane (Bi-Sets & Stripping)",
     orderRule: "Bi-Sets de Quadríceps e Glúteos → Stripping em Isoladores → Panturrilhas & Vacuum",
-    focus: "Pico de densidade metabólica anual com Bi-Sets e Stripping para saturar quadríceps, posteriores e glúteos, mantendo membros superiores tonificados e postura clavicular aberta."
+    focus: "Pico de densidade metabólica anual com Bi-Sets, Stripping nos deltoides e Dropset seguro em máquina/cabo (Abdutora e Glúteo no Cabo) para saturar quadríceps, posteriores e glúteos, mantendo membros superiores tonificados e postura clavicular aberta."
   },
   "Janeiro": {
     cycle: "Mês 12/12 • O Apogeu Chun-Li (Precisão Biomecânica Final)",
@@ -236,6 +236,7 @@ const MUSCLE_GROUP_MAP = {
   "Gluteo": "Glúteos",
   "Gluteos": "Glúteos",
   "Abdominais": "Abdômen",
+  "Panturrilha": "Panturrilhas",
   "Braços (Completo)": "Braços",
   "Bíceps / Antebraço": "Bíceps",
   "Tríceps / Peito": "Tríceps"
@@ -321,17 +322,25 @@ export const getRepsPlaceholder = (seriesRepsText) => {
  * priorizando sempre o LIMITE INFERIOR quando houver intervalo (ex: "90-120s" -> 90s),
  * para que o usuário utilize o botão "+15s" se desejar estender o descanso.
  */
-export const parseRestSeconds = (descansoText = "", tecnicaText = "", groupText = "") => {
+export const parseRestSeconds = (
+  descansoText = "",
+  tecnicaText = "",
+  groupText = "",
+  pairStep = null
+) => {
   const raw = (descansoText || "").trim().toLowerCase();
-  if (/^0\s*s\s+no\s+par\b/.test(raw) && !raw.includes("•")) {
-    return 0;
+  if (/^0\s*s\s+no\s+par\b/.test(raw)) {
+    if (pairStep === 1 || pairStep === null) {
+      return 0;
+    }
   }
 
-  // Remove prefixos de micro-pausa ou transição de par antes de extrair o descanso principal
+  // Remove prefixos/anotações de micro-pausa (D1/D4) antes de extrair o descanso principal
   const cleaned = raw
-    .replace(/^0\s*s\s+na\s+redu[cç][aã]o\s*•?\s*/i, "")
+    .replace(/0\s*s\s+na\s+redu[cç][aã]o\s*•?\s*/gi, "")
     .replace(/^0\s*s\s+no\s+par[^•]*•\s*/i, "")
-    .replace(/\b\d+\s*seg\.?\s+no\s+rest-pause\b/gi, "");
+    .replace(/\b\d+\s*(?:s|seg\.?)\s+no\s+rest-pause\b/gi, "")
+    .replace(/\brest-pause\s+(?:de\s+)?\d+\s*(?:s|seg\.?)\b/gi, "");
 
   // 1. Busca explicitamente um intervalo (ex: "90-120s", "60-75s", "45-60s", "30-45s") e retorna o LIMITE INFERIOR
   const rangeMatch = cleaned.match(/(\d+)\s*(?:-|a)\s*(\d+)\s*s\b/);
@@ -641,48 +650,69 @@ export const getCanonicalExerciseKey = (rawName) => {
   return CANONICAL_EXERCISE_ALIASES[normalized] || normalized.replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "");
 };
 
+// Parser CSV RFC-4180 caractere-a-caractere (suporta quebras de linha dentro de campos entre aspas — R8)
 export const parseCSV = (text) => {
-  const lines = text.trim().split(/\r?\n/);
-  if (lines.length < 2) return [];
-  const headers = lines[0].split(',').map(h => h.trim());
-  const result = [];
+  const source = String(text || '').replace(/^\uFEFF/, '');
+  if (!source.trim()) return [];
 
-  for (let i = 1; i < lines.length; i++) {
-    const obj = {};
-    const currentLine = lines[i];
-    if (!currentLine.trim()) continue;
+  const rows = [];
+  let row = [];
+  let field = '';
+  let inQuotes = false;
 
-    let values = [];
-    if (currentLine.includes('"')) {
-      let inQuote = false;
-      let buffer = '';
-      for (let j = 0; j < currentLine.length; j++) {
-        const char = currentLine[j];
-        if (char === '"') {
-          if (inQuote && currentLine[j + 1] === '"') {
-            buffer += '"';
-            j++;
-          } else {
-            inQuote = !inQuote;
-          }
-          continue;
-        }
-        if (char === ',' && !inQuote) {
-          values.push(buffer);
-          buffer = '';
+  for (let i = 0; i < source.length; i += 1) {
+    const ch = source[i];
+    if (inQuotes) {
+      if (ch === '"') {
+        if (source[i + 1] === '"') {
+          field += '"';
+          i += 1;
         } else {
-          buffer += char;
+          inQuotes = false;
         }
+      } else {
+        field += ch;
       }
-      values.push(buffer);
-    } else {
-      values = currentLine.split(',');
+      continue;
     }
 
+    if (ch === '"') {
+      inQuotes = true;
+    } else if (ch === ',') {
+      row.push(field);
+      field = '';
+    } else if (ch === '\r') {
+      if (source[i + 1] === '\n') i += 1;
+      row.push(field);
+      rows.push(row);
+      row = [];
+      field = '';
+    } else if (ch === '\n') {
+      row.push(field);
+      rows.push(row);
+      row = [];
+      field = '';
+    } else {
+      field += ch;
+    }
+  }
+
+  if (field.length > 0 || row.length > 0) {
+    row.push(field);
+    rows.push(row);
+  }
+
+  const nonEmptyRows = rows.filter((r) => r.some((cell) => String(cell).trim() !== ''));
+  if (nonEmptyRows.length < 2) return [];
+
+  const headers = nonEmptyRows[0].map((h) => String(h).trim());
+  const result = [];
+
+  for (let i = 1; i < nonEmptyRows.length; i += 1) {
+    const values = nonEmptyRows[i];
+    const obj = {};
     headers.forEach((header, index) => {
-      let val = values[index] ? values[index].trim() : '';
-      if (val.startsWith('"') && val.endsWith('"')) val = val.slice(1, -1);
-      obj[header] = val;
+      obj[header] = values[index] !== undefined ? String(values[index]).trim() : '';
     });
 
     if (obj['Exercício']) {

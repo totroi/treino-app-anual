@@ -1,6 +1,7 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
-  loadUserWorkoutLogs,
+  loadUserWorkoutLogsWithStatus,
+  loadUserResetAt,
   saveUserWorkoutLogs,
   loadUserSessionV3,
   saveUserSessionV3,
@@ -12,13 +13,35 @@ import {
   loadBackupMeta,
   saveBackupMeta
 } from '../services/storageService';
+import {
+  requestPersistentStorage,
+  reconcileUserStateFromIDB,
+  recordDeletedLogTombstones,
+  isIndexedDBAvailable
+} from '../services/durableStorage';
 import { normalizeWeightInput, parsePtBrNumber } from '../utils/numberFormat';
 import { getLocalDateKey, matchesLogScope } from '../utils/logScope';
 
 export function useWorkoutLogs(username, selectedMonth, selectedWorkout) {
-  const [workoutLogs, setWorkoutLogs] = useState(() =>
-    username ? loadUserWorkoutLogs(username) : {}
+  const [initialLogsLoad] = useState(() =>
+    username
+      ? loadUserWorkoutLogsWithStatus(username)
+      : { logs: {}, corrupted: false, recoveredFromBackup: false }
   );
+
+  const [workoutLogs, setWorkoutLogs] = useState(() => initialLogsLoad.logs);
+  const [storageStatus, setStorageStatus] = useState(() => ({
+    idbProtected: isIndexedDBAvailable(),
+    quotaError: false,
+    recoveredFromBackup: Boolean(initialLogsLoad.recoveredFromBackup),
+    recoveredFromIDB: 0
+  }));
+
+  // Guarda anti-sobrescrita no mount: impede que mount/parse corrompido grave {} por cima do backup sombra/IDB
+  const hasMutatedLogsRef = useRef(false);
+  const explicitResetRef = useRef(false);
+  const initialCorruptedRef = useRef(Boolean(initialLogsLoad.corrupted));
+  const idbReconciledRef = useRef(false);
 
   const [initialSession] = useState(() =>
     username
@@ -49,10 +72,86 @@ export function useWorkoutLogs(username, selectedMonth, selectedWorkout) {
       : { lastExportedAt: null, logsSinceBackup: 0 }
   );
 
-  // Persiste logs
+  // Solicita persistência durável silenciosa e reconcilia IndexedDB no boot (recuperação automática de PRs)
   useEffect(() => {
     if (!username) return;
-    saveUserWorkoutLogs(username, workoutLogs);
+    let cancelled = false;
+    requestPersistentStorage().catch(() => {});
+
+    const localResetAt = loadUserResetAt(username);
+    reconcileUserStateFromIDB(username, initialLogsLoad.logs, localResetAt)
+      .then((res) => {
+        if (cancelled) return;
+        idbReconciledRef.current = true;
+
+        if (res.idbAvailable) {
+          setStorageStatus((prev) => ({
+            ...prev,
+            idbProtected: true,
+            recoveredFromIDB: res.recoveredEntries || 0
+          }));
+        }
+
+        if (res.recovered && !explicitResetRef.current) {
+          hasMutatedLogsRef.current = true;
+          initialCorruptedRef.current = false;
+          setWorkoutLogs((current) => {
+            // Preserva eventuais séries já registradas pelo usuário antes do resolve do IDB
+            const merged = { ...res.logs };
+            Object.entries(current).forEach(([k, entries]) => {
+              if (!Array.isArray(entries) || entries.length === 0) return;
+              const combined = [...entries, ...(merged[k] || [])];
+              const seen = new Set();
+              merged[k] = combined
+                .sort((a, b) => new Date(b.date) - new Date(a.date))
+                .filter((item) => {
+                  const sig = `${item.date}_${item.weight}_${item.reps}_${item.setNumber || ''}`;
+                  if (seen.has(sig)) return false;
+                  seen.add(sig);
+                  return true;
+                });
+            });
+            return merged;
+          });
+        } else if (res.idbAvailable && Object.keys(initialLogsLoad.logs).length > 0) {
+          // Espelha estado local inicial no IndexedDB pela primeira vez (migração silenciosa)
+          saveUserWorkoutLogs(username, initialLogsLoad.logs);
+        }
+
+        if (res.sessionV3 && Object.keys(initialSession.sessionHistory || {}).length === 0) {
+          setSessionV3((prev) => ({
+            ...prev,
+            sessionHistory: {
+              ...(res.sessionV3.sessionHistory || {}),
+              ...(prev.sessionHistory || {})
+            }
+          }));
+        }
+      })
+      .catch(() => {
+        idbReconciledRef.current = true;
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [username, initialLogsLoad.logs, initialSession.sessionHistory]);
+
+  // Persiste logs com guarda anti-sobrescrita (nunca grava {} no mount se não houve mutação explícita)
+  useEffect(() => {
+    if (!username) return;
+    const isEmpty = Object.keys(workoutLogs).length === 0;
+    if (isEmpty && !explicitResetRef.current && (!hasMutatedLogsRef.current || initialCorruptedRef.current)) {
+      return;
+    }
+    const res = saveUserWorkoutLogs(username, workoutLogs, {
+      allowEmpty: explicitResetRef.current || hasMutatedLogsRef.current
+    });
+    if (res && res.quotaError) {
+      Promise.resolve().then(() => {
+        setStorageStatus((prev) => (prev.quotaError ? prev : { ...prev, quotaError: true }));
+      });
+    }
   }, [workoutLogs, username]);
 
   // Persiste sessão v3
@@ -134,11 +233,13 @@ export function useWorkoutLogs(username, selectedMonth, selectedWorkout) {
         setNumber: activeCount + 1
       };
 
+      hasMutatedLogsRef.current = true;
+      explicitResetRef.current = false;
+      requestPersistentStorage().catch(() => {});
+
       setWorkoutLogs((prev) => {
         const currentLogs = prev[canonicalKey] || [];
-        const nextLogs = { ...prev, [canonicalKey]: [newLog, ...currentLogs] };
-        if (username) saveUserWorkoutLogs(username, nextLogs);
-        return nextLogs;
+        return { ...prev, [canonicalKey]: [newLog, ...currentLogs] };
       });
 
       setBackupMeta((prev) => ({
@@ -148,7 +249,7 @@ export function useWorkoutLogs(username, selectedMonth, selectedWorkout) {
 
       return newLog;
     },
-    [getTodaySetsCount, selectedMonth, selectedWorkout, username]
+    [getTodaySetsCount, selectedMonth, selectedWorkout]
   );
 
   // Marca ou desmarca exercício concluído APENAS no escopo `${selectedMonth}::${selectedWorkout}`
@@ -159,8 +260,8 @@ export function useWorkoutLogs(username, selectedMonth, selectedWorkout) {
         const list = prev.completedByScope?.[currentScopeKey] || [];
         const exists = list.includes(canonicalKey);
         const nextList = exists ? list.filter((k) => k !== canonicalKey) : [...list, canonicalKey];
-        const todayIso = new Date().toISOString().slice(0, 10);
-        const histKey = `${todayIso}::${currentScopeKey}`;
+        const todayLocal = getLocalDateKey(new Date());
+        const histKey = `${todayLocal}::${currentScopeKey}`;
 
         return {
           ...prev,
@@ -186,11 +287,20 @@ export function useWorkoutLogs(username, selectedMonth, selectedWorkout) {
 
   const deleteLog = useCallback(
     (canonicalKey, logId, idx) => {
+      hasMutatedLogsRef.current = true;
       setWorkoutLogs((prev) => {
         const current = prev[canonicalKey] || [];
+        const removedItem = logId ? current.find((item) => item.id === logId) : current[idx];
+        if (username && removedItem?.id) {
+          recordDeletedLogTombstones(username, [removedItem.id]).catch(() => {});
+        }
         const updated = current.filter((item, i) => (logId ? item.id !== logId : i !== idx));
-        const nextLogs = { ...prev, [canonicalKey]: updated };
-        if (username) saveUserWorkoutLogs(username, nextLogs);
+        const nextLogs = { ...prev };
+        if (updated.length > 0) {
+          nextLogs[canonicalKey] = updated;
+        } else {
+          delete nextLogs[canonicalKey];
+        }
         return nextLogs;
       });
     },
@@ -244,6 +354,8 @@ export function useWorkoutLogs(username, selectedMonth, selectedWorkout) {
   // Reseta todo o progresso local do usuário (ação destrutiva)
   const resetAllProgress = useCallback(() => {
     if (!username) return;
+    explicitResetRef.current = true;
+    hasMutatedLogsRef.current = true;
     resetAllUserProgress(username);
     setWorkoutLogs({});
     setSessionV3({
@@ -298,6 +410,7 @@ export function useWorkoutLogs(username, selectedMonth, selectedWorkout) {
       const now = new Date();
       const nowIso = now.toISOString();
       let removedCount = 0;
+      const removedIds = [];
       const nextLogs = {};
 
       Object.entries(workoutLogs).forEach(([canonicalKey, entries]) => {
@@ -310,7 +423,10 @@ export function useWorkoutLogs(username, selectedMonth, selectedWorkout) {
             workoutExerciseKeysByTab,
             now
           });
-          if (shouldRemove) removedCount += 1;
+          if (shouldRemove) {
+            removedCount += 1;
+            if (item?.id) removedIds.push(item.id);
+          }
           return !shouldRemove;
         });
         if (kept.length > 0) {
@@ -318,8 +434,11 @@ export function useWorkoutLogs(username, selectedMonth, selectedWorkout) {
         }
       });
 
+      hasMutatedLogsRef.current = true;
+      if (username && removedIds.length > 0) {
+        recordDeletedLogTombstones(username, removedIds).catch(() => {});
+      }
       setWorkoutLogs(nextLogs);
-      if (username) saveUserWorkoutLogs(username, nextLogs);
 
       // Também limpa os cards concluídos (verdinhas) e reinicia o contador da sessão no(s) treino(s) atingido(s)
       const affectedWorkouts = workoutScope === 'ALL' ? ['A', 'B', 'C'] : [workoutScope];
@@ -371,6 +490,8 @@ export function useWorkoutLogs(username, selectedMonth, selectedWorkout) {
 
   const importBackupText = useCallback((jsonText) => {
     const imported = parseImportedBackup(jsonText);
+    hasMutatedLogsRef.current = true;
+    explicitResetRef.current = false;
     setWorkoutLogs((prev) => {
       const merged = { ...prev };
       Object.entries(imported.workoutLogs).forEach(([k, entries]) => {
@@ -379,7 +500,7 @@ export function useWorkoutLogs(username, selectedMonth, selectedWorkout) {
         merged[k] = combined
           .sort((a, b) => new Date(b.date) - new Date(a.date))
           .filter((item) => {
-            const sig = `${item.date}_${item.weight}_${item.reps}`;
+            const sig = `${item.date}_${item.weight}_${item.reps}_${item.setNumber || ''}`;
             if (seen.has(sig)) return false;
             seen.add(sig);
             return true;
@@ -481,6 +602,7 @@ export function useWorkoutLogs(username, selectedMonth, selectedWorkout) {
     hasLogsInCurrentWeek,
     exportBackup,
     importBackupText,
-    summaryStats
+    summaryStats,
+    storageStatus
   };
 }

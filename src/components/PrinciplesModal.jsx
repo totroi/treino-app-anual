@@ -613,10 +613,10 @@ export default function PrinciplesModal({
             </div>
 
             <p className="text-sm leading-relaxed text-zinc-200">
-              O treino cria o estímulo; o músculo <strong className="text-white">cresce na recuperação</strong>. Alternar meses de volume com blocos HIT (1–2 séries com pausas de 120–180s) evita esgotamento do sistema nervoso central e mantém a força subindo o ano todo.
+              O treino cria o estímulo; o músculo <strong className="text-white">cresce na recuperação</strong>. Alternar meses de volume com blocos HIT (1–2 séries com pausas de 120–180s) evita esgotamento sistêmico (inroad de Mentzer / queda de recuperação) e mantém a força subindo o ano todo.
               {isFemale && (
                 <>
-                  {' '}Na fisiologia feminina (Haluch), o <strong className="text-white">17β-estradiol</strong> (estrogênio) protege o sarcolema contra o dano oxidativo, sustenta células satélites e acelera a recuperação entre séries, enquanto o <strong className="text-white">ciclo menstrual</strong> modula energia e retenção hídrica (fase folicular com maior sensibilidade à insulina vs. fase lútea).
+                  {' '}Na fisiologia feminina (Haluch), o <strong className="text-white">ciclo menstrual</strong> modula energia, sensibilidade periférica à insulina e retenção hídrica (fase folicular vs. fase lútea), orientando a autorregulação de carga sem sacrificar a cintura fina.
                 </>
               )}
             </p>
@@ -632,7 +632,7 @@ export default function PrinciplesModal({
                     Sono Profundo = Acelerador Anabólico
                   </div>
                   <p className="text-sm text-zinc-300 leading-relaxed">
-                    A privação de sono eleva o <strong className="text-white">cortisol noturno</strong> (proteólise via FOXO), reduz sensibilidade à insulina (GLUT-4 via JNK/PKC), derruba <strong className="text-blue-200">pulsos de GH em ondas lentas (NREM)</strong> e freia a via mTORC1.
+                    A privação de sono eleva o <strong className="text-white">cortisol noturno</strong> (proteólise via FOXO), reduz sensibilidade à insulina (GLUT-4 via JNK/PKC), derruba <strong className="text-blue-200">pulsos de GH em ondas lentas (NREM)</strong> e freia a via mTORC1. <span className="text-zinc-500 text-xs">(Síntese prática de fisiologia do sono aplicada à recuperação hormonal.)</span>
                   </p>
                 </div>
 
@@ -641,7 +641,7 @@ export default function PrinciplesModal({
                     5 Sinais de Overtraining
                   </div>
                   <ul className="text-sm text-zinc-300 space-y-1 leading-snug list-none">
-                    <li>• Queda de força nos básicos (fadiga do SNC);</li>
+                    <li>• Queda de força nos básicos (esgotamento sistêmico / inroad);</li>
                     <li>• Músculo &ldquo;murcho&rdquo; sem pump (glicogênio baixo);</li>
                     <li>• Dor muscular &gt; 72h ou dor em tendões;</li>
                     <li>• Frequência cardíaca matinal elevada;</li>
@@ -691,10 +691,10 @@ export default function PrinciplesModal({
               </div>
 
               <div className="bg-zinc-950 border border-emerald-800/50 rounded-xl p-3">
-                <div className="text-lg font-extrabold text-emerald-400">Mín. 25g</div>
-                <div className="text-xs font-bold text-white mt-0.5">Proteína até 1h</div>
+                <div className="text-lg font-extrabold text-emerald-400">20–40g</div>
+                <div className="text-xs font-bold text-white mt-0.5">Proteína por Refeição</div>
                 <p className="text-xs text-zinc-300 mt-1 leading-relaxed">
-                  Bate o limiar de leucina (~2,5–3g) e ativa mTORC1.
+                  Bate o limiar de leucina (~3g em Bioquímica Básica p. 82) e ativa mTORC1; distribuir na janela de 3–4h entre pré e pós-treino (Staples 2011 / Haluch).
                 </p>
               </div>
             </div>
@@ -709,7 +709,7 @@ export default function PrinciplesModal({
                 800ml–1L Água + 2 Pitadas Generosas de Sal Integral + 1 Colher Rasa de Sopa de Bicarbonato
               </p>
               <p className="text-sm text-zinc-200 leading-relaxed">
-                Tome ~60% com uma refeição pré-treino leve (45–60 min antes) e o restante em goles de 100–150ml entre as séries. Sustenta a força até o fim sem pesar no estômago.
+                Tome ~60% com uma refeição pré-treino leve (45–60 min antes) e o restante em goles de 100–150ml entre as séries. Sustenta a força até o fim sem pesar no estômago. <span className="text-zinc-400 text-xs">(Protocolo ergogênico prático complementar à base bioquímica principal.)</span>
               </p>
             </div>
 
@@ -720,7 +720,7 @@ export default function PrinciplesModal({
             >
               <ul className="space-y-2 text-sm text-zinc-300 leading-relaxed list-none bg-zinc-950 border border-cyan-900/50 rounded-xl p-3.5">
                 <li>
-                  <strong className="text-white">Tamponamento de Acidose (NaHCO₃):</strong> Em séries até a falha, o acúmulo de H⁺ inibe a PFK-1 e compete com Ca²⁺ na troponina C. O bicarbonato eleva o pH extracelular e acelera o efluxo de H⁺ via transportadores MCT.
+                  <strong className="text-white">Tamponamento de Acidose (NaHCO₃):</strong> Em séries até a falha, o acúmulo de H⁺ inibe a PFK-1 e compete com Ca²⁺ na troponina C. O bicarbonato eleva o pH extracelular e acelera o efluxo de H⁺ via transportadores MCT. <span className="text-zinc-500 text-xs">(Complemento fisiológico prático.)</span>
                 </li>
                 <li>
                   <strong className="text-white">Volume Plasmático & Disparo Neural (Sal Integral):</strong> Expande a volemia (pump denso) e sustenta a bomba Na⁺/K⁺-ATPase, prevenindo quedas de força e cãibras.
@@ -841,7 +841,7 @@ export default function PrinciplesModal({
             </ScienceAccordion>
           </section>
 
-          {/* GLOSSÁRIO COMPLETO DE SIGLAS E TÉCNICAS (100% de cobertura dos 248 exercícios) */}
+          {/* GLOSSÁRIO COMPLETO DE SIGLAS E TÉCNICAS (100% de cobertura — 227 linhas Masculinas + 252 Femininas) */}
           <section
             id="glossario"
             className="bg-black border border-zinc-800 rounded-2xl p-4 space-y-3 scroll-mt-4"

@@ -9,8 +9,13 @@ import {
   Trash2,
   LogOut,
   Trophy,
-  Timer
+  Timer,
+  Volume2,
+  RefreshCw,
+  ShieldCheck,
+  Activity
 } from 'lucide-react';
+import { TIMER_VOLUME_LEVELS } from '../utils/timerAudio';
 
 export default function ProfileDrawer({
   isOpen,
@@ -18,13 +23,18 @@ export default function ProfileDrawer({
   currentUser,
   summaryStats,
   backupMeta,
+  storageStatus,
+  pwaUpdate,
   uiScale,
   onUiScaleChange,
   screensaverDelay,
   onScreensaverDelayChange,
   autoStartTimer,
   onToggleAutoStartTimer,
+  timerVolume = 'high',
+  onTimerVolumeChange,
   onOpenResults,
+  onOpenAdminTracking,
   onExportBackup,
   onImportBackupFile,
   onRequestResetSession,
@@ -41,11 +51,13 @@ export default function ProfileDrawer({
       if (e.key === 'Escape') onClose();
     };
     window.addEventListener('keydown', onKey);
+    // Verifica silenciosamente se há nova versão do PWA ao abrir o menu de perfil (R1)
+    pwaUpdate?.checkForUpdates?.({ manual: false });
     return () => {
       document.body.style.overflow = prev;
       window.removeEventListener('keydown', onKey);
     };
-  }, [isOpen, onClose]);
+  }, [isOpen, onClose, pwaUpdate]);
 
   if (!isOpen) return null;
 
@@ -85,6 +97,64 @@ export default function ProfileDrawer({
 
         {/* Corpo rolável */}
         <div className="flex-1 overflow-y-auto overscroll-contain px-4 py-3 space-y-3 pb-[calc(1rem+env(safe-area-inset-bottom))]">
+          {/* Card R1: Atualização Controlada do PWA */}
+          {pwaUpdate && (
+            <div
+              className={`p-3 rounded-xl border space-y-2 ${
+                pwaUpdate.hasPwaUpdate
+                  ? 'border-sky-500/70 bg-sky-950/30'
+                  : 'border-zinc-800 bg-black'
+              }`}
+            >
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-sky-400">
+                  <RefreshCw
+                    className={`w-4 h-4 ${
+                      pwaUpdate.isCheckingUpdate || pwaUpdate.isUpdating ? 'animate-spin' : ''
+                    }`}
+                  />
+                  <span>
+                    {pwaUpdate.hasPwaUpdate ? 'Nova versão disponível' : 'Versão do Aplicativo'}
+                  </span>
+                </div>
+                <span className="text-[11px] font-mono text-zinc-400">
+                  {pwaUpdate.currentShortVersion || 'Versão local'}
+                </span>
+              </div>
+
+              {pwaUpdate.hasPwaUpdate ? (
+                <>
+                  <p className="text-xs text-zinc-200 leading-relaxed">
+                    Atualize sem precisar remover da Tela de Início. Seus PRs e séries salvos serão preservados.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={pwaUpdate.applyUpdate}
+                    disabled={pwaUpdate.isUpdating}
+                    className="w-full min-h-[44px] px-3.5 py-2 rounded-xl bg-sky-600 hover:bg-sky-500 disabled:opacity-60 text-white font-extrabold text-xs flex items-center justify-center gap-2 transition-colors cursor-pointer"
+                  >
+                    <RefreshCw className={`w-4 h-4 ${pwaUpdate.isUpdating ? 'animate-spin' : ''}`} />
+                    <span>{pwaUpdate.isUpdating ? 'Atualizando...' : 'Atualizar App Agora'}</span>
+                  </button>
+                </>
+              ) : (
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-xs text-zinc-400 leading-snug">
+                    {pwaUpdate.updateStatusMsg || 'Atualizado • Pronto para uso offline'}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => pwaUpdate.checkForUpdates({ manual: true })}
+                    disabled={pwaUpdate.isCheckingUpdate}
+                    className="min-h-[40px] px-3 py-1.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-xs font-bold text-zinc-200 whitespace-nowrap cursor-pointer disabled:opacity-50"
+                  >
+                    {pwaUpdate.isCheckingUpdate ? 'Verificando...' : 'Verificar atualizações'}
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Controle de Tamanho da Fonte / Interface */}
           <div className="p-3 bg-black border border-zinc-800 rounded-xl">
             <div className="flex items-center gap-1.5 text-xs font-bold text-zinc-400 uppercase tracking-wider mb-2">
@@ -172,8 +242,55 @@ export default function ProfileDrawer({
             </span>
           </button>
 
+          {/* Controle R3: Volume do Toque do Cronômetro (3 níveis PCM music-first) */}
+          {onTimerVolumeChange && (
+            <div className="p-3 bg-black border border-zinc-800 rounded-xl">
+              <div className="flex items-center gap-1.5 text-xs font-bold text-zinc-400 uppercase tracking-wider mb-2">
+                <Volume2 className="w-4 h-4 text-blue-400" />
+                <span>Volume do Toque (Cronômetro)</span>
+              </div>
+              <div className="grid grid-cols-3 gap-1.5" role="group" aria-label="Volume do toque do cronômetro">
+                {['low', 'medium', 'high'].map((levelId) => {
+                  const cfg = TIMER_VOLUME_LEVELS[levelId];
+                  const active = timerVolume === levelId;
+                  return (
+                    <button
+                      key={levelId}
+                      type="button"
+                      aria-pressed={active}
+                      onClick={() => onTimerVolumeChange(levelId)}
+                      className={`min-h-[44px] py-1.5 px-2 rounded-xl border text-center text-xs font-extrabold transition-all cursor-pointer ${
+                        active
+                          ? 'bg-blue-600 text-white border-blue-400 shadow-sm'
+                          : 'bg-zinc-900 text-zinc-300 border-zinc-800 hover:bg-zinc-800'
+                      }`}
+                    >
+                      {cfg.label}
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="text-[11px] text-zinc-400 mt-1.5 leading-snug">
+                Toca 1 aviso de prévia sem pausar sua música (Baixo / Médio / Alto).
+              </p>
+            </div>
+          )}
+
           {/* Ações Principais (todas >= 44px) */}
           <div className="space-y-1.5 pt-1">
+            {currentUser?.role === 'admin' && onOpenAdminTracking && (
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  onOpenAdminTracking();
+                }}
+                className="w-full min-h-[44px] flex items-center gap-3 px-3.5 py-2.5 text-sm font-semibold text-sky-200 bg-sky-950/35 hover:bg-sky-950/55 border border-sky-800/60 rounded-xl transition-colors cursor-pointer"
+              >
+                <Activity className="w-4 h-4 text-sky-400 flex-shrink-0" />
+                <span>Painel Admin • Tracking</span>
+              </button>
+            )}
             <button
               type="button"
               onClick={() => {
@@ -235,6 +352,14 @@ export default function ProfileDrawer({
               }}
               className="hidden"
             />
+
+            {/* Status R2 de Blindagem Local de PRs */}
+            {storageStatus?.idbProtected && (
+              <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-emerald-950/25 border border-emerald-900/50 text-xs text-emerald-300">
+                <ShieldCheck className="w-4 h-4 flex-shrink-0 text-emerald-400" />
+                <span>Armazenamento local blindado (IndexedDB ativo)</span>
+              </div>
+            )}
           </div>
 
           <div className="border-t border-zinc-800 pt-2 space-y-1.5">

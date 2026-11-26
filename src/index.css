@@ -170,6 +170,21 @@
   50% { transform: scaleY(0.62); }
 }
 
+@keyframes row-pull {
+  0%, 100% { transform: translateX(0px); }
+  50% { transform: translateX(-20px); }
+}
+
+@keyframes fly-close-left {
+  0%, 100% { transform: rotate(-38deg); }
+  50% { transform: rotate(12deg); }
+}
+
+@keyframes fly-close-right {
+  0%, 100% { transform: rotate(38deg); }
+  50% { transform: rotate(-12deg); }
+}
+
 /* Deslocamento anti-burn-in ampliado (±10px) para telas OLED */
 @keyframes oled-drift {
   0%, 100% { transform: translate(0px, 0px); }
@@ -189,6 +204,9 @@
 .anim-leg-hang { animation: leg-hang 3.6s ease-in-out infinite; }
 .anim-neck-nod { animation: neck-nod 3.6s ease-in-out infinite; }
 .anim-vacuum { animation: vacuum-pulse 4.5s ease-in-out infinite; }
+.anim-row-pull { animation: row-pull 3.4s ease-in-out infinite; }
+.anim-fly-left { animation: fly-close-left 3.4s ease-in-out infinite; }
+.anim-fly-right { animation: fly-close-right 3.4s ease-in-out infinite; }
 .anim-oled-drift { animation: oled-drift 48s ease-in-out infinite; }
 
 .oled-anim-paused * {
@@ -208,6 +226,9 @@
   .anim-leg-hang,
   .anim-neck-nod,
   .anim-vacuum,
+  .anim-row-pull,
+  .anim-fly-left,
+  .anim-fly-right,
   .anim-oled-drift {
     animation: none !important;
   }

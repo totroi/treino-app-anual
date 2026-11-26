@@ -57,15 +57,15 @@ export const GLOSSARY_ITEMS = [
   {
     id: 'glossario-negativas',
     term: 'Repetições Negativas (Excêntricas Lentas / Forçadas)',
-    shortDesc: 'Frear a descida em 4–8 segundos aproveitando a maior força excêntrica das fibras.',
-    desc: 'Como o músculo suporta mais carga na fase excêntrica (descida) do que na subida, você controla a descida em 4–8s resistindo ao máximo. Em Negativas Forçadas ou Somente Negativas, sobe-se com ajuda (ou com as duas pernas/braços) e desce-se lentamente sozinho.',
+    shortDesc: 'Excêntricas Lentas (4s padrão HIT) ou Negativas Forçadas / Somente Negativas (+40%, 5–10s).',
+    desc: 'Distingue dois níveis: (1) Excêntricas Lentas (4s) — ritmo controlado padrão do HIT para maximizar tensão mecânica sem impulso; e (2) Negativas Forçadas / Somente Negativas — técnica avançada com sobrecarga (+40% em 5–10s de descida) onde a subida é assistida por parceiro ou feita bilateralmente antes da descida unilateral (Mentzer Cap. 11 pp. 91–93).',
     matchers: ['negativa', 'negative', 'excentrica']
   },
   {
     id: 'glossario-isometria',
     term: 'Contração Isométrica / Estática & Pico de Contração',
-    shortDesc: 'Sustentar 1–4 segundos esmagando o músculo no ponto de contração máxima.',
-    desc: 'Manter a carga parada no ponto de maior encurtamento muscular (Pico de Contração / Peak Contraction) por 1 a 4 segundos, ou segurar até a Falha Estática (quando não consegue mais sustentar o peso na posição). Recruta fibras profundas e melhora densidade.',
+    shortDesc: 'Pico de Contração (1–2s em cada rep) vs. Contração Estática até a falha (8–12s sup / 15–30s inf).',
+    desc: 'Distingue dois estímulos: (1) Pico de Contração (Peak Contraction, 1–2s) — pausa deliberada no ponto de encurtamento máximo de cada repetição (ex.: 4-0-2-2); e (2) Contração Estática até a Falha (Static Contraction — Mentzer Cap. 11 pp. 97–98) — sustentar carga máxima imóvel no ponto de pico até não conseguir mais segurar (8–12s em superiores, 15–30s em inferiores).',
     matchers: [
       'isometric',
       'isometria',

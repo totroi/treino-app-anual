@@ -14,17 +14,47 @@
 const BURST_DURATION_MS = 740;
 const MIN_BURST_COOLDOWN_MS = 950;
 
+export const TIMER_VOLUME_LEVELS = {
+  low: { id: 'low', label: 'Baixo', gain: 0.25 },
+  medium: { id: 'medium', label: 'Médio', gain: 0.58 },
+  high: { id: 'high', label: 'Alto', gain: 1.0 }
+};
+
 let sharedAudioCtx = null;
 let sharedWavAudio = null;
 let activeOscillators = [];
 let hasUserInteracted = false;
 let isWavBlessed = false;
-let alarmWavUriCache = null;
+let currentVolumeLevel = 'high';
+const alarmWavUriCache = {};
 
 let isBurstPlaying = false;
 let burstGeneration = 0;
 let burstReleaseTimer = null;
+let previewAmbientTimer = null;
 let lastBurstTimestamp = 0;
+
+function normalizeVolumeLevel(level) {
+  return TIMER_VOLUME_LEVELS[level] ? level : 'high';
+}
+
+export function getTimerVolumeLevel() {
+  return currentVolumeLevel;
+}
+
+export function setTimerVolumeLevel(level) {
+  const valid = normalizeVolumeLevel(level);
+  currentVolumeLevel = valid;
+  if (sharedWavAudio && !isBurstPlaying) {
+    try {
+      sharedWavAudio.src = getAlarmWavDataUri(valid);
+      sharedWavAudio.volume = 1.0;
+    } catch {
+      // ignore
+    }
+  }
+  return valid;
+}
 
 function setAudioSessionType(type) {
   try {
@@ -38,10 +68,14 @@ function setAudioSessionType(type) {
 
 /**
  * Gera em memória um WAV de alarme de alto contraste acústico (3 bipes harmônicos em 0.72s:
- * 880/1760 Hz -> 1174.66/2349.32 Hz -> 1318.51/2637.02 Hz) 100% offline (zero download).
+ * 880/1760 Hz -> 1174.66/2349.32 Hz -> 1318.51/2637.02 Hz) escalonado diretamente em PCM 16-bit
+ * para funcionar de forma idêntica no iOS WebKit (onde HTMLMediaElement.volume é somente leitura).
  */
-function getAlarmWavDataUri() {
-  if (alarmWavUriCache) return alarmWavUriCache;
+export function getAlarmWavDataUri(level = currentVolumeLevel) {
+  const validLevel = normalizeVolumeLevel(level);
+  if (alarmWavUriCache[validLevel]) return alarmWavUriCache[validLevel];
+
+  const gain = TIMER_VOLUME_LEVELS[validLevel].gain;
   const sampleRate = 22050;
   const durationSec = 0.72;
   const numSamples = Math.floor(sampleRate * durationSec);
@@ -75,19 +109,19 @@ function getAlarmWavDataUri() {
       const env = Math.min(1, t / 0.008) * Math.min(1, (0.16 - t) / 0.025);
       const f1 = Math.sin(2 * Math.PI * 880 * t);
       const f2 = Math.sin(2 * Math.PI * 1760 * t) * 0.45;
-      sample = (f1 + f2) * 0.64 * env;
+      sample = (f1 + f2) * 0.64 * env * gain;
     } else if (t >= 0.21 && t < 0.39) {
       const t2 = t - 0.21;
       const env = Math.min(1, t2 / 0.008) * Math.min(1, (0.18 - t2) / 0.025);
       const f1 = Math.sin(2 * Math.PI * 1174.66 * t);
       const f2 = Math.sin(2 * Math.PI * 2349.32 * t) * 0.45;
-      sample = (f1 + f2) * 0.66 * env;
+      sample = (f1 + f2) * 0.66 * env * gain;
     } else if (t >= 0.44 && t < 0.68) {
       const t3 = t - 0.44;
       const env = Math.min(1, t3 / 0.008) * Math.min(1, (0.24 - t3) / 0.035);
       const f1 = Math.sin(2 * Math.PI * 1318.51 * t);
       const f2 = Math.sin(2 * Math.PI * 2637.02 * t) * 0.45;
-      sample = (f1 + f2) * 0.68 * env;
+      sample = (f1 + f2) * 0.68 * env * gain;
     }
     const pcm = Math.max(-0.95, Math.min(0.95, sample));
     view.setInt16(44 + i * 2, pcm < 0 ? pcm * 0x8000 : pcm * 0x7fff, true);
@@ -98,18 +132,23 @@ function getAlarmWavDataUri() {
   for (let i = 0; i < bytes.byteLength; i++) {
     binary += String.fromCharCode(bytes[i]);
   }
-  alarmWavUriCache = 'data:audio/wav;base64,' + btoa(binary);
-  return alarmWavUriCache;
+  const uri = 'data:audio/wav;base64,' + btoa(binary);
+  alarmWavUriCache[validLevel] = uri;
+  return uri;
 }
 
-function ensureAlarmAudioElement() {
+function ensureAlarmAudioElement(level = currentVolumeLevel) {
   if (typeof Audio === 'undefined') return null;
+  const targetUri = getAlarmWavDataUri(level);
   if (!sharedWavAudio) {
-    sharedWavAudio = new Audio(getAlarmWavDataUri());
+    sharedWavAudio = new Audio(targetUri);
     sharedWavAudio.volume = 1.0;
     sharedWavAudio.preload = 'auto';
     sharedWavAudio.playsInline = true;
     sharedWavAudio.setAttribute?.('playsinline', 'true');
+  } else if (sharedWavAudio.src !== targetUri && !isBurstPlaying) {
+    sharedWavAudio.src = targetUri;
+    sharedWavAudio.volume = 1.0;
   }
   return sharedWavAudio;
 }
@@ -132,6 +171,10 @@ function stopCurrentBurst() {
   if (burstReleaseTimer) {
     clearTimeout(burstReleaseTimer);
     burstReleaseTimer = null;
+  }
+  if (previewAmbientTimer) {
+    clearTimeout(previewAmbientTimer);
+    previewAmbientTimer = null;
   }
   isBurstPlaying = false;
   stopActiveOscillators();
@@ -180,6 +223,8 @@ async function playWebAudioFallback(gen) {
 
     stopActiveOscillators();
     const ctx = sharedAudioCtx;
+    const gainScale = TIMER_VOLUME_LEVELS[normalizeVolumeLevel(currentVolumeLevel)].gain;
+    const peakGain = Math.max(0.05, 0.65 * gainScale);
     const notes = [
       { freq: 880, harmonic: 1760, start: 0, dur: 0.16 },
       { freq: 1174.66, harmonic: 2349.32, start: 0.21, dur: 0.18 },
@@ -195,7 +240,7 @@ async function playWebAudioFallback(gen) {
       osc1.frequency.setValueAtTime(freq, ctx.currentTime + start);
       osc2.frequency.setValueAtTime(harmonic, ctx.currentTime + start);
 
-      gain.gain.setValueAtTime(0.65, ctx.currentTime + start);
+      gain.gain.setValueAtTime(peakGain, ctx.currentTime + start);
       gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + start + dur);
 
       osc1.connect(gain);
@@ -299,11 +344,14 @@ export function unlockTimerAudio() {
  * - Fallback exclusivo: Web Audio API APENAS se o <audio> WAV falhar/não existir.
  * - Lock real (isBurstPlaying + burstGeneration + cooldown >= 950ms) impede qualquer sobreposição.
  */
-export async function playAlarmBurst({ force = false } = {}) {
+export async function playAlarmBurst({ force = false, level } = {}) {
   const now = Date.now();
   if (!force && (isBurstPlaying || now - lastBurstTimestamp < MIN_BURST_COOLDOWN_MS)) {
     return false;
   }
+
+  const targetLevel = level ? normalizeVolumeLevel(level) : currentVolumeLevel;
+  currentVolumeLevel = targetLevel;
 
   stopCurrentBurst();
   burstGeneration += 1;
@@ -314,9 +362,13 @@ export async function playAlarmBurst({ force = false } = {}) {
   // Solicita 'transient' durante os bipes para o iOS fazer ducking (fade na música sem pausá-la)
   setAudioSessionType('transient');
 
-  const wav = ensureAlarmAudioElement();
+  const wav = ensureAlarmAudioElement(targetLevel);
   if (wav) {
     try {
+      const targetUri = getAlarmWavDataUri(targetLevel);
+      if (wav.src !== targetUri) {
+        wav.src = targetUri;
+      }
       wav.muted = false;
       wav.volume = 1.0;
       wav.currentTime = 0;
@@ -346,6 +398,24 @@ export async function playAlarmBurst({ force = false } = {}) {
   }
 
   return await playWebAudioFallback(gen);
+}
+
+/**
+ * Reproduz 1 único toque curto de prévia no volume escolhido e restaura 'ambient' após 740ms,
+ * devolvendo o volume da música no Deezer/Spotify automaticamente.
+ */
+export async function previewAlarmBurst(level = currentVolumeLevel) {
+  unlockTimerAudio();
+  const valid = setTimerVolumeLevel(level);
+  const ok = await playAlarmBurst({ force: true, level: valid });
+  const previewGen = burstGeneration;
+  previewAmbientTimer = setTimeout(() => {
+    if (previewGen === burstGeneration) {
+      setAudioSessionType('ambient');
+      previewAmbientTimer = null;
+    }
+  }, BURST_DURATION_MS + 40);
+  return ok;
 }
 
 export function stopSharedAudio() {
