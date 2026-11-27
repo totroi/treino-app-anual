@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Dumbbell, Lock, User, Eye, EyeOff, ArrowRight, ShieldCheck, AlertCircle, Loader2 } from 'lucide-react';
 import { loginUser } from '../services/authService';
+import PwaInstallBanner from './PwaInstallBanner';
 
 export default function LoginScreen({ onLoginSuccess }) {
   const [username, setUsername] = useState('');
@@ -31,6 +32,7 @@ export default function LoginScreen({ onLoginSuccess }) {
 
   return (
     <div className="min-h-[100dvh] bg-black text-zinc-100 flex flex-col justify-start sm:justify-center items-center px-safe pt-safe-screen pb-safe-screen overflow-y-auto">
+      <PwaInstallBanner />
       <div className="w-full max-w-sm bg-zinc-950 border border-zinc-800 rounded-2xl shadow-2xl p-6 ui-fade-in">
         {/* Cabeçalho / Logo */}
         <div className="flex flex-col items-center text-center mb-6">

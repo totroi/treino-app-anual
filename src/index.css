@@ -213,6 +213,39 @@
   animation-play-state: paused !important;
 }
 
+/* Responsividade adaptativa por altura no Modo Foco Eco OLED (evita scroll em iPhone SE / iPhone 15) */
+.eco-silhouette-s1 {
+  width: 4rem;
+  height: 4rem;
+}
+.eco-silhouette-s2 {
+  width: 7rem;
+  height: 7rem;
+}
+@media (min-width: 640px) {
+  .eco-silhouette-s1 {
+    width: 4.75rem;
+    height: 4.75rem;
+  }
+  .eco-silhouette-s2 {
+    width: 8rem;
+    height: 8rem;
+  }
+}
+@media (max-height: 700px) {
+  .eco-silhouette-s1 {
+    width: 3rem;
+    height: 3rem;
+  }
+  .eco-silhouette-s2 {
+    width: 5.75rem;
+    height: 5.75rem;
+  }
+  .eco-hide-short {
+    display: none !important;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .ui-fade-in,
   .anim-lift-y,

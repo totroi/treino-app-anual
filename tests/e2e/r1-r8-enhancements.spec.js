@@ -13,6 +13,7 @@ import { FEMALE_CSV_DATA } from '../../src/data/fallbackWorkoutsFemale.js';
 import { parseCSV, parseRestSeconds } from '../../src/utils/exerciseNormalizer.js';
 import { detectArchetype } from '../../src/utils/exerciseSilhouetteMap.js';
 import { findGlossaryEntriesForTechnique } from '../../src/utils/glossaryData.js';
+import { detectPwaEnvironment, isRunningStandalone } from '../../src/hooks/usePwaInstall.js';
 
 function createSignedAdminSession(sexo = 'M') {
   const secret = process.env.AUTH_SECRET || 'irontracker-secret-key-2026';
@@ -61,6 +62,16 @@ test.describe('R1–R8 Enhancements & Methodological Coherence', () => {
         addEventListener: () => {},
         removeEventListener: () => {}
       };
+      if (navigator.serviceWorker) {
+        try {
+          Object.defineProperty(navigator.serviceWorker, 'controller', {
+            value: { state: 'activated' },
+            configurable: true
+          });
+        } catch {
+          // ignore
+        }
+      }
       window.__irontrackerSwRegistration = fakeReg;
     });
 
@@ -94,10 +105,9 @@ test.describe('R1–R8 Enhancements & Methodological Coherence', () => {
 
     // Register a PR set in first exercise (Supino Reto)
     const firstCard = page.locator('article').first();
-    await firstCard.getByRole('button', { name: /Cargas|Registrar/i }).click();
-    await firstCard.locator('input[placeholder*="kg" i], input[aria-label*="carga" i]').first().fill('97.5');
-    await firstCard.locator('input[placeholder*="rep" i], input[aria-label*="rep" i]').first().fill('8');
-    await firstCard.getByRole('button', { name: /Salvar|Adicionar/i }).first().click();
+    await firstCard.getByLabel('Carga (kg)', { exact: true }).fill('97.5');
+    await firstCard.getByLabel('Reps', { exact: true }).fill('8');
+    await firstCard.getByRole('button', { name: /Salvar Série/i }).click();
 
     // Allow async IndexedDB mirror to settle
     await page.waitForTimeout(350);
@@ -317,7 +327,7 @@ test.describe('R1–R8 Enhancements & Methodological Coherence', () => {
     }
   });
 
-  test('R7 & R8 FocusScreensaver shows Ultra Eco Cadência, Stage 1 Execução & Nota, 0:00 on pair step 1/2, and parseRestSeconds D1/D4', async ({
+  test('R7 & R8 FocusScreensaver shows Ultra Eco Cadência, Stage 1 Execução & Nota overlay, Bi-Set 1/2 UX, Zero-Scroll on iPhone SE/15, and parseRestSeconds D1/D4', async ({
     page
   }) => {
     // Unit checks for R8 parseRestSeconds D1/D4
@@ -327,6 +337,8 @@ test.describe('R1–R8 Enhancements & Methodological Coherence', () => {
     expect(parseRestSeconds('0s no par • 75s após par', 'Bi-Set', 'Pernas', 1)).toBe(0);
 
     const creds = getFemaleCredentials();
+    await page.setViewportSize({ width: 393, height: 852 }); // iPhone 15
+    await page.clock.install();
     await page.goto('/');
     await loginViaUI(page, creds);
     await selectMonth(page, 'Fevereiro');
@@ -334,25 +346,114 @@ test.describe('R1–R8 Enhancements & Methodological Coherence', () => {
 
     // Open Focus Mode on Cadeira Extensora (PAR-1 1/2 -> 0s transition)
     const firstCard = page.locator('article').first();
-    await firstCard.getByRole('button', { name: /Modo Foco/i }).click();
+    await firstCard.getByRole('button', { name: /Abrir Modo Foco OLED para/i }).click();
 
-    const dialog = page.getByRole('dialog', { name: /Modo Foco OLED/i });
+    const dialog = page.getByRole('dialog', { name: 'Modo Foco OLED' });
     await expect(dialog).toBeVisible();
 
-    // Stage 1: verify 0:00 displayed on pair 1/2, Cadência, Descanso, and Execução & Nota accordion
+    // Stage 1: verify 0:00 + Bi-Set 1/2 UX, Cadência, Par 0s, and ZERO vertical scroll on iPhone 15
     await expect(dialog).toContainText('0:00');
     await expect(dialog).toContainText(/Cad\.\s*2-0-2-1/i);
     await expect(dialog).toContainText(/Par 0s/i);
+    await expect(dialog.getByTestId('focus-stage1-jump-partner')).toContainText(/Seguir p\/ 2\/2.*Leg Press/i);
 
-    const accordionBtn = dialog.getByTestId('focus-exec-notes-toggle');
-    await expect(accordionBtn).toBeVisible();
-    await accordionBtn.click();
-    await expect(dialog).toContainText(/Modo de execução/i);
+    const overflowIphone15 = await dialog.evaluate((el) => el.scrollHeight - el.clientHeight);
+    expect(overflowIphone15).toBeLessThanOrEqual(2);
 
-    // Switch to Stage 2 Ultra Eco and verify mandatory Cadência telemetry
-    await dialog.getByRole('button', { name: /Escurecer|Ultra Eco/i }).click();
-    const ultraCadence = dialog.getByTestId('ultra-eco-cadence');
+    // Check iPhone SE compact height (375x667) -> ZERO vertical scroll
+    await page.setViewportSize({ width: 375, height: 667 });
+    const overflowIphoneSE = await dialog.evaluate((el) => el.scrollHeight - el.clientHeight);
+    expect(overflowIphoneSE).toBeLessThanOrEqual(2);
+
+    // Execução & Nota opens internal overlay without expanding Stage 1 height
+    const execBtn = dialog.getByTestId('focus-exec-notes-toggle');
+    await expect(execBtn).toBeVisible();
+    await execBtn.click();
+    const overlay = dialog.getByTestId('focus-info-overlay');
+    await expect(overlay).toBeVisible();
+    await expect(overlay).toContainText(/Modo de execução/i);
+    await page.keyboard.press('Escape');
+    await expect(overlay).toHaveCount(0);
+
+    // Switch to Stage 2 Ultra Eco (12s idle) and verify Cadência + Bi-Set 1/2 UX + Zero Scroll
+    await page.clock.runFor(13_000);
+    const ecoDialog = page.getByRole('dialog', {
+      name: 'Modo Foco Ultra Eco OLED — toque para acordar controles'
+    });
+    await expect(ecoDialog).toBeVisible();
+    const ultraCadence = ecoDialog.getByTestId('ultra-eco-cadence');
     await expect(ultraCadence).toBeVisible();
     await expect(ultraCadence).toContainText('2-0-2-1');
+    await expect(ecoDialog.getByTestId('ultra-eco-pair-transition')).toContainText(/Sem descanso • Seguir para 2\/2/i);
+    await expect(ecoDialog.getByTestId('ultra-eco-pair-transition')).toContainText(/Leg Press/i);
+
+    const overflowStage2 = await ecoDialog.evaluate((el) => el.scrollHeight - el.clientHeight);
+    expect(overflowStage2).toBeLessThanOrEqual(2);
+    expect(await auditNoBlueLeaks(page)).toEqual([]);
+
+    // Jumping directly from Stage 2 1/2 to 2/2 opens Stage 1 of Leg Press with 75s prepared
+    await ecoDialog.getByTestId('ultra-eco-jump-partner').click();
+    await expect(page.getByRole('dialog', { name: 'Modo Foco OLED' })).toContainText('Leg Press');
+    await expect(page.getByRole('dialog', { name: 'Modo Foco OLED' })).toContainText('1:15');
+  });
+
+  test('PWA Install Assistant detects devices accurately, renders LoginScreen banner, and hides in standalone mode', async ({
+    page
+  }) => {
+    // Pure multi-device classification tests
+    expect(
+      detectPwaEnvironment({
+        ua: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1',
+        hasDeferredPrompt: false,
+        standalone: false
+      }).platformKind
+    ).toBe('ios_safari');
+
+    expect(
+      detectPwaEnvironment({
+        ua: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/125.0.0.0 Mobile/15E148 Safari/604.1',
+        hasDeferredPrompt: false,
+        standalone: false
+      }).platformKind
+    ).toBe('ios_other_browser');
+
+    expect(
+      detectPwaEnvironment({
+        ua: 'Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/125.0.0.0 Mobile Safari/537.36 [FB_IAB/FB4A;]',
+        hasDeferredPrompt: false,
+        standalone: false
+      }).platformKind
+    ).toBe('in_app_browser');
+
+    expect(
+      detectPwaEnvironment({
+        ua: 'Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Chrome/125.0.0.0 Mobile Safari/537.36',
+        hasDeferredPrompt: true,
+        standalone: false
+      }).platformKind
+    ).toBe('native_prompt');
+
+    expect(
+      isRunningStandalone({
+        matchMedia: (q) => ({ matches: q === '(display-mode: standalone)' }),
+        navigator: {},
+        document: { referrer: '' }
+      })
+    ).toBe(true);
+
+    // UI verification in browser mode -> banner visible and modal opens
+    await page.goto('/');
+    await expect(page.getByTestId('pwa-install-banner')).toBeVisible();
+    await page.getByTestId('pwa-install-cta').click();
+    await expect(page.getByTestId('pwa-install-modal')).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(page.getByTestId('pwa-install-modal')).toHaveCount(0);
+
+    // UI verification in standalone mode -> banner hidden
+    await page.addInitScript(() => {
+      Object.defineProperty(window.navigator, 'standalone', { value: true, configurable: true });
+    });
+    await page.goto('/');
+    await expect(page.getByTestId('pwa-install-banner')).toHaveCount(0);
   });
 });

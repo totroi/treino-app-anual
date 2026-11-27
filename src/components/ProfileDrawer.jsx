@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   X,
   Type,
@@ -13,9 +13,11 @@ import {
   Volume2,
   RefreshCw,
   ShieldCheck,
-  Activity
+  Activity,
+  Smartphone
 } from 'lucide-react';
 import { TIMER_VOLUME_LEVELS } from '../utils/timerAudio';
+import PwaInstallModal from './PwaInstallModal';
 
 export default function ProfileDrawer({
   isOpen,
@@ -25,6 +27,7 @@ export default function ProfileDrawer({
   backupMeta,
   storageStatus,
   pwaUpdate,
+  pwaInstall,
   uiScale,
   onUiScaleChange,
   screensaverDelay,
@@ -42,13 +45,14 @@ export default function ProfileDrawer({
   onLogout
 }) {
   const fileInputRef = useRef(null);
+  const [showInstallModal, setShowInstallModal] = useState(false);
 
   useEffect(() => {
     if (!isOpen) return;
     const prev = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
     const onKey = (e) => {
-      if (e.key === 'Escape') onClose();
+      if (e.key === 'Escape' && !showInstallModal) onClose();
     };
     window.addEventListener('keydown', onKey);
     // Verifica silenciosamente se há nova versão do PWA ao abrir o menu de perfil (R1)
@@ -57,7 +61,7 @@ export default function ProfileDrawer({
       document.body.style.overflow = prev;
       window.removeEventListener('keydown', onKey);
     };
-  }, [isOpen, onClose, pwaUpdate]);
+  }, [isOpen, onClose, pwaUpdate, showInstallModal]);
 
   if (!isOpen) return null;
 
@@ -153,6 +157,39 @@ export default function ProfileDrawer({
                 </div>
               )}
             </div>
+          )}
+
+          {/* Atalho discreto para instalar na Tela de Início caso esteja usando pelo navegador */}
+          {pwaInstall && !pwaInstall.isStandalone && !pwaInstall.isInstalled && (
+            <button
+              type="button"
+              onClick={async () => {
+                if (pwaInstall.canPromptNative) {
+                  const res = await pwaInstall.promptInstall();
+                  if (res?.outcome === 'unavailable' || res?.outcome === 'error') {
+                    setShowInstallModal(true);
+                  }
+                } else {
+                  setShowInstallModal(true);
+                }
+              }}
+              className="w-full min-h-[44px] px-3.5 py-2.5 bg-black border border-sky-900/60 hover:border-sky-600 rounded-xl flex items-center justify-between gap-3 text-left transition-colors cursor-pointer"
+            >
+              <div className="flex items-center gap-2.5 min-w-0">
+                <Smartphone className="w-4 h-4 text-sky-400 flex-shrink-0" />
+                <div className="min-w-0">
+                  <div className="text-xs font-extrabold text-zinc-100 leading-tight">
+                    Adicionar à Tela de Início (App)
+                  </div>
+                  <div className="text-[11px] text-zinc-400 truncate">
+                    Tela cheia OLED • Melhor alarme • Offline
+                  </div>
+                </div>
+              </div>
+              <span className="px-2.5 py-1 rounded-lg bg-blue-600 text-white text-[11px] font-extrabold flex-shrink-0">
+                {pwaInstall.canPromptNative ? 'Instalar' : 'Ver como'}
+              </span>
+            </button>
           )}
 
           {/* Controle de Tamanho da Fonte / Interface */}
@@ -386,6 +423,12 @@ export default function ProfileDrawer({
           </div>
         </div>
       </div>
+
+      <PwaInstallModal
+        isOpen={showInstallModal}
+        onClose={() => setShowInstallModal(false)}
+        pwaInstall={pwaInstall}
+      />
     </div>
   );
 }

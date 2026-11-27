@@ -26,6 +26,7 @@ import { useWorkoutLogs } from './hooks/useWorkoutLogs';
 import { useRestTimer } from './hooks/useRestTimer';
 import { useFocusAutoDim } from './hooks/useFocusAutoDim';
 import { usePwaUpdate } from './hooks/usePwaUpdate';
+import { usePwaInstall } from './hooks/usePwaInstall';
 import { trackSessionStart, trackProgressHeartbeat } from './services/trackingService';
 import { parsePtBrNumber } from './utils/numberFormat';
 import LoginScreen from './components/LoginScreen';
@@ -118,6 +119,7 @@ function AuthenticatedWorkspace({ currentUser, onLogout }) {
   const logs = useWorkoutLogs(currentUser.username, selectedMonth, selectedWorkout);
   const timer = useRestTimer();
   const pwaUpdate = usePwaUpdate();
+  const pwaInstall = usePwaInstall();
 
   // Notifica quando PRs foram restaurados automaticamente do IndexedDB após limpeza parcial do navegador (R2)
   useEffect(() => {
@@ -809,6 +811,7 @@ function AuthenticatedWorkspace({ currentUser, onLogout }) {
         backupMeta={logs.backupMeta}
         storageStatus={logs.storageStatus}
         pwaUpdate={pwaUpdate}
+        pwaInstall={pwaInstall}
         uiScale={uiScale}
         onUiScaleChange={handleUiScaleChange}
         screensaverDelay={screensaverDelay}
